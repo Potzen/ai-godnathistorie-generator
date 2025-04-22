@@ -73,7 +73,6 @@ def generate_story():
         max_tokens_setting = 1000
     print(f"Længde instruktion: {length_instruction}, Max Tokens: {max_tokens_setting}")
 
-
     # Definer MERE SPECIFIK stemnings-instruktion
     mood_instruction = ""
     if mood == 'sød': mood_instruction = "Historien skal have en **meget sød, hjertevarm og kærlig stemning**. Fokusér på venskab, omsorg, glæde og positive følelser."
@@ -118,16 +117,19 @@ def generate_story():
 
     # Definer generation_config
     generation_config = genai.types.GenerationConfig(
-        max_output_tokens=max_tokens_setting,
+        max_output_tokens=max_tokens_setting, # Bruger den justerede værdi
         temperature=0.7
     )
 
-    # === Byg Prompt baseret på Interaktiv Status ===
+    # === Byg Prompt baseret på Interaktiv Status (RETTET INDRYKNING/SYNTAX) ===
     prompt = ""
+    plot_morale_line = f"Plot/Elementer/Morale (kan være en ting, en hændelse eller et tema/morale historien skal illustrere): {plot_str}"
+
     if is_interactive:
+        # Sørg for korrekt indrykning her
         print("Bygger FULD INTERAKTIV prompt...")
         interactive_rules = """
-    REGLER FOR INDDRAGENDE EVENTYR MED EKSPLICITTE VALG-STIER:
+        REGLER FOR INDDRAGENDE EVENTYR MED EKSPLICITTE VALG-STIER:
         1. Fortæl historien flydende. Inkluder 2-3 steder, hvor hovedpersonen står over for et simpelt valg med 2-3 klare muligheder (nummerér eller bogstavér dem, f.eks. (1), (2) eller (A), (B)).
         2. Præsenter valget og mulighederne tydeligt for lytteren. Afslut præsentationen med en klar opfordring til lytteren om at vælge, f.eks.: "Hvad skal [Karakter] gøre nu? Vælg (A) eller (B):".
         3. KONSEKVENS-SNIPPETS: Umiddelbart EFTER opfordringen til at vælge, skriv **korte, separate tekst-afsnit** for **HVER** af de mulige valg. Start hvert afsnit tydeligt med markøren for valget og en klar indikation, f.eks.:
@@ -138,59 +140,62 @@ def generate_story():
         5. Fortsæt hovedhistorien efter sammenfletnings-afsnittet indtil næste valgpunkt eller slutningen.
         6. Følg stadig de generelle regler for tone, sprog og børnevenlighed.
         """
+        # Sørg for korrekt indrykning af f-strengen
         prompt = f"""
-        {listener_context_instruction}
+{listener_context_instruction}
 
-        ---
-        OPGAVE: Skriv et INDDRAGENDE eventyr baseret på følgende, og følg de specifikke regler nedenfor:
-        Længde: {length_instruction}
-        {mood_prompt_part}
-        Hovedpersoner: {karakter_str}
-        Steder: {sted_str}
-        Plot/Elementer: {plot_str}
+---
+OPGAVE: Skriv et INDDRAGENDE eventyr baseret på følgende, og følg de specifikke regler nedenfor:
+Længde: {length_instruction}
+{mood_prompt_part}
+Hovedpersoner: {karakter_str}
+Steder: {sted_str}
+{plot_morale_line}
 
-        {interactive_rules}
-        GENERELLE REGLER (gælder stadig):
-        - Historien skal være på dansk.
-        - Den skal være positiv og børnevenlig.
-        - Den skal være simpel med klar begyndelse, midte og slutning.
-        - Historien skal bære præg af en godnathistorie
-        - Undgå alt voldeligt og upassende for børn.
-        - Skal historien skal afsluttes med en blød overgang til lytteren
-        - {ending_instruction}
-        ---
-        Start historien her:
-        """
+{interactive_rules}
+
+GENERELLE REGLER (gælder stadig):
+- Historien skal være på dansk.
+- Den skal være positiv og børnevenlig.
+- Den skal være simpel med klar begyndelse, midte og slutning.
+- Undgå alt voldeligt og upassende for børn (hold 'uhyggelig' stemning passende).
+- {ending_instruction}
+---
+Start historien her:
+"""
+    # Sørg for korrekt indrykning af else
     else: # Hvis IKKE interaktiv
+        # Sørg for korrekt indrykning her
         print("Bygger FULD NORMAL prompt...")
+        # Sørg for korrekt indrykning af f-strengen
         prompt = f"""
-        {listener_context_instruction}
+{listener_context_instruction}
 
-        ---
-        OPGAVE: Skriv en godnathistorie baseret på følgende:
-        Længde: {length_instruction}
-        {mood_prompt_part}
-        Hovedpersoner: {karakter_str}
-        Steder: {sted_str}
-        Plot/Elementer: {plot_str}
-        GENERELLE REGLER:
-        - Historien skal være på dansk.
-        - Den skal være positiv og børnevenlig.
-        - Den skal være simpel med klar begyndelse, midte og slutning.
-        - Historien skal bære præg af en godnathistorie
-        - Skal historien skal afsluttes med en blød overgang til lytteren
-        - Undgå alt voldeligt og upassende for børn.
-        - {ending_instruction}
-        ---
-        Start historien her:
-        """
+---
+OPGAVE: Skriv en godnathistorie baseret på følgende:
+Længde: {length_instruction}
+{mood_prompt_part}
+Hovedpersoner: {karakter_str}
+Steder: {sted_str}
+{plot_morale_line}
+GENERELLE REGLER:
+- Historien skal være på dansk.
+- Den skal være positiv og børnevenlig.
+- Den skal være simpel med klar begyndelse, midte og slutning.
+- Historien skal bære præg af en godnathistorie
+- Undgå alt voldeligt og upassende for børn (hold 'uhyggelig' stemning passende).
+- {ending_instruction}
+---
+Start historien her:
+"""
 
-    # Ryd op i prompten
+    # Ryd op i prompten (korrekt indrykning her)
     prompt = "\n".join(line.strip() for line in prompt.strip().splitlines() if line.strip())
     print(f"--- Sender FULD Prompt til Gemini (Max Tokens: {max_tokens_setting}) ---\n{prompt}\n------------------------------")
 
     # --- API Kald og Respons Håndtering ---
     try:
+        # Sørg for korrekt indrykning her
         print("Initialiserer Gemini model...")
         model = genai.GenerativeModel('gemini-1.5-pro-latest') # Bruger Pro model
         print("Bruger model: gemini-1.5-pro-latest")
@@ -199,7 +204,7 @@ def generate_story():
         response = model.generate_content(
             prompt,
             generation_config=generation_config,
-            safety_settings=safety_settings # Bruger den KORREKTE definition
+            safety_settings=safety_settings
             )
         print("Svar modtaget fra Google Gemini.")
         try:
@@ -211,8 +216,10 @@ def generate_story():
         print(f"Fejl ved kald til Google Gemini: {e}")
         actual_story = f"Beklager, jeg kunne ikke lave en historie lige nu på grund af en fejl: {e}. Prøv venligst igen."
 
+    # Sørg for korrekt indrykning her
     return jsonify(story=actual_story)
 
 # === Start Webserveren (Ignoreres af PythonAnywhere) ===
+# Sørg for korrekt indrykning her
 if __name__ == '__main__':
     app.run(debug=True)
