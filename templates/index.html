@@ -8,13 +8,15 @@
 <body>
 
     <header>
-        <h1>AI Godnathistorie Generator</h1>
-        <p>Skab jeres helt egen, unikke godnathistorie!</p>
+        <h1>AI Godnathistorie Generator (BETA-version)</h1>
+        <p>Sidst opdateret: 22. april 2025</p>
+        <p>Skab jeres helt egen, unikke godnathistorier med jeres børn!</p>
     </header>
 
     <main>
         <section id="generator">
             <h2>Byg jeres historie</h2>
+             <p>(Det er ikke nødvendigt at udfylde alle felterne.)</p>
 
             <div class="input-category">
                 <label>Hvem skal historien læses for?</label>
@@ -63,8 +65,8 @@
             <div class="input-category">
                 <label>Ting, hændelser eller morale?</label>
                 <div id="plot-container">
-                     <div class="input-group">
-                         <input type="text" name="plot" placeholder="f.eks. en magisk fjer, 'at dele er godt'">
+                    <div class="input-group">
+                        <input type="text" name="plot" placeholder="f.eks. en magisk fjer, 'at dele er godt'">
                          </div>
                 </div>
                  <button type="button" class="add-button" data-container="plot-container" data-placeholder="f.eks. en hemmelig dør, 'ærlighed varer længst'" data-name="plot">+ Tilføj ting/morale</button>
@@ -73,11 +75,7 @@
             <div class="input-category">
                 <label for="laengde-select">Vælg historie længde:</label>
                 <select name="laengde" id="laengde-select">
-                    <option value="kort">Kort</option>
-                    <option value="mellem" selected>Mellem</option>
-                    <option value="lang">Lang</option>
-                    <option value="mega_lang">Mega Lang</option>
-                </select>
+                    <option value="kort" selected>Kort</option> <option value="mellem">Mellem</option>   <option value="lang">Lang</option>  </select>
             </div>
 
             <div class="input-category">
@@ -91,7 +89,8 @@
                     <option value="rolig">Rolig / Afslappende</option>
                     <option value="mystisk">Mystisk</option>
                     <option value="hverdagsdrama">Hverdagsdrama (små konflikter)</option>
-                    <option value="uhyggelig">Uhyggelig</option> </select>
+                    <option value="uhyggelig">Uhyggelig</option>
+                </select>
             </div>
 
             <div class="input-category checkbox-group">
@@ -100,7 +99,6 @@
             </div>
 
             <button type="button" id="autofill-button" class="utility-button">Autoudfyld med Eksempler</button>
-
             <button id="generate-button">Skab Godnathistorie</button>
         </section>
 
@@ -113,7 +111,8 @@
 
          <section id="feedback-section">
              <button type="button" id="toggle-feedback-button" class="utility-button">Giv Feedback / Skjul Feedback</button>
-             <div id="feedback-embed-container" class="hidden"> <iframe src="https://docs.google.com/forms/d/e/1FAIpQLScNfIyz-0hNlgfKAkJo-ioT99LYqjBRo8tO5HvzoXfjaY0HvA/viewform?embedded=true"
+             <div id="feedback-embed-container" class="hidden">
+                 <iframe src="https://docs.google.com/forms/d/e/1FAIpQLScNfIyz-0hNlgfKAkJo-ioT99LYqjBRo8tO5HvzoXfjaY0HvA/viewform?embedded=true"
                     width="100%"
                     height="500"
                     frameborder="0"
@@ -126,7 +125,8 @@
 
     <footer>
         <hr>
-        <p>© [Dit Navn/Projekt Navn] 2025 - Historier skabt med AI.</p> <p><i>Forældreopsyn anbefales altid under læsning.</i></p>
+        <p>© Jeres fortællinger 2025 - Historier skabt med AI.</p>
+        <p><i>Forældreopsyn anbefales altid under læsning. ;)</i></p>
     </footer>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>

@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetButton = document.getElementById('reset-button');
     const storyDisplay = document.getElementById('story-display');
     const generatorSection = document.getElementById('generator');
-    const laengdeSelect = document.getElementById('laengde-select');
-    const moodSelect = document.getElementById('mood-select');
+    const laengdeSelect = document.getElementById('laengde-select'); // Vigtig for reset
+    const moodSelect = document.getElementById('mood-select'); // Vigtig for reset
     const listenerContainer = document.getElementById('listener-container');
     const addListenerButton = document.getElementById('add-listener-button');
     const karakterContainer = document.getElementById('karakter-container');
@@ -45,7 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
      ];
      const examplePlots = [
         "skulle finde en forsvundet stjerne", "byggede en fantastisk maskine", "holdt en overraskelsesfest",
-        "mødte et dyr de aldrig havde set før", "lærte at trylle med farver"
+        "mødte et dyr de aldrig havde set før", "lærte at trylle med farver", "'at dele er en god ting'",
+        "'man skal være modig'", "'ærlighed varer længst'"
      ];
     console.log("Example data defined.");
 
@@ -89,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else { console.error("Karakter container not found!");}
     }
 
-    // Funktion til at tilføje Lytter par (Navn + Alder)
+    // Funktion til at tilføje Lytter par (Navn + Alder) - OPDATERET til at returnere gruppen og gemme ved fjernelse
     let listenerCounter = 1;
     function addListenerGroup() {
         listenerCounter++;
@@ -106,14 +107,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Tilføj event listener til den nye fjern-knap
         removeButton.addEventListener('click', () => {
             listenerGroup.remove();
-            // Gem den nye (reducerede) liste, når en lytter fjernes manuelt
+            // VIGTIGT: Gem den nye (reducerede) liste, når en lytter fjernes manuelt
             saveCurrentListeners();
         });
         listenerGroup.appendChild(namePair); listenerGroup.appendChild(agePair); listenerGroup.appendChild(removeButton);
         if (listenerContainer) {
              listenerContainer.appendChild(listenerGroup);
         } else { console.error("Listener container not found!");}
-        return listenerGroup; // Returner det nye element
+        return listenerGroup; // *** Returner det nye element ***
     }
 
     // === Funktion til at gemme aktuelle lyttere i LocalStorage ===
@@ -213,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // === Funktion til Autoudfyld ===
      function autofillFields() {
         console.log("--> autofillFields started");
-        handleResetClick(); // Ryd op først (inkl. localStorage for listeners)
+        handleResetClick(); // Ryd op først (Bemærk: handleResetClick rydder også localStorage nu)
         console.log("handleResetClick completed for autofill.");
 
         // Udfyld Lytter (kun den første række)
@@ -260,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  if (name || age) { listeners.push({ name: name, age: age }); }
             });
         }
-        const selectedLaengde = laengdeSelect ? laengdeSelect.value : 'mellem';
+        const selectedLaengde = laengdeSelect ? laengdeSelect.value : 'kort'; // Default til 'kort'
         const selectedMood = moodSelect ? moodSelect.value : 'neutral';
         const isInteractive = interactiveCheckbox ? interactiveCheckbox.checked : false;
 
@@ -327,7 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
          // Her ville fetch kald til /generate_image osv. komme
     }
 
-    // === Funktion: Klik på "Prøv Igen" ===
+    // === Funktion: Klik på "Prøv Igen" (OPDATERET RESET AF DROPDOWN) ===
     function handleResetClick() {
         console.log("--> handleResetClick started");
         // Ryd inputs, checkbox, fjern ekstra grupper...
@@ -367,7 +368,8 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Cleared story display and hid controls.");
 
         // Nulstil dropdowns...
-        if(laengdeSelect) laengdeSelect.value = 'mellem';
+        // *** OPDATERET: Nulstil længde til 'kort' ***
+        if(laengdeSelect) laengdeSelect.value = 'kort';
         if(moodSelect) moodSelect.value = 'neutral';
         console.log("Reset dropdowns.");
 
