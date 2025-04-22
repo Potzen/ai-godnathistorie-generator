@@ -1,0 +1,326 @@
+/* Generel styling for hele siden */
+body {
+    font-family: sans-serif; /* Vælg en simpel, læselig skrifttype */
+    line-height: 1.6; /* Gør teksten nemmere at læse */
+    max-width: 800px; /* Begræns bredden på indholdet */
+    margin: 20px auto; /* Centrer indholdet på siden med lidt luft i toppen/bunden */
+    padding: 0 15px; /* Lidt luft i siderne af indholdet */
+    background-color: #f8f8f8; /* En meget lys grå baggrund */
+    color: #333; /* Mørkegrå tekstfarve */
+
+      /* --- Baggrundsbillede --- */
+    background-image: url('/static/images/dreampicture.avif'); /* <-- DIT FILNAVN INDSAT */
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed; /* Holder baggrunden fast (valgfrit) */
+    background-color: #eef7ff; /* Fallback farve */
+    /* --- SLUT Baggrundsbillede --- */
+}
+
+/* Styling for sektioner */
+header, main > section, footer {
+    margin-bottom: 30px; /* Tilføj luft under hver hovedsektion */
+    padding: 15px; /* Lidt indre margen */
+    background-color: #fff; /* Hvid baggrund for sektionerne */
+    border-radius: 5px; /* Lidt afrundede hjørner */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* En diskret skygge */
+}
+
+/* Styling specifikt for generator-sektionen */
+#generator div {
+    margin-bottom: 15px; /* Lidt luft under hvert input-område */
+}
+
+/* Styling for labels (teksten over inputfelterne) */
+label {
+    display: block; /* Gør at labelen tager hele bredden -> input kommer nedenunder */
+    margin-bottom: 5px; /* Lidt luft mellem label og input */
+    font-weight: bold; /* Gør label lidt tydeligere */
+}
+
+/* Styling for tekst-input felter */
+input[type="text"] {
+    width: 95%; /* Gør inputfeltet næsten fuld bredde (lidt plads til padding) */
+    padding: 8px; /* Lidt indre luft i feltet */
+    border: 1px solid #ccc; /* En tynd grå kant */
+    border-radius: 4px; /* Lidt afrundede hjørner */
+}
+
+/* Styling for knapper */
+button {
+    padding: 10px 15px; /* Luft inde i knappen */
+    background-color: #007bff; /* Blå baggrundsfarve */
+    color: white; /* Hvid tekst */
+    border: none; /* Ingen standard kant */
+    border-radius: 4px; /* Afrundede hjørner */
+    cursor: pointer; /* Musen bliver til en hånd, når den peger på knappen */
+    font-size: 1em; /* Normal skriftstørrelse */
+}
+
+/* Gør knappen lidt mørkere, når musen er over den */
+button:hover {
+    background-color: #0056b3;
+}
+
+/* Styling for historie-visningsområdet */
+#story-display {
+    background-color: #e9ecef; /* Lidt anden baggrund for at fremhæve */
+    padding: 15px;
+    border-radius: 4px;
+    min-height: 50px; /* Giver lidt højde, selv når den er tom */
+    white-space: pre-wrap; /* Bevarer linjeskift fra historien */
+}
+
+/* Styling for sidefoden */
+footer {
+    text-align: center; /* Centrer teksten */
+    font-size: 0.9em; /* Lidt mindre tekst */
+    color: #666; /* Lidt lysere grå tekst */
+    box-shadow: none; /* Fjern skyggen fra footeren */
+    background-color: transparent; /* Gennemsigtig baggrund */
+}
+
+/* Styling for input gruppen (holder input + fjern-knap) */
+.input-group {
+    display: flex; /* Arranger input og knap side om side */
+    align-items: center; /* Centrer dem vertikalt */
+    margin-bottom: 5px; /* Lidt luft under hver gruppe */
+}
+
+/* Juster inputfeltet lidt, når det er i en gruppe */
+.input-group input[type="text"] {
+    flex-grow: 1; /* Lad inputfeltet tage den resterende plads */
+    margin-bottom: 0; /* Fjern margen under input, da gruppen har det */
+    width: auto; /* Ophæv tidligere width: 95% */
+}
+
+/* Styling for selve fjern-knappen */
+.remove-button {
+    background-color: #dc3545; /* Rød farve for "fjern" */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 8px; /* Mindre padding end hovedknappen */
+    margin-left: 8px; /* Lidt luft mellem input og knap */
+    cursor: pointer;
+    font-size: 0.9em;
+    line-height: 1; /* Sørg for at teksten (-) er centreret */
+}
+
+.remove-button:hover {
+    background-color: #c82333; /* Lidt mørkere rød ved hover */
+}
+
+/* Styling for Tilføj-knapperne */
+.add-button {
+    background-color: #28a745; /* Grøn farve for "tilføj" */
+    margin-top: 5px; /* Lidt luft over knappen */
+}
+.add-button:hover {
+    background-color: #218838; /* Lidt mørkere grøn ved hover */
+}
+
+/* Generel styling for input-kategorierne */
+ .input-category {
+     margin-bottom: 20px; /* Lidt mere luft mellem kategorierne */
+     padding: 15px;
+     border: 1px solid #eee;
+     border-radius: 5px;
+     background-color: #fdfdfd;
+ }
+ .input-category label {
+     margin-bottom: 10px; /* Lidt mere luft under label */
+ }
+/* --- Styling for Dynamisk Lytter Info --- */
+
+/* Gør at Navn, Alder og Fjern-knap står på linje */
+.listener-group {
+    display: flex;
+    align-items: center; /* Centrer lodret */
+    margin-bottom: 10px; /* Luft under hver lytter-række */
+    gap: 10px; /* Lidt luft mellem elementerne i rækken */
+}
+
+/* Styling for hver del (navn/alder input) i lytter-gruppen */
+.listener-group .input-pair {
+    flex: 1; /* Får navne- og alders-input til at dele pladsen */
+    min-width: 100px; /* Undgå at de bliver for små */
+}
+
+/* Sørg for at input i lytter-gruppen fylder bredden af deres 'pair' container */
+.listener-group .input-pair input[type="text"] {
+    width: 100%;
+    box-sizing: border-box; /* Sørg for at padding/border er inkluderet i bredden */
+    margin-bottom: 0; /* Fjern bundmargen fra input */
+}
+
+/* Specifik styling/positionering for fjern-knappen i lytter-gruppen */
+/* (Vi genbruger .remove-button stilen, men justerer evt. margen her hvis nødvendigt) */
+.listener-group .remove-button {
+   margin-left: 0; /* Fjern venstremargen hvis den arves fra generel .remove-button */
+   flex-shrink: 0; /* Undgå at knappen klemmes */
+}
+
+
+/* Tilføj knappen for lyttere (genbrug gerne .add-button stil) */
+#add-listener-button {
+     /* Tilføj evt specifik styling her hvis den skal være anderledes */
+     /* F.eks. mindre margen end de andre add-knapper */
+     margin-top: 10px;
+}
+
+/* Skjuler labels visuelt, men beholder dem for skærmlæsere */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+/* --- Styling for Dynamisk Karakter Info --- */
+
+/* Gør Beskrivelse, Navn og Fjern-knap på linje */
+.character-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 10px;
+}
+
+/* Styling for hver del (beskrivelse/navn input) */
+.character-group .input-pair {
+    flex: 1;
+    min-width: 100px;
+}
+
+/* Sørg for at input i karakter-gruppen fylder */
+.character-group .input-pair input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 0;
+}
+
+/* Specifik styling/positionering for fjern-knappen i karakter-gruppen */
+.character-group .remove-button {
+   margin-left: 0;
+   flex-shrink: 0;
+}
+
+/* Tilføj knappen for karakterer */
+#add-karakter-button {
+     margin-top: 10px;
+}
+
+/* Gammel .input-group styling (til Sted/Plot) - Bør stadig være der */
+.input-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+.input-group input[type="text"] {
+    flex-grow: 1;
+    margin-bottom: 0;
+    width: auto;
+}
+.input-group .remove-button {
+    margin-left: 8px;
+}
+
+/* Styling for tjekboks gruppen */
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    padding: 10px 0; /* Lidt luft omkring */
+}
+
+.checkbox-group input[type="checkbox"] {
+    margin-right: 8px; /* Luft mellem boks og label */
+    /* Gør evt. boksen lidt større hvis ønsket */
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.checkbox-group label {
+    margin-bottom: 0; /* Ophæv bundmargen fra generel label stil */
+    font-weight: normal; /* Gør label normal vægt */
+    cursor: pointer;
+}
+/* --- Styling for Feedback Embed Sektion --- */
+
+#feedback-section {
+    margin-top: 30px; /* Lidt luft over sektionen */
+    padding: 15px;
+    background-color: #f0f0f0; /* Lidt anden baggrund for at adskille */
+    border-radius: 5px;
+    text-align: center; /* Centrer knappen */
+}
+
+#toggle-feedback-button {
+    /* Brug evt. .utility-button stilen eller lav en ny */
+    /* Hvis du genbruger .utility-button, behøver du måske kun denne: */
+     margin-bottom: 15px; /* Luft ned til iframe container (når den er synlig) */
+     /* Ellers tilføj padding, background-color osv. her */
+     /* F.eks.: */
+     /* padding: 8px 12px; */
+     /* background-color: #6c757d; */
+     /* color: white; */
+     /* border: none; */
+     /* border-radius: 4px; */
+     /* cursor: pointer; */
+}
+/* Tilpas :hover hvis du laver en ny stil */
+/*
+#toggle-feedback-button:hover {
+    background-color: #5a6268;
+}
+*/
+
+
+#feedback-embed-container {
+    /* Generel container styling */
+    margin-top: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    overflow: hidden; /* Skjul evt. kanter fra iframe */
+    background-color: #fff; /* Hvid baggrund bag iframe */
+}
+
+#feedback-embed-container iframe {
+    display: block; /* Fjern evt. lille mellemrum under iframe */
+    width: 100%; /* Sørg for den fylder containeren */
+    border: none; /* Fjern standard iframe kant */
+    /* Højden sættes bedst direkte på iframe tagget i HTML'en */
+    min-height: 400px; /* Minimum højde */
+}
+
+/* Simpel klasse til at skjule/vise */
+/* Sørg for denne regel findes i din CSS */
+.hidden {
+    display: none;
+}
+
+/* Sørg for styling af utility-button også gælder a-tags hvis det bruges andre steder */
+.utility-button {
+    display: inline-block;
+    text-decoration: none;
+     /* ... anden styling ... */
+}
+
+/* Skjuler labels visuelt, men beholder dem for skærmlæsere */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

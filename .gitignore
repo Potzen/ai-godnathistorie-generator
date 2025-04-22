@@ -1,0 +1,21 @@
+# Virtual environment
+.venv/
+venv/
+godnathistorie_env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# IDE files (PyCharm)
+.idea/
+
+# Log filer (Valgfrit - hvis du ikke vil have feedback.log med)
+*.log
+
+# Downloadede nøgler (Hvis du gemmer en .json nøgle lokalt)
+*.json
+
+# macOS specific
+.DS_Store

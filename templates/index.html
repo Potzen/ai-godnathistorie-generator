@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Godnathistorie Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <header>
+        <h1>AI Godnathistorie Generator</h1>
+        <p>Skab jeres helt egen, unikke godnathistorie!</p>
+    </header>
+
+    <main>
+        <section id="generator">
+            <h2>Byg jeres historie</h2>
+
+            <div class="input-category">
+                <label>Hvem skal historien læses for?</label>
+                <div id="listener-container">
+                    <div class="listener-group">
+                        <div class="input-pair">
+                           <label for="listener-name-1" class="sr-only">Navn</label>
+                            <input type="text" name="listener_name_single" id="listener-name-1" placeholder="Barnets Navn">
+                        </div>
+                        <div class="input-pair">
+                           <label for="listener-age-1" class="sr-only">Alder</label>
+                            <input type="text" name="listener_age_single" id="listener-age-1" placeholder="Alder (f.eks. 5)">
+                        </div>
+                         </div>
+                </div>
+                <button type="button" id="add-listener-button" class="add-button">+ Tilføj barn</button>
+            </div>
+
+            <div class="input-category">
+                <label>Hvem skal være hovedperson(er)?</label>
+                <div id="karakter-container">
+                    <div class="character-group">
+                         <div class="input-pair">
+                            <label for="karakter-desc-1" class="sr-only">Beskrivelse</label>
+                            <input type="text" name="karakter_desc" id="karakter-desc-1" placeholder="Beskrivelse (f.eks. en modig bi)">
+                         </div>
+                         <div class="input-pair">
+                            <label for="karakter-navn-1" class="sr-only">Navn</label>
+                            <input type="text" name="karakter_navn" id="karakter-navn-1" placeholder="Navn (valgfrit)">
+                         </div>
+                         </div>
+                </div>
+                <button type="button" id="add-karakter-button" class="add-button">+ Tilføj karakter</button>
+            </div>
+
+            <div class="input-category">
+                <label>Hvor skal historien foregå?</label>
+                <div id="sted-container">
+                     <div class="input-group">
+                        <input type="text" name="sted" placeholder="f.eks. i en kagebutik, på månen">
+                         </div>
+                </div>
+                <button type="button" class="add-button" data-container="sted-container" data-placeholder="f.eks. under en stor svamp" data-name="sted">+ Tilføj sted</button>
+            </div>
+
+            <div class="input-category">
+                <label>Skal der være særlige ting/hændelser med?</label>
+                <div id="plot-container">
+                     <div class="input-group">
+                        <input type="text" name="plot" placeholder="f.eks. en magisk fjer, en skattejagt">
+                         </div>
+                </div>
+                <button type="button" class="add-button" data-container="plot-container" data-placeholder="f.eks. en hemmelig dør" data-name="plot">+ Tilføj ting/hændelse</button>
+            </div>
+
+            <div class="input-category">
+                <label for="laengde-select">Vælg historie længde:</label>
+                <select name="laengde" id="laengde-select">
+                    <option value="kort">Kort</option>
+                    <option value="mellem" selected>Mellem</option>
+                    <option value="lang">Lang</option>
+                    <option value="mega_lang">Mega Lang</option>
+                </select>
+            </div>
+
+            <div class="input-category">
+                <label for="mood-select">Vælg stemning:</label>
+                <select name="mood" id="mood-select">
+                    <option value="neutral" selected>Neutral / Blandet</option>
+                    <option value="sød">Sød</option>
+                    <option value="sjov">Sjov / Humoristisk</option>
+                    <option value="eventyr">Eventyrlig</option>
+                    <option value="spændende">Spændende</option>
+                    <option value="rolig">Rolig / Afslappende</option>
+                    <option value="mystisk">Mystisk</option>
+                    <option value="hverdagsdrama">Hverdagsdrama (små konflikter)</option>
+                    <option value="uhyggelig">Uhyggelig</option>
+                </select>
+            </div>
+
+            <div class="input-category checkbox-group">
+                <input type="checkbox" id="interactive-checkbox" name="interactive">
+                <label for="interactive-checkbox">Gør historien til et inddragende eventyr (med valgmuligheder)?</label>
+            </div>
+
+            <button type="button" id="autofill-button" class="utility-button">Autoudfyld med Eksempler</button>
+
+            <button id="generate-button">Skab Godnathistorie</button>
+        </section>
+
+        <section id="historie-output">
+            <h2>Jeres Godnathistorie</h2>
+            <div id="story-display">
+                </div>
+            <button id="reset-button" style="display: none;">Prøv Igen</button>
+        </section>
+
+         <section id="feedback-section">
+             <button type="button" id="toggle-feedback-button" class="utility-button">Giv Feedback / Skjul Feedback</button>
+             <div id="feedback-embed-container" class="hidden"> <iframe src="https://docs.google.com/forms/d/e/1FAIpQLScNfIyz-0hNlgfKAkJo-ioT99LYqjBRo8tO5HvzoXfjaY0HvA/viewform?embedded=true"
+                    width="100%"
+                    height="500"
+                    frameborder="0"
+                    marginheight="0"
+                    marginwidth="0">Indlæser…</iframe>
+                </div>
+        </section>
+
+    </main>
+
+    <footer>
+        <hr>
+        <p>© [Dit Navn/Projekt Navn] 2025 - Historier skabt med AI.</p> <p><i>Forældreopsyn anbefales altid under læsning.</i></p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+</html>
