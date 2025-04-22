@@ -64,10 +64,10 @@ def generate_story():
         max_tokens_setting = 400
     elif laengde == 'lang':
         length_instruction = "Skriv historien i cirka 10-14 afsnit. Sørg for god detaljegrad."
-        max_tokens_setting = 1600
+        max_tokens_setting = 3000
     elif laengde == 'mega_lang':
         length_instruction = "Skriv en **meget lang og dybdegående** historie på **mindst 9000 tegn**. Historien skal have flere faser, udvikling for karaktererne, mange detaljerede beskrivelser og gerne flere sammenhængende begivenheder eller del-eventyr. Undgå at afslutte historien for tidligt."
-        max_tokens_setting = 6000
+        max_tokens_setting = 8000
     else: # Default til 'mellem'
         length_instruction = "Skriv historien i cirka 6-8 afsnit."
         max_tokens_setting = 1000
