@@ -26,40 +26,56 @@ def index():
 # --- Route for historie-generering ('/generate') ---
 @app.route('/generate', methods=['POST'])
 def generate_story():
-    """ Modtager brugerinput, kalder Gemini API'en med NYE interaktive regler (separate stier), og returnerer historien. """
+    """ Modtager brugerinput (inkl. negativ prompt), bygger prompt UDEN defaults, kalder Gemini, og returnerer historien. """
     data = request.get_json()
     print("Modtaget data for /generate:", data)
 
     # Hent alle inputs
-    karakterer_data = data.get('karakterer', [{'description': 'en glad sky', 'name': ''}])
-    steder_liste = data.get('steder', ['højt oppe på himlen'])
-    plots_liste = data.get('plots', ['legede med solen'])
-    laengde = data.get('laengde', 'kort') # Opdateret default til 'kort'
+    karakterer_data = data.get('karakterer') # Hent uden default
+    steder_liste = data.get('steder')       # Hent uden default
+    plots_liste = data.get('plots')         # Hent uden default
+    laengde = data.get('laengde', 'kort')
     mood = data.get('mood', 'neutral')
     listeners = data.get('listeners', [])
     is_interactive = data.get('interactive', False)
-    print(f"Valgt længde: {laengde}, Valgt stemning: {mood}, Lyttere: {listeners}, Interaktiv: {is_interactive}")
+    # Hent negativ prompt
+    negative_prompt_text = data.get('negative_prompt', '').strip() # Hent og rens
+    print(f"Valgt længde: {laengde}, Valgt stemning: {mood}, Lyttere: {listeners}, Interaktiv: {is_interactive}, Negativ Prompt: '{negative_prompt_text}'")
 
-    # Forbered grundlæggende strenge (karakter, sted, plot)
-    if not karakterer_data: karakterer_data = [{'description': 'en glad sky', 'name': ''}]
-    if not steder_liste: steder_liste = ['højt oppe på himlen']
-    if not plots_liste: plots_liste = ['legede med solen']
+    # === Forbered grundlæggende strenge (UDEN DEFAULTS) ===
 
+    # Karakter
     karakter_descriptions_for_prompt = []
-    for char_obj in karakterer_data:
-        desc = char_obj.get('description','').strip(); name = char_obj.get('name','').strip()
-        if desc: # Kræv mindst en beskrivelse
-            karakter_descriptions_for_prompt.append(f"{desc} ved navn {name}" if name else desc)
-    # Sørg for default hvis listen ender tom
-    karakter_str = ", ".join(karakter_descriptions_for_prompt) if karakter_descriptions_for_prompt else "en glad sky"
+    if karakterer_data: # Tjek om listen eksisterer og ikke er None
+        for char_obj in karakterer_data:
+            desc = char_obj.get('description','').strip()
+            name = char_obj.get('name','').strip()
+            if desc: # Kræv mindst en beskrivelse
+                karakter_descriptions_for_prompt.append(f"{desc} ved navn {name}" if name else desc)
+    # Bliver en tom streng "", hvis listen er tom
+    karakter_str = ", ".join(karakter_descriptions_for_prompt)
 
-    sted_str = ", ".join(steder_liste) if steder_liste else "højt oppe på himlen"
-    plot_str = ", ".join(plots_liste) if plots_liste else "legede med solen"
-    print(f"Input til historie: Karakterer='{karakter_str}', Steder='{sted_str}', Plot/Morale='{plot_str}'")
+    # Sted
+    valid_steder = []
+    if steder_liste: # Tjek om listen eksisterer og ikke er None
+        # Filtrer tomme strenge fra FØR join
+        valid_steder = [s.strip() for s in steder_liste if s and s.strip()]
+    # Bliver en tom streng "", hvis listen er tom
+    sted_str = ", ".join(valid_steder)
+
+    # Plot/Morale
+    valid_plots = []
+    if plots_liste: # Tjek om listen eksisterer og ikke er None
+        # Filtrer tomme strenge fra FØR join
+        valid_plots = [p.strip() for p in plots_liste if p and p.strip()]
+    # Bliver en tom streng "", hvis listen er tom
+    plot_str = ", ".join(valid_plots)
+
+    print(f"Input til historie (behandlet): Karakterer='{karakter_str}', Steder='{sted_str}', Plot/Morale='{plot_str}'")
 
     # Definer Længde-instruktion og max_tokens (Opdateret mapping)
     length_instruction = ""
-    max_tokens_setting = 1000 # Default for 'kort' (tidl. Mellem)
+    max_tokens_setting = 1000 # Default for 'kort'
     if laengde == 'mellem': # Tidl. Lang
         length_instruction = "Skriv historien i cirka 10-14 afsnit. Sørg for god detaljegrad."
         max_tokens_setting = 3000
@@ -119,13 +135,30 @@ def generate_story():
         temperature=0.7
     )
 
-    # === Byg Prompt baseret på Interaktiv Status ===
-    prompt = ""
-    plot_morale_line = f"Plot/Elementer/Morale (kan være en ting, en hændelse eller et tema/morale historien skal illustrere): {plot_str}"
+    # === Byg Prompt - Dele tilføjes KUN hvis de har indhold ===
+    prompt_parts = [] # Start med en tom liste
 
+    # Tilføj lytter info (hvis der er nogen)
+    if listener_context_instruction:
+        prompt_parts.append(listener_context_instruction)
+        prompt_parts.append("\n---") # Skilletegn
+
+    # Tilføj hovedopgaven
+    prompt_parts.append(f"OPGAVE: Skriv et {'INDDRAGENDE eventyr' if is_interactive else 'godnathistorie'} baseret på følgende:")
+    prompt_parts.append(f"Længde: {length_instruction}")
+    prompt_parts.append(mood_prompt_part) # Stemning tilføjes altid (falder tilbage til Neutral)
+
+    # Tilføj kerneelementer KUN hvis de er udfyldt
+    if karakter_str:
+        prompt_parts.append(f"Hovedpersoner: {karakter_str}")
+    if sted_str:
+        prompt_parts.append(f"Steder: {sted_str}")
+    if plot_str:
+        # Opdateret linje for at inkludere morale-aspektet i prompten
+        prompt_parts.append(f"Plot/Elementer/Morale (kan være en ting, en hændelse eller et tema/morale historien skal illustrere): {plot_str}")
+
+    # Tilføj interaktive regler (hvis relevant)
     if is_interactive:
-        print("Bygger INTERAKTIV prompt (Separate Stier)...")
-        # *** REGLER FOR SEPARATE VALG-STIER ***
         interactive_rules = """
         REGLER FOR INDDRAGENDE EVENTYR MED EKSPLICITTE VALG-STIER:
         1. Fortæl historien flydende. Inkluder 2-3 steder, hvor hovedpersonen står over for et simpelt valg med 2-3 klare muligheder (nummerér eller bogstavér dem, f.eks. (1), (2) eller (A), (B)).
@@ -134,57 +167,33 @@ def generate_story():
            "Valg (A): [Kort beskrivelse af hvad der sker ved valg A]..."
            "Valg (B): [Kort beskrivelse af hvad der sker ved valg B]..."
            (Disse snippets skal være relativt korte (1-3 sætninger)).
-        4. SAMMENFLETNING: **Direkte efter** alle konsekvens-snippets for et valgpunkt, skriv et **nyt, generisk afsnit**, der samler trådene og fortsætter hovedhistorien. Dette afsnit skal give mening, uanset hvilket af snippets'ne der lige blev læst højt, og må **IKKE** referere direkte til de specifikke valg eller konsekvenser (undgå f.eks. "Uanset om..."). Start blot med at beskrive karakterens næste handling eller observation. Eksempel: "Lidt efter stod [Karakter] igen og så sig omkring..." eller "Med den oplevelse i bagagen, fortsatte [Karakter] sin rejse...".
+        4. SAMMENFLETNING (REVIDERET): **Direkte efter** alle konsekvens-snippets, skriv et **nyt afsnit**, der **sømløst fortsætter hovedhistorien uden at opsummere eller referere direkte** til de lige præsenterede valgmuligheder eller deres specifikke konsekvens-snippets. **Undgå helt** formuleringer som "Uanset om X skete eller Y skete...". Start blot med at beskrive karakterens næste handling, observation eller hvad der sker i omgivelserne. Eksempel: "Lidt efter stod [Karakter] igen og så sig omkring i [Stedet]..." eller "Pludselig lød der en ny lyd fra...".
         5. Fortsæt hovedhistorien efter sammenfletnings-afsnittet indtil næste valgpunkt eller slutningen.
         6. Følg stadig de generelle regler for tone, sprog og børnevenlighed.
         """
-        prompt = f"""
-        {listener_context_instruction}
+        prompt_parts.append(f"\n{interactive_rules}")
 
-        ---
-        OPGAVE: Skriv et INDDRAGENDE eventyr baseret på følgende, og følg de specifikke regler nedenfor:
-        Længde: {length_instruction}
-        {mood_prompt_part}
-        Hovedpersoner: {karakter_str}
-        Steder: {sted_str}
-        {plot_morale_line}
+    # Tilføj generelle regler og afslutning
+    prompt_parts.append("\nGENERELLE REGLER:")
+    prompt_parts.append("- Historien skal være på dansk.")
+    prompt_parts.append("- Den skal være positiv og børnevenlig.")
+    prompt_parts.append("- Den skal være simpel med klar begyndelse, midte og slutning.")
+    if not is_interactive: # Tilføj kun for normale historier
+        prompt_parts.append("- Historien skal bære præg af en godnathistorie")
+    prompt_parts.append("- Undgå alt voldeligt og upassende for børn (hold 'uhyggelig' stemning passende).")
 
-        {interactive_rules}
+    # *** Tilføj negativ prompt instruktion HVIS den er udfyldt ***
+    if negative_prompt_text:
+        prompt_parts.append(f"- VIGTIGT: Følgende elementer må IKKE indgå i historien: {negative_prompt_text}")
+    # ***************************************************************
 
-        GENERELLE REGLER (gælder stadig):
-        - Historien skal være på dansk.
-        - Den skal være positiv og børnevenlig.
-        - Den skal være simpel med klar begyndelse, midte og slutning.
-        - Undgå alt voldeligt og upassende for børn (hold 'uhyggelig' stemning passende).
-        - {ending_instruction}
-        ---
-        Start historien her:
-        """
-    else: # Hvis IKKE interaktiv
-        print("Bygger FULD NORMAL prompt...")
-        prompt = f"""
-        {listener_context_instruction}
+    prompt_parts.append(f"- {ending_instruction}") # Afslutningsinstruktion tilføjes altid
+    prompt_parts.append("---")
+    prompt_parts.append("Start historien her:")
 
-        ---
-        OPGAVE: Skriv en godnathistorie baseret på følgende:
-        Længde: {length_instruction}
-        {mood_prompt_part}
-        Hovedpersoner: {karakter_str}
-        Steder: {sted_str}
-        {plot_morale_line}
-        GENERELLE REGLER:
-        - Historien skal være på dansk.
-        - Den skal være positiv og børnevenlig.
-        - Den skal være simpel med klar begyndelse, midte og slutning.
-        - Historien skal bære præg af en godnathistorie
-        - Undgå alt voldeligt og upassende for børn (hold 'uhyggelig' stemning passende).
-        - {ending_instruction}
-        ---
-        Start historien her:
-        """
+    # Saml alle delene til den endelige prompt
+    prompt = "\n".join(prompt_parts)
 
-    # Ryd op i prompten
-    prompt = "\n".join(line.strip() for line in prompt.strip().splitlines() if line.strip())
     print(f"--- Sender FULD Prompt til Gemini (Max Tokens: {max_tokens_setting}) ---\n{prompt}\n------------------------------")
 
     # --- API Kald og Respons Håndtering ---

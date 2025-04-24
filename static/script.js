@@ -8,17 +8,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetButton = document.getElementById('reset-button');
     const storyDisplay = document.getElementById('story-display');
     const generatorSection = document.getElementById('generator');
-    const laengdeSelect = document.getElementById('laengde-select'); // Vigtig for reset
-    const moodSelect = document.getElementById('mood-select'); // Vigtig for reset
+    const laengdeSelect = document.getElementById('laengde-select');
+    const moodSelect = document.getElementById('mood-select');
     const listenerContainer = document.getElementById('listener-container');
     const addListenerButton = document.getElementById('add-listener-button');
     const karakterContainer = document.getElementById('karakter-container');
     const addKarakterButton = document.getElementById('add-karakter-button');
+    const stedContainer = document.getElementById('sted-container');
+    const plotContainer = document.getElementById('plot-container');
     const interactiveCheckbox = document.getElementById('interactive-checkbox');
     const autofillButton = document.getElementById('autofill-button');
     const toggleFeedbackButton = document.getElementById('toggle-feedback-button');
     const feedbackEmbedContainer = document.getElementById('feedback-embed-container');
-    // Referencer til billede elementer (hvis de er implementeret, ellers er de uskadelige)
+    // *** Reference til Negativ Prompt Input ***
+    const negativePromptInput = document.getElementById('negative-prompt-input');
+    // Referencer til billede elementer (hvis de er implementeret)
     const imageControlsDiv = document.getElementById('image-controls');
     const generateImageButton = document.getElementById('generate-image-button');
     const imageLoadingDiv = document.getElementById('image-loading');
@@ -211,10 +215,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return false; // Indikerer at intet blev indlæst
     }
 
-    // === Funktion til Autoudfyld ===
+    // === Funktion til Autoudfyld (Rydder nu også negativ prompt) ===
      function autofillFields() {
         console.log("--> autofillFields started");
-        handleResetClick(); // Ryd op først (Bemærk: handleResetClick rydder også localStorage nu)
+        handleResetClick(); // Ryd op først (inkl. localStorage og negativ prompt)
         console.log("handleResetClick completed for autofill.");
 
         // Udfyld Lytter (kun den første række)
@@ -227,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const randomPlace = getRandomElement(examplePlaces); const firstStedInput = document.querySelector('#sted-container input[name="sted"]'); if (randomPlace && firstStedInput) { firstStedInput.value = randomPlace; }
         // Udfyld Plot
         const randomPlot = getRandomElement(examplePlots); const firstPlotInput = document.querySelector('#plot-container input[name="plot"]'); if (randomPlot && firstPlotInput) { firstPlotInput.value = randomPlot; }
+        // Negativ prompt felt lades tomt ved autofill
 
         console.log("--> autofillFields finished");
     }
@@ -237,12 +242,12 @@ document.addEventListener('DOMContentLoaded', () => {
         else { console.error("Feedback embed container not found!"); }
     }
 
-    // === Funktion: Klik på "Skab Godnathistorie" ===
+    // === Funktion: Klik på "Skab Godnathistorie" (OPDATERET) ===
     async function handleGenerateClick(event) {
         event.preventDefault();
         console.log("--> handleGenerateClick started");
 
-        // Indsamling af data
+        // --- Indsamling af data ---
         const karakterer = [];
         if(karakterContainer) {
             karakterContainer.querySelectorAll('.character-group').forEach(group => {
@@ -261,19 +266,32 @@ document.addEventListener('DOMContentLoaded', () => {
                  if (name || age) { listeners.push({ name: name, age: age }); }
             });
         }
-        const selectedLaengde = laengdeSelect ? laengdeSelect.value : 'kort'; // Default til 'kort'
+        const selectedLaengde = laengdeSelect ? laengdeSelect.value : 'kort';
         const selectedMood = moodSelect ? moodSelect.value : 'neutral';
         const isInteractive = interactiveCheckbox ? interactiveCheckbox.checked : false;
+        // *** Hent negativ prompt tekst ***
+        const negativePromptText = negativePromptInput ? negativePromptInput.value.trim() : '';
+        console.log("Negative Prompt Input:", negativePromptText);
 
         console.log("--- Data Indsamlet ---");
         console.log("Listeners:", listeners);
         // ... andre logs ...
 
-        // *** GEM AKTUELLE LYTTERE ***
+        // Gem aktuelle lyttere
         saveCurrentListeners();
 
         console.log("Validation skipped.");
-        const dataToSend = { karakterer, steder, plots, laengde: selectedLaengde, mood: selectedMood, listeners, interactive: isInteractive };
+        // *** Tilføj negative_prompt til data der sendes ***
+        const dataToSend = {
+            karakterer,
+            steder,
+            plots,
+            laengde: selectedLaengde,
+            mood: selectedMood,
+            listeners,
+            interactive: isInteractive,
+            negative_prompt: negativePromptText // Ny nøgle
+        };
         console.log("Data prepared for sending:", dataToSend);
 
         // Vis Loading State...
@@ -293,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dataToSend)
+                body: JSON.stringify(dataToSend) // Sender nu også negative_prompt
              });
             console.log("Fetch response received. Status:", response.status);
             if (!response.ok) {
@@ -328,15 +346,18 @@ document.addEventListener('DOMContentLoaded', () => {
          // Her ville fetch kald til /generate_image osv. komme
     }
 
-    // === Funktion: Klik på "Prøv Igen" (OPDATERET RESET AF DROPDOWN) ===
+    // === Funktion: Klik på "Prøv Igen" (OPDATERET) ===
     function handleResetClick() {
         console.log("--> handleResetClick started");
         // Ryd inputs, checkbox, fjern ekstra grupper...
         if(generatorSection) {
-            generatorSection.querySelectorAll('input[type="text"]').forEach(input => { input.value = ''; });
+            // Rydder nu også textarea for negativ prompt
+            generatorSection.querySelectorAll('input[type="text"], textarea').forEach(input => {
+                input.value = '';
+            });
         }
          if(interactiveCheckbox) interactiveCheckbox.checked = false;
-        console.log("Cleared inputs and checkbox.");
+        console.log("Cleared text inputs and textarea.");
 
         const removeExtraGroups = (containerId, groupSelector) => {
             const container = document.getElementById(containerId);
@@ -368,12 +389,11 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Cleared story display and hid controls.");
 
         // Nulstil dropdowns...
-        // *** OPDATERET: Nulstil længde til 'kort' ***
-        if(laengdeSelect) laengdeSelect.value = 'kort';
+        if(laengdeSelect) laengdeSelect.value = 'kort'; // Nulstil til 'kort'
         if(moodSelect) moodSelect.value = 'neutral';
         console.log("Reset dropdowns.");
 
-        // *** Ryd gemte lyttere fra LocalStorage ***
+        // Ryd gemte lyttere fra LocalStorage
         try {
             localStorage.removeItem('savedListeners');
             console.log("Removed saved listeners from LocalStorage due to reset.");

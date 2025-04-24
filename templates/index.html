@@ -9,7 +9,7 @@
 
     <header>
         <h1>AI Godnathistorie Generator (BETA-version)</h1>
-        <p>Sidst opdateret: 22. april 2025</p>
+        <p>Sidst opdateret: 24. april 2025</p>
         <p>Skab jeres helt egen, unikke godnathistorier med jeres børn!</p>
     </header>
 
@@ -73,9 +73,18 @@
             </div>
 
             <div class="input-category">
+                <label for="negative-prompt-input">Ting der IKKE skal med i historien:</label>
+                <div class="input-group">
+                     <textarea id="negative-prompt-input" name="negative_prompt" rows="3" placeholder="f.eks. 'ingen edderkopper', 'undgå monstre', 'ikke noget om at falde' (adskil med komma eller linjeskift)"></textarea>
+                     </div>
+            </div>
+            <div class="input-category">
                 <label for="laengde-select">Vælg historie længde:</label>
                 <select name="laengde" id="laengde-select">
-                    <option value="kort" selected>Kort</option> <option value="mellem">Mellem</option>   <option value="lang">Lang</option>  </select>
+                    <option value="kort" selected>Kort</option>
+                    <option value="mellem">Mellem</option>
+                    <option value="lang">Lang</option>
+                </select>
             </div>
 
             <div class="input-category">
