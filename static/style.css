@@ -6,14 +6,23 @@
     --font-body: 'Nunito Sans', sans-serif;
     --font-heading: 'Poppins', sans-serif;
     --color-text: #444;
-    --color-bg: #eef7ff;
-    --color-box-bg: rgba(255, 255, 255, 0.95);
-    --color-primary: #4DB6AC;
+    --color-bg: #eef7ff; /* Fallback baggrundsfarve */
+    --color-box-bg: rgba(255, 255, 255, 0.95); /* Let gennemsigtig hvid */
+    --color-primary: #4DB6AC; /* Teal */
     --color-primary-hover: #26A69A;
-    --color-secondary: #A9CCE3;
+    --color-secondary: #A9CCE3; /* Dæmpet blå */
     --color-secondary-hover: #85B4D8;
     --color-danger: #dc3545;
     --color-danger-hover: #c82333;
+    --color-success-text: #155724; /* Mørkegrøn tekst */
+    --color-success-bg: #d4edda;   /* Lys grøn baggrund */
+    --color-success-border: #c3e6cb; /* Lidt mørkere grøn kant */
+    --color-info-text: #0c5460;    /* Mørk blå/turkis tekst */
+    --color-info-bg: #d1ecf1;     /* Lys blå/turkis baggrund */
+    --color-info-border: #bee5eb;   /* Lidt mørkere blå/turkis kant */
+    --color-error-text: #721c24;   /* Mørkerød tekst */
+    --color-error-bg: #f8d7da;    /* Lys rød baggrund */
+    --color-error-border: #f5c6cb;  /* Lidt mørkere rød kant */
     --border-color: #d1d5db;
     --border-radius: 6px;
     --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -37,30 +46,101 @@ body {
 /* Header Styling */
 header {
     background-color: var(--color-box-bg);
-    padding: 25px 30px;
-    margin-bottom: 30px;
+    padding: 20px 30px;
+    margin-bottom: 25px;
     border-radius: var(--border-radius);
     text-align: center;
     box-shadow: var(--box-shadow);
+    position: relative;
 }
+
+/* Login/Logout Status i Header */
+.user-status {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 0.85em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.user-status span { color: #555; }
+
+/* Styling for Login/Logout knapper (som a-tags) */
+a.button-login,
+a.button-logout {
+    padding: 4px 8px;
+    font-size: 0.8em;
+    font-weight: normal;
+    border-radius: var(--border-radius);
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+    display: inline-block;
+    text-decoration: none;
+    vertical-align: middle;
+    text-align: center;
+    cursor: pointer;
+    margin-left: 5px;
+    border: none;
+}
+a.button-login { background-color: var(--color-primary); color: white !important; }
+a.button-login:hover { background-color: var(--color-primary-hover); transform: translateY(-1px); }
+a.button-logout { background-color: var(--color-secondary); color: #333 !important; }
+a.button-logout:hover { background-color: var(--color-secondary-hover); transform: translateY(-1px); }
+
 
 header h1 {
     font-family: var(--font-heading);
     color: var(--color-primary);
-    margin-top: 0;
+    margin-top: 5px;
     margin-bottom: 10px;
     font-weight: 700;
 }
+header p { margin-bottom: 5px; font-size: 0.95em; color: #555; }
+header p:last-child { margin-bottom: 0; font-style: italic; }
 
-header p {
-    margin-bottom: 5px;
-    font-size: 0.95em;
-    color: #555;
+
+/* === Styling for Flash Beskeder (Placeret i <main>) === */
+.flash-messages-container {
+    padding: 0;
+    margin-bottom: 25px;
+    list-style: none;
 }
-header p:last-child {
+.flash-message {
+    padding: 12px 18px;
+    margin-bottom: 15px;
+    border-radius: var(--border-radius);
+    border: 1px solid transparent;
+    font-weight: 500;
+    opacity: 0.98;
+    text-align: center;
+    box-shadow: var(--box-shadow);
+    color: var(--color-text);
+    background-color: #eee;
+    border-color: #ddd;
+}
+.flash-success {
+    color: var(--color-success-text) !important;
+    background-color: var(--color-success-bg) !important;
+    border-color: var(--color-success-border) !important;
+}
+.flash-error {
+    color: var(--color-error-text) !important;
+    background-color: var(--color-error-bg) !important;
+    border-color: var(--color-error-border) !important;
+}
+.flash-info {
+    color: var(--color-info-text) !important;
+    background-color: var(--color-info-bg) !important;
+    border-color: var(--color-info-border) !important;
+}
+.flash-disclaimer {
+    margin-top: 8px;
     margin-bottom: 0;
-    font-style: italic;
+    font-size: 0.85em;
+    font-weight: normal;
+    opacity: 0.8;
 }
+/* === ----------------------------- === */
 
 
 /* Hovedindhold og Sektioner */
@@ -72,20 +152,18 @@ main > section {
     box-shadow: var(--box-shadow);
 }
 
+/* Generel H2 styling */
 h2 {
     font-family: var(--font-heading);
     color: var(--color-primary);
     margin-top: 0;
-    margin-bottom: 20px;
-    text-align: center;
+    margin-bottom: 20px; /* Standard bundmargin */
+    /* text-align: center; <-- Fjernet global centrering */
     font-weight: 500;
 }
 
 /* Input Kategorier */
-.input-category {
-    margin-bottom: 25px;
-}
-
+.input-category { margin-bottom: 25px; }
 .input-category label:not(.sr-only) {
     display: block;
     margin-bottom: 8px;
@@ -124,112 +202,122 @@ select:focus {
     box-shadow: 0 0 0 2px rgba(77, 182, 172, 0.3);
 }
 
-/* Specifik styling for par */
+/* Specifik styling for input par */
 .character-group .input-pair,
 .listener-group .input-pair {
      flex: 1;
-     min-width: 100px;
 }
 .input-group input[type="text"],
 .character-group .input-pair input[type="text"],
 .listener-group .input-pair input[type="text"] {
     margin-bottom: 0;
 }
+.input-group textarea {
+    flex-grow: 1;
+    margin-bottom: 0;
+    resize: vertical;
+}
+
 
 /* Knapper Generelt */
-button {
+button, a.utility-button, a.button-login, a.button-logout {
     font-family: var(--font-body);
     padding: 10px 18px;
     border: none;
     border-radius: var(--border-radius);
     cursor: pointer;
     font-size: 1em;
-    transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease, opacity 0.2s ease-in-out;
     font-weight: 700;
+    text-decoration: none;
+    display: inline-block;
+    vertical-align: middle;
+    text-align: center;
 }
-button:hover:not(:disabled) { /* Undgå hover effekt på disabled knapper */
+button:hover:not(:disabled), a.utility-button:hover, a.button-login:hover, a.button-logout:hover {
     transform: translateY(-1px);
 }
-button:disabled {
-    background-color: #ccc !important; /* Sørg for at overskrive andre baggrunde */
-    color: #888 !important; /* Lysere tekst */
+button:disabled, .disabled-button {
+    background-color: #ccc !important;
+    color: #888 !important;
     cursor: not-allowed;
-    transform: none;
-    opacity: 0.7; /* Gør den lidt gennemsigtig */
+    transform: none !important;
+    opacity: 0.7 !important;
 }
 
 /* Primær Knap (Skab Historie) */
 #generate-button {
-    display: block;
-    width: 100%;
+    display: block; /* Gør den til et blok-element */
+    width: 100%;   /* Få den til at fylde hele bredden */
     background-color: var(--color-primary);
     color: white;
-    margin-top: 20px;
+    margin-top: 25px; /* Juster afstanden op til knapperne over */
     font-size: 1.1em;
+    /* order: 3; <-- FJERN DENNE LINJE */
 }
+/* Hover effekt beholdes */
 #generate-button:hover {
     background-color: var(--color-primary-hover);
 }
 
-/* Sekundære Knapper (Tilføj, Autoudfyld, Feedback) */
+/* Sekundære Knapper (Tilføj, Autoudfyld, Læs Højt etc.) */
 .add-button,
-.utility-button {
+.utility-button,
+#read-aloud-button {
     background-color: var(--color-secondary);
     color: #333;
     font-size: 0.9em;
     padding: 8px 12px;
-    margin-top: 5px;
+    /* margin-top: 5px; Styres af flex container */
 }
 .add-button:hover,
-.utility-button:hover {
+.utility-button:hover,
+#read-aloud-button:hover:not(:disabled) {
     background-color: var(--color-secondary-hover);
 }
+#autofill-button { order: 1; } /* Placer først */
+#read-aloud-button { order: 2; } /* Placer i midten */
 
 /* Fjern Knapper (-) */
 .remove-button {
    background-color: var(--color-danger);
    color: white;
-   padding: 6px 10px;
+   padding: 6px 0;
    font-size: 0.9em;
    line-height: 1;
    margin-left: 0;
    flex-shrink: 0;
-   border-radius: var(--border-radius); /* Sørg for den har samme runding */
+   border-radius: var(--border-radius);
+   width: 35px;
+   min-width: 35px;
+   text-align: center;
+   box-sizing: border-box;
 }
 .remove-button:hover:not(:disabled) {
    background-color: var(--color-danger-hover);
 }
-
-/* *** NY REGEL: Skjul den initiale, inaktive fjern-knap visuelt *** */
 .initial-remove-button {
     visibility: hidden;
-    /* Vi beholder den disabled, men visibility:hidden skjuler den helt,
-       mens den stadig optager plads i layoutet */
+    pointer-events: none;
+    cursor: default;
 }
-
 
 /* Checkbox Gruppe */
 .checkbox-group {
     display: flex;
-    align-items: center; /* Brug center for grundlæggende justering */
+    align-items: center;
     padding: 10px 0;
-    gap: 8px; /* Behold gap for afstand */
+    gap: 8px;
 }
 .checkbox-group input[type="checkbox"] {
     width: 16px;
     height: 16px;
     cursor: pointer;
     accent-color: var(--color-primary);
-    /* Fjern evt. vertical-align, hvis du tilføjede det */
-    /* vertical-align: middle; */
-
-    /* *** TILFØJ DISSE TO LINJER *** */
     position: relative;
-    top: -5px; /* Start med 2px - juster denne værdi op/ned efter behov */
-    /* *** ----------------------- *** */
-
-    margin-right: 0; /* Bruges ikke med gap */
-    flex-shrink: 0; /* Sørg for den ikke krymper */
+    top: -1px;
+    margin-right: 0;
+    flex-shrink: 0;
 }
 .checkbox-group label {
     margin-bottom: 0;
@@ -237,14 +325,76 @@ button:disabled {
     cursor: pointer;
     font-size: 1em;
     color: var(--color-text);
-    vertical-align: middle; /* <-- TILFØJ DENNE */
-    line-height: 1; /* <-- Sæt til 1 for bedre kontrol */
+    line-height: 1;
 }
 
-/* Historie Output */
-#historie-output {
-    /* Ingen specifik ændring her */
+/* Knap Container nederst i generator */
+.generator-actions {
+    display: flex;
+    justify-content: flex-start; /* Juster til venstre */
+    align-items: center;
+    gap: 15px;
+    margin-top: 25px;
+    flex-wrap: wrap;
 }
+
+/* === Historie Output Sektion === */
+#historie-output {} /* Kan bruges til generel styling af sektionen hvis nødvendigt */
+
+/* Container for Heading og Player/Status Area */
+.historie-header-controls {
+    display: flex;
+    justify-content: space-between; /* H2 left, Controls right */
+    align-items: flex-start;      /* Align tops */
+    margin-bottom: 15px;          /* Space below this header row */
+    flex-wrap: wrap;              /* Allow wrapping */
+    gap: 15px;                    /* Space between H2 and controls */
+}
+
+/* Heading within the header controls */
+.historie-header-controls h2 {
+    margin-top: 0;
+    margin-bottom: 0;
+    text-align: left;   /* Ensure left alignment */
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+/* Container specifically for Player/Loading/Error on the right */
+.audio-controls-container {
+    display: block;       /* Stacks children vertically */
+    flex-shrink: 0;       /* Prevent shrinking */
+    width: 80%;           /* Adjust width as desired */
+    max-width: 300px;     /* Max width (adjust) */
+    position: relative;
+    min-height: 40px;     /* Prevent layout jump */
+    text-align: center;   /* Center text content (loading/error) */
+}
+
+/* Styling for loading message inside the new container */
+.audio-controls-container #audio-loading {
+     margin: 5px 0; /* Vertical margin */
+}
+
+/* Styling for error message inside the new container */
+.audio-controls-container #audio-error {
+    margin: 5px 0; /* Vertical margin */
+    width: 100%;   /* Fill container */
+}
+
+/* Styling for login prompt inside the new container */
+.audio-controls-container .login-prompt {
+    margin: 5px 0;
+}
+
+/* Styling for the audio player inside the new container */
+.audio-controls-container .audio-player-style {
+    display: block;
+    width: 100%;   /* Fill the container */
+    margin: 0;      /* No extra margin */
+}
+
+/* Story display area */
 #story-display {
     background-color: #f9f9f9;
     padding: 20px;
@@ -252,18 +402,56 @@ button:disabled {
     border: 1px solid var(--border-color);
     min-height: 100px;
     white-space: pre-wrap;
-    margin-bottom: 15px;
+    margin-bottom: 15px; /* Space before reset button */
 }
+
+/* Reset button */
 #reset-button {
     background-color: var(--color-secondary);
     color: #333;
     display: block;
     width: auto;
-    margin: 15px auto 0 auto;
+    margin: 15px auto 0 auto; /* Center below story */
 }
 #reset-button:hover {
      background-color: var(--color-secondary-hover);
 }
+
+
+/* === Globale Audio/Status Styles (Intrinsic properties only) === */
+#audio-loading {
+    display: inline-flex; /* Behøves for spinner layout */
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-style: italic;
+    color: #555;
+    /* Ingen margin her - styres af container */
+}
+#audio-error {
+    text-align: center; /* Behold centrering */
+    color: var(--color-error-text);
+    /* Ingen margin her - styres af container */
+}
+.audio-player-style {
+    display: block; /* Skal være block for at width/height virker */
+   /* Ingen width/max-width/margin her - styres af container */
+}
+.spinner {
+  display: inline-block;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border-left-color: var(--color-primary);
+  animation: spin 1s ease infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+/* === --------------------------------------- === */
+
 
 /* Feedback Sektion */
 #feedback-section {
@@ -294,7 +482,6 @@ button:disabled {
     width: 100%;
     border: none;
     min-height: 400px;
-    /* Højden sættes i HTML'en */
 }
 
 
@@ -312,8 +499,8 @@ footer p {
 }
 
 
-/* Skjuler labels visuelt, men beholder dem for skærmlæsere */
-.sr-only {
+/* Utility Classes */
+.sr-only { /* Skjuler visuelt, men tilgængeligt for skærmlæsere */
   position: absolute;
   width: 1px;
   height: 1px;
@@ -324,17 +511,10 @@ footer p {
   white-space: nowrap;
   border-width: 0;
 }
-
-/* Simpel klasse til at skjule/vise */
-.hidden {
-    display: none;
+/* Vigtige regler for at skjule elementer */
+#audio-loading.hidden {
+    display: none !important;
 }
-```
-
-**Vigtig Ændring:**
-
-* En ny regel er tilføjet:
-  ```css
-  .initial-remove-button {
-      visibility: hidden;
-  }
+.hidden {
+    display: none !important;
+}

@@ -2,18 +2,41 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>AI Godnathistorie Generator</title>
+    <title>Read Me A Story - AI Historie Generator</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
     <header>
-        <h1>AI Godnathistorie Generator (BETA-version)</h1>
-        <p>Sidst opdateret: 24. april 2025</p>
-        <p>Skab jeres helt egen, unikke godnathistorier med jeres børn!</p>
+        <div class="user-status">
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('logout') }}" class="button-logout utility-button">Log ud</a>
+            {% else %}
+                <a href="{{ url_for('google_login') }}" class="button-login utility-button">Login med Google</a>
+            {% endif %}
+        </div>
+        <h1>Read Me A Story (BETA)</h1>
+        <p>Sidst opdateret: 2. maj 2025</p>
+        <p>Skab jeres helt egen, unikke historier med jeres børn!</p>
     </header>
 
     <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages-container">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">
+                            {{ message }}
+                            {# Disclaimer KUN til logout beskeden ('info' kategori) #}
+                            {% if category == 'info' and 'logget ud' in message %}
+                                <p class="flash-disclaimer">(Bemærk: Dit navn kan stadig være synligt i toppen indtil næste sideindlæsning.)</p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
         <section id="generator">
             <h2>Byg jeres historie</h2>
              <p>(Det er ikke nødvendigt at udfylde alle felterne.)</p>
@@ -30,7 +53,8 @@
                            <label for="listener-age-1" class="sr-only">Alder</label>
                             <input type="text" name="listener_age_single" id="listener-age-1" placeholder="Alder (f.eks. 5)">
                         </div>
-                         </div>
+                         <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+                    </div>
                 </div>
                 <button type="button" id="add-listener-button" class="add-button">+ Tilføj barn</button>
             </div>
@@ -47,7 +71,8 @@
                             <label for="karakter-navn-1" class="sr-only">Navn</label>
                             <input type="text" name="karakter_navn" id="karakter-navn-1" placeholder="Navn (valgfrit)">
                          </div>
-                         </div>
+                         <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+                    </div>
                 </div>
                 <button type="button" id="add-karakter-button" class="add-button">+ Tilføj karakter</button>
             </div>
@@ -57,7 +82,8 @@
                 <div id="sted-container">
                      <div class="input-group">
                         <input type="text" name="sted" placeholder="f.eks. i en kagebutik, på månen">
-                         </div>
+                        <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+                     </div>
                 </div>
                 <button type="button" class="add-button" data-container="sted-container" data-placeholder="f.eks. under en stor svamp" data-name="sted">+ Tilføj sted</button>
             </div>
@@ -67,17 +93,19 @@
                 <div id="plot-container">
                     <div class="input-group">
                         <input type="text" name="plot" placeholder="f.eks. en magisk fjer, 'at dele er godt'">
-                         </div>
+                        <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+                    </div>
                 </div>
                  <button type="button" class="add-button" data-container="plot-container" data-placeholder="f.eks. en hemmelig dør, 'ærlighed varer længst'" data-name="plot">+ Tilføj ting/morale</button>
             </div>
 
-            <div class="input-category">
+             <div class="input-category">
                 <label for="negative-prompt-input">Ting der IKKE skal med i historien:</label>
                 <div class="input-group">
                      <textarea id="negative-prompt-input" name="negative_prompt" rows="3" placeholder="f.eks. 'ingen edderkopper', 'undgå monstre', 'ikke noget om at falde' (adskil med komma eller linjeskift)"></textarea>
                      </div>
             </div>
+
             <div class="input-category">
                 <label for="laengde-select">Vælg historie længde:</label>
                 <select name="laengde" id="laengde-select">
@@ -107,18 +135,37 @@
                 <label for="interactive-checkbox">Gør historien til et inddragende eventyr (med valgmuligheder)?</label>
             </div>
 
-            <button type="button" id="autofill-button" class="utility-button">Autoudfyld med Eksempler</button>
-            <button id="generate-button">Skab Godnathistorie</button>
-        </section>
+            <div class="generator-actions">
+                 <button type="button" id="autofill-button" class="utility-button">Autoudfyld</button>
+                 <button type="button"
+                        id="read-aloud-button"
+                        class="utility-button tts-button {% if not current_user.is_authenticated %}disabled-button{% endif %}"
+                        {% if not current_user.is_authenticated %}disabled title="Login for at aktivere funktionen"{% endif %}>
+                    Læs Historien Højt
+                </button>
+                 </div> <button id="generate-button">Skab Historie</button>
 
-        <section id="historie-output">
-            <h2>Jeres Godnathistorie</h2>
-            <div id="story-display">
+        </section> <section id="historie-output">
+
+            <div class="historie-header-controls">
+                <h2>Jeres historie</h2>
+                <div class="audio-controls-container">
+                    <div id="audio-loading" class="hidden">Genererer lyd, vent venligst... <span class="spinner"></span></div>
+                    <div id="audio-error" class="feedback-status error"></div> <div class="login-prompt hidden" id="login-prompt-audio">
+                         <em>Du skal være <a href="{{ url_for('google_login') }}">logget ind</a> for at få læst historien højt.</em>
+                    </div>
+                    <audio id="audio-player" controls class="audio-player-style hidden">
+                        Din browser understøtter ikke lyd-elementet.
+                    </audio>
                 </div>
-            <button id="reset-button" style="display: none;">Prøv Igen</button>
-        </section>
+            </div>
 
-         <section id="feedback-section">
+            <div id="story-display">
+                 </div>
+
+            <button id="reset-button" class="utility-button" style="display: none;">Prøv Igen</button>
+
+        </section> <section id="feedback-section">
              <button type="button" id="toggle-feedback-button" class="utility-button">Giv Feedback / Skjul Feedback</button>
              <div id="feedback-embed-container" class="hidden">
                  <iframe src="https://docs.google.com/forms/d/e/1FAIpQLScNfIyz-0hNlgfKAkJo-ioT99LYqjBRo8tO5HvzoXfjaY0HvA/viewform?embedded=true"
@@ -134,7 +181,7 @@
 
     <footer>
         <hr>
-        <p>© Jeres fortællinger 2025 - Historier skabt med AI.</p>
+        <p>© Read Me A Story 2025 - Historier skabt med AI.</p>
         <p><i>Forældreopsyn anbefales altid under læsning. ;)</i></p>
     </footer>
 
