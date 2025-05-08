@@ -41,6 +41,7 @@ body {
     background-repeat: no-repeat;
     background-attachment: fixed;
     background-color: var(--color-bg);
+    padding-bottom: 150px; /* Juster denne værdi efter behov baseret på bannerets højde */
 }
 
 /* Header Styling */
@@ -158,7 +159,6 @@ h2 {
     color: var(--color-primary);
     margin-top: 0;
     margin-bottom: 20px; /* Standard bundmargin */
-    /* text-align: center; <-- Fjernet global centrering */
     font-weight: 500;
 }
 
@@ -247,15 +247,13 @@ button:disabled, .disabled-button {
 
 /* Primær Knap (Skab Historie) */
 #generate-button {
-    display: block; /* Gør den til et blok-element */
-    width: 100%;   /* Få den til at fylde hele bredden */
+    display: block;
+    width: 100%;
     background-color: var(--color-primary);
     color: white;
-    margin-top: 25px; /* Juster afstanden op til knapperne over */
+    margin-top: 25px;
     font-size: 1.1em;
-    /* order: 3; <-- FJERN DENNE LINJE */
 }
-/* Hover effekt beholdes */
 #generate-button:hover {
     background-color: var(--color-primary-hover);
 }
@@ -268,15 +266,14 @@ button:disabled, .disabled-button {
     color: #333;
     font-size: 0.9em;
     padding: 8px 12px;
-    /* margin-top: 5px; Styres af flex container */
 }
 .add-button:hover,
 .utility-button:hover,
 #read-aloud-button:hover:not(:disabled) {
     background-color: var(--color-secondary-hover);
 }
-#autofill-button { order: 1; } /* Placer først */
-#read-aloud-button { order: 2; } /* Placer i midten */
+#autofill-button { order: 1; }
+#read-aloud-button { order: 2; }
 
 /* Fjern Knapper (-) */
 .remove-button {
@@ -331,7 +328,7 @@ button:disabled, .disabled-button {
 /* Knap Container nederst i generator */
 .generator-actions {
     display: flex;
-    justify-content: flex-start; /* Juster til venstre */
+    justify-content: flex-start;
     align-items: center;
     gap: 15px;
     margin-top: 25px;
@@ -339,62 +336,54 @@ button:disabled, .disabled-button {
 }
 
 /* === Historie Output Sektion === */
-#historie-output {} /* Kan bruges til generel styling af sektionen hvis nødvendigt */
+#historie-output {}
 
-/* Container for Heading og Player/Status Area */
 .historie-header-controls {
     display: flex;
-    justify-content: space-between; /* H2 left, Controls right */
-    align-items: flex-start;      /* Align tops */
-    margin-bottom: 15px;          /* Space below this header row */
-    flex-wrap: wrap;              /* Allow wrapping */
-    gap: 15px;                    /* Space between H2 and controls */
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 15px;
 }
 
-/* Heading within the header controls */
 .historie-header-controls h2 {
     margin-top: 0;
     margin-bottom: 0;
-    text-align: left;   /* Ensure left alignment */
+    text-align: left;
     flex-grow: 1;
     flex-shrink: 1;
 }
 
-/* Container specifically for Player/Loading/Error on the right */
 .audio-controls-container {
-    display: block;       /* Stacks children vertically */
-    flex-shrink: 0;       /* Prevent shrinking */
-    width: 80%;           /* Adjust width as desired */
-    max-width: 300px;     /* Max width (adjust) */
+    display: block;
+    flex-shrink: 0;
+    width: 80%;
+    max-width: 300px;
     position: relative;
-    min-height: 40px;     /* Prevent layout jump */
-    text-align: center;   /* Center text content (loading/error) */
+    min-height: 40px;
+    text-align: center;
 }
 
-/* Styling for loading message inside the new container */
 .audio-controls-container #audio-loading {
-     margin: 5px 0; /* Vertical margin */
+     margin: 5px 0;
 }
 
-/* Styling for error message inside the new container */
 .audio-controls-container #audio-error {
-    margin: 5px 0; /* Vertical margin */
-    width: 100%;   /* Fill container */
+    margin: 5px 0;
+    width: 100%;
 }
 
-/* Styling for login prompt inside the new container */
 .audio-controls-container .login-prompt {
     margin: 5px 0;
 }
 
-/* Styling for the audio player inside the new container */
 .audio-controls-container .audio-player-style {
     display: block;
-    width: 100%;   /* Fill the container */
-    margin: 0;      /* No extra margin */
+    width: 100%;
+    margin: 0;
 }
 
-/* Story display area */
 #story-display {
     background-color: #f9f9f9;
     padding: 20px;
@@ -402,40 +391,36 @@ button:disabled, .disabled-button {
     border: 1px solid var(--border-color);
     min-height: 100px;
     white-space: pre-wrap;
-    margin-bottom: 15px; /* Space before reset button */
+    margin-bottom: 15px;
 }
 
-/* Reset button */
 #reset-button {
     background-color: var(--color-secondary);
     color: #333;
     display: block;
     width: auto;
-    margin: 15px auto 0 auto; /* Center below story */
+    margin: 15px auto 0 auto;
 }
 #reset-button:hover {
      background-color: var(--color-secondary-hover);
 }
 
 
-/* === Globale Audio/Status Styles (Intrinsic properties only) === */
+/* === Globale Audio/Status Styles === */
 #audio-loading {
-    display: inline-flex; /* Behøves for spinner layout */
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
     font-style: italic;
     color: #555;
-    /* Ingen margin her - styres af container */
 }
 #audio-error {
-    text-align: center; /* Behold centrering */
+    text-align: center;
     color: var(--color-error-text);
-    /* Ingen margin her - styres af container */
 }
 .audio-player-style {
-    display: block; /* Skal være block for at width/height virker */
-   /* Ingen width/max-width/margin her - styres af container */
+    display: block;
 }
 .spinner {
   display: inline-block;
@@ -450,8 +435,6 @@ button:disabled, .disabled-button {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
-/* === --------------------------------------- === */
-
 
 /* Feedback Sektion */
 #feedback-section {
@@ -500,7 +483,7 @@ footer p {
 
 
 /* Utility Classes */
-.sr-only { /* Skjuler visuelt, men tilgængeligt for skærmlæsere */
+.sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -511,10 +494,75 @@ footer p {
   white-space: nowrap;
   border-width: 0;
 }
-/* Vigtige regler for at skjule elementer */
-#audio-loading.hidden {
-    display: none !important;
-}
 .hidden {
     display: none !important;
 }
+
+/* ==================== Cookie Consent Banner Styling START ==================== */
+#cookie-consent-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: rgba(50, 50, 50, 0.95);
+    color: #f1f1f1;
+    padding: 20px; /* Standard padding for mobil */
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 15px;
+    box-sizing: border-box; /* VIGTIGT: Inkluder padding i width/height */
+}
+
+#cookie-consent-banner p {
+    margin: 0;
+    font-size: 0.9em;
+    line-height: 1.5;
+    max-width: 90%;
+}
+
+#cookie-consent-banner a {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+#cookie-consent-banner a:hover {
+    color: var(--color-primary-hover);
+}
+
+#accept-cookies-button {
+    padding: 8px 20px;
+    font-size: 0.9em;
+    background-color: var(--color-primary);
+    color: white;
+    min-width: 120px;
+    flex-shrink: 0; /* OPDATERET: Forhindrer knappen i at blive for lille */
+}
+
+#accept-cookies-button:hover {
+    background-color: var(--color-primary-hover);
+}
+
+/* Justering for større skærme */
+@media (min-width: 600px) {
+    #cookie-consent-banner {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center; /* OPDATERET: For bedre vertikal justering */
+        text-align: left;
+        /* OPDATERET: Juster padding for at give mere plads i højre side ift. scrollbar */
+        /* Top, Right, Bottom, Left */
+        padding: 15px 35px 15px 25px;
+    }
+
+    #cookie-consent-banner p {
+        max-width: none; /* OPDATERET: Fjern max-width, da flex vil håndtere det */
+        flex-grow: 1;    /* OPDATERET: Teksten tager den nødvendige plads */
+        margin-right: 20px; /* OPDATERET: Afstand mellem tekst og knap */
+    }
+    /* #accept-cookies-button har allerede flex-shrink: 0 fra den generelle regel ovenfor */
+}
+/* ==================== Cookie Consent Banner Styling SLUT ===================== */

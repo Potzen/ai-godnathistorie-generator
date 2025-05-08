@@ -136,6 +136,13 @@ def index():
     # Flask-Login gør current_user tilgængelig i Jinja2 templates automatisk
     return render_template('index.html')
 
+# ===Route for Privatlivspolitik ===
+@app.route('/privacy-policy')
+def privacy_policy():
+    """ Viser siden med privatlivs- og cookiepolitik. """
+    print("Accessing privacy policy route.")
+    return render_template('privacy_policy.html')
+
 # --- Route for historie-generering ('/generate') ---
 # Denne funktion er den fulde version fra før login/TTS blev tilføjet
 @app.route('/generate', methods=['POST'])

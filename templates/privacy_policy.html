@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <title>Privatlivs- og Cookiepolitik - Read Me A Story</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* Ekstra styling specifikt for privatlivspolitiksiden */
+        .privacy-policy-container {
+            background-color: var(--color-box-bg);
+            padding: 25px 30px;
+            margin-bottom: 30px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            text-align: left; /* Sikrer venstrejusteret tekst */
+        }
+        .privacy-policy-container h1 {
+            color: var(--color-primary);
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .privacy-policy-container h2 {
+            color: var(--color-primary);
+            margin-top: 30px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+        }
+        .privacy-policy-container h3 {
+            color: #555; /* Lidt mørkere end alm. tekst, men ikke primærfarve */
+            margin-top: 20px;
+            margin-bottom: 8px;
+        }
+        .privacy-policy-container p,
+        .privacy-policy-container ul {
+            margin-bottom: 15px;
+            line-height: 1.7;
+        }
+        .privacy-policy-container strong { /* Fremhæv nøglebegreber */
+            font-weight: 700;
+            color: #333;
+        }
+        .privacy-policy-container ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+        .privacy-policy-container ul li {
+            margin-bottom: 5px;
+        }
+        .privacy-policy-container .update-date,
+        .privacy-policy-container .contact-info {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .privacy-policy-container .contact-info a {
+            color: var(--color-primary);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="user-status">
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('logout') }}" class="button-logout utility-button">Log ud</a>
+            {% else %}
+                <a href="{{ url_for('google_login') }}" class="button-login utility-button">Login med Google</a>
+            {% endif %}
+        </div>
+        <h1>Read Me A Story (BETA)</h1>
+        <nav style="text-align: center; margin-top:10px;">
+            <a href="{{ url_for('index') }}" class="utility-button" style="background-color: var(--color-secondary); color: #333;">Tilbage til Forsiden</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="privacy-policy-container">
+            <h1>Privatlivs- og Cookiepolitik for Read Me A Story</h1>
+            <p class="update-date">Senest opdateret: 8. maj 2025</p>
+
+            <h2>Indledning</h2>
+            <p>Denne privatlivspolitik beskriver, hvordan Read Me A Story ("Appen", "vi", "os", "vores") indsamler, bruger og beskytter de oplysninger, du giver, når du bruger denne webapplikation. Vi er forpligtet til at sikre, at dit privatliv er beskyttet. De oplysninger, vi måtte indsamle om dig, vil kun blive brugt i overensstemmelse med denne privatlivspolitik og i henhold til gældende databeskyttelseslovgivning, herunder EU's Generelle Databeskyttelsesforordning (GDPR).</p>
+
+            <h2>1. Dataansvarlig</h2>
+            <p>Den dataansvarlige for behandlingen af personoplysninger i forbindelse med denne app er:</p>
+            <p class="contact-info">
+                Philip Marquard Otzen<br>
+                København, Danmark<br>
+                E-mail: <a href="mailto:please@readmeastory.dk">please@readmeastory.dk</a>
+            </p>
+
+            <h2>2. Hvilke personoplysninger indsamler vi og hvorfor</h2>
+            <p>Vi indsamler og behandler følgende kategorier af personoplysninger:</p>
+
+            <h3>2.1 Input til historiegenerering</h3>
+            <p><strong>Kategorier af data:</strong> De oplysninger du indtaster i felterne "Hvem skal være hovedperson(er)?", "Hvor skal historien foregå?", "Ting, hændelser eller morale?", og "Ting der IKKE skal med i historien".</p>
+            <p><strong>Formål:</strong> Disse oplysninger bruges udelukkende til at generere personaliserede historier via AI-tjenesten Google Gemini.</p>
+            <p><strong>Retsgrundlag:</strong> Behandlingen sker på grundlag af dit samtykke (GDPR art. 6, stk. 1, litra a), som du giver ved at indtaste og indsende oplysningerne.</p>
+            <p><strong>Opbevaring:</strong> Oplysningerne sendes til Google Gemini, men gemmes ikke permanent i vores egen database. Google kan behandle disse data i henhold til deres AI-vilkår og privatlivspolitik.</p>
+
+            <h3>2.2 Lytterinformation</h3>
+            <p><strong>Kategorier af data:</strong> Navne og aldre på de personer, som historien skal læses for.</p>
+            <p><strong>Formål:</strong> At tilpasse historierne til lytteren og forbedre brugeroplevelsen ved at gemme disse oplysninger lokalt, så de kan genindlæses ved senere besøg.</p>
+            <p><strong>Retsgrundlag:</strong> Behandlingen sker på grundlag af dit samtykke (GDPR art. 6, stk. 1, litra a), som du giver ved at indtaste oplysningerne.</p>
+            <p><strong>Opbevaring:</strong> Gemmes udelukkende i din browsers LocalStorage på din egen enhed. Disse data forbliver på din enhed, indtil du rydder din browsers data, eller indtil du klikker "Prøv Igen" i appen (hvilket sletter de gemte lyttere). Oplysningerne sendes kun til AI-tjenesten som en del af instruktionen, når du genererer en historie.</p>
+
+            <h3>2.3 Login Information (via Google Login)</h3>
+            <p><strong>Kategorier af data:</strong> Dit unikke Google ID, navn og e-mailadresse.</p>
+            <p><strong>Formål:</strong> At oprette og administrere din brugerkonto i vores system, så du kan gemme historier, tilgå premium funktioner og indstillinger.</p>
+            <p><strong>Retsgrundlag:</strong> Behandlingen sker på grundlag af dit samtykke (GDPR art. 6, stk. 1, litra a), som du giver ved at vælge at logge ind med Google, samt for at opfylde vores aftale med dig om brug af appens funktioner (GDPR art. 6, stk. 1, litra b).</p>
+            <p><strong>Opbevaring:</strong> Disse oplysninger gemmes i vores applikationsdatabase (en SQLite-fil hostet hos vores webhosting-udbyder, PythonAnywhere) så længe din konto eksisterer. Vi gemmer ikke din Google-adgangskode.</p>
+
+            <h3>2.4 Feedback (via Google Forms)</h3>
+            <p><strong>Kategorier af data:</strong> De oplysninger, du frivilligt indtaster i feedback-formularen.</p>
+            <p><strong>Formål:</strong> At forstå brugernes oplevelse og forbedre appen.</p>
+            <p><strong>Retsgrundlag:</strong> Behandlingen sker på grundlag af dit samtykke (GDPR art. 6, stk. 1, litra a), som du giver ved at indsende feedback, samt vores legitime interesse i at forbedre vores tjenester (GDPR art. 6, stk. 1, litra f).</p>
+            <p><strong>Opbevaring:</strong> Gemmes og behandles af Google Forms i henhold til deres politikker. Vi opbevarer feedback i op til 24 måneder.</p>
+
+            <h3>2.5 Anonyme brugsdata (via Google Analytics)</h3>
+            <p><strong>Kategorier af data:</strong> Anonyme oplysninger om, hvordan appen bruges (f.eks. antal besøgende, besøgstid, hvilke funktioner der bruges, generel geografisk placering, browsertype).</p>
+            <p><strong>Formål:</strong> At forstå brugen af appen og identificere områder for forbedring.</p>
+            <p><strong>Retsgrundlag:</strong> Behandlingen sker på grundlag af vores legitime interesse i at forbedre vores tjenester (GDPR art. 6, stk. 1, litra f), efter indhentning af dit samtykke til brug af analyse cookies.</p> <p><strong>Opbevaring:</strong> Google Analytics gemmer disse data i 26 måneder, hvorefter de automatisk slettes. Data er anonymiserede og kan ikke bruges til at identificere dig personligt.</p>
+
+            <h2>3. Cookies og lignende teknologier</h2>
+            <p>Denne applikation bruger følgende typer cookies:</p>
+            <h3>3.1 Nødvendige cookies</h3>
+            <p><strong>Formål:</strong> Flask-Login bruger en sessions-cookie til at holde dig logget ind.</p>
+            <p><strong>Varighed:</strong> Session (slettes når browseren lukkes).</p>
+            <p><strong>Retsgrundlag:</strong> Legitim interesse (GDPR art. 6, stk. 1, litra f), da disse cookies er nødvendige for appens grundlæggende funktionalitet.</p>
+
+            <h3>3.2 Analyse cookies</h3>
+            <p><strong>Formål:</strong> Google Analytics sætter cookies for at indsamle anonyme brugsdata.</p>
+            <p><strong>Varighed:</strong> Op til 2 år.</p>
+            <p><strong>Retsgrundlag:</strong> Dit samtykke (GDPR art. 6, stk. 1, litra a), som indhentes via vores cookie-banner.</p>
+
+            <h3>3.3 Tredjeparts cookies</h3>
+            <p><strong>Formål:</strong> Den indlejrede Google Form kan sætte egne cookies.</p>
+            <p><strong>Varighed:</strong> Varierer i henhold til Googles politikker.</p>
+            <p><strong>Retsgrundlag:</strong> Dit samtykke (GDPR art. 6, stk. 1, litra a), som indhentes via vores cookie-banner.</p>
+            <p>Du kan administrere dine cookie-præferencer gennem vores cookie-banner eller ved at ændre dine browserindstillinger. Bemærk, at deaktivering af visse cookies kan påvirke funktionaliteten af appen, især login-funktionen.</p>
+
+            <h2>4. Deling af oplysninger med tredjeparter</h2>
+            <p>Vi sælger, distribuerer eller udlejer ikke dine personlige oplysninger til tredjeparter, medmindre vi har dit udtrykkelige samtykke eller er påkrævet det ved lov. Vi deler dog data med følgende tredjeparter som en nødvendig del af appens funktionalitet:</p>
+            <h3>4.1 Google (Gemini API)</h3>
+            <p><strong>Formål:</strong> Input til historier sendes til Google for AI-generering.</p>
+            <p><strong>Lokation:</strong> Globalt.</p>
+            <p><strong>Dataoverførsel:</strong> Google er underlagt EU-US Data Privacy Framework.</p>
+            <h3>4.2 Google (Login)</h3>
+            <p><strong>Formål:</strong> Vi interagerer med Googles login-system for at verificere din identitet, hvis du vælger at logge ind.</p>
+            <p><strong>Lokation:</strong> Globalt.</p>
+            <p><strong>Dataoverførsel:</strong> Google er underlagt EU-US Data Privacy Framework.</p>
+            <h3>4.3 Google (Google Forms)</h3>
+            <p><strong>Formål:</strong> Hvis du bruger feedback-funktionen.</p>
+            <p><strong>Lokation:</strong> Globalt.</p>
+            <p><strong>Dataoverførsel:</strong> Google er underlagt EU-US Data Privacy Framework.</p>
+            <h3>4.4 Google (Google Analytics)</h3>
+            <p><strong>Formål:</strong> Til indsamling af anonyme brugsdata.</p>
+            <p><strong>Lokation:</strong> Globalt.</p>
+            <p><strong>Dataoverførsel:</strong> Google er underlagt EU-US Data Privacy Framework.</p>
+            <h3>4.5 PythonAnywhere</h3>
+            <p><strong>Formål:</strong> Vores webhosting-udbyder, hvor applikationen og dens database (for loggede brugere) kører.</p>
+            <p><strong>Lokation:</strong> EU/Storbritannien.</p>
+            <p><strong>Dataoverførsel:</strong> Data forbliver inden for EU/EØS eller overføres i henhold til passende sikkerhedsforanstaltninger.</p>
+            <h3>4.6 ElevenLabs</h3>
+            <p><strong>Formål:</strong> Hvis Tekst-til-Tale funktionen aktiveres, vil historieteksten blive sendt til ElevenLabs for lydgenerering.</p>
+            <p><strong>Lokation:</strong> USA.</p>
+            <p><strong>Dataoverførsel:</strong> Vi sikrer, at dataoverførsel sker i henhold til GDPR's krav om overførsel til tredjelande.</p>
+            <p>Disse tredjeparters brug af dine oplysninger er underlagt deres egne respektive privatlivspolitikker, som vi opfordrer dig til at gennemgå.</p>
+
+            <h2>5. Sikkerhed</h2>
+            <p>Vi er forpligtet til at sikre, at dine oplysninger er beskyttet. For at forhindre uautoriseret adgang eller offentliggørelse har vi implementeret passende tekniske, fysiske og organisatoriske sikkerhedsforanstaltninger, herunder:</p>
+            <ul>
+                <li>Brug af krypteret forbindelse (HTTPS)</li>
+                <li>Sikker håndtering af API-nøgler på serveren</li>
+                <li>Adgangskontrol og begrænset adgang til personoplysninger</li>
+                <li>Regelmæssig evaluering og opdatering af vores sikkerhedsforanstaltninger</li>
+            </ul>
+            <p>Dog kan ingen overførsel via internettet eller elektronisk lagring garanteres at være 100% sikker, og vi kan derfor ikke garantere den absolutte sikkerhed af dine data.</p>
+
+            <h2>6. Dine rettigheder (GDPR)</h2>
+            <p>Hvis du er bosiddende i EU/EØS eller dit land har lignende databeskyttelseslovgivning, har du følgende rettigheder vedrørende dine personoplysninger:</p>
+            <ul>
+                <li><strong>Ret til indsigt:</strong> Du har ret til at anmode om adgang til de personoplysninger, vi har om dig.</li>
+                <li><strong>Ret til berigtigelse:</strong> Du har ret til at anmode om rettelse af ukorrekte oplysninger.</li>
+                <li><strong>Ret til sletning ('retten til at blive glemt'):</strong> Du har ret til at anmode om sletning af dine personoplysninger under visse omstændigheder.</li>
+                <li><strong>Ret til begrænsning af behandling:</strong> Du har ret til at anmode om begrænsning af behandlingen af dine personoplysninger.</li>
+                <li><strong>Ret til dataportabilitet:</strong> Du har ret til at modtage dine personoplysninger i et struktureret, almindeligt anvendt og maskinlæsbart format.</li>
+                <li><strong>Ret til indsigelse:</strong> Du har ret til at gøre indsigelse mod behandlingen af dine personoplysninger.</li>
+                <li><strong>Ret til ikke at være genstand for automatiske individuelle afgørelser:</strong> Du har ret til ikke at være genstand for en afgørelse, der alene er baseret på automatisk behandling.</li>
+            </ul>
+            <h3>6.1 Sådan udøver du dine rettigheder</h3>
+            <p class="contact-info">For at udøve dine rettigheder, kan du kontakte os via e-mail på <a href="mailto:please@readmeastory.dk">please@readmeastory.dk</a>. Vi vil besvare din anmodning inden for en måned. For data gemt i din browsers LocalStorage (lytter-info), kan du selv slette dette ved at rydde din browsers data for dette website.</p>
+            <h3>6.2 Ret til at indgive klage</h3>
+            <p>Du har ret til at indgive en klage til den relevante tilsynsmyndighed for databeskyttelse, hvis du mener, at vores behandling af dine personoplysninger overtræder databeskyttelseslovgivningen. I Danmark er tilsynsmyndigheden:</p>
+            <p class="contact-info">
+                Datatilsynet<br>
+                Carl Jacobsens Vej 35<br>
+                2500 Valby<br>
+                E-mail: dt@datatilsynet.dk<br>
+                Telefon: +45 33 19 32 00<br>
+                Website: www.datatilsynet.dk
+            </p>
+
+            <h2>7. Børns privatliv</h2>
+            <p>Denne applikation er beregnet til brug af voksne (forældre, værger osv.) til at generere historier for børn. Vi indsamler ikke bevidst personligt identificerbare oplysninger direkte fra børn under 16 år (eller den relevante alder i din jurisdiktion). Hvis du som forælder eller værge bliver opmærksom på, at dit barn har givet os personlige oplysninger uden dit samtykke, bedes du kontakte os på <a href="mailto:please@readmeastory.dk">please@readmeastory.dk</a>, så vi kan slette oplysningerne.</p>
+
+            <h2>8. Links til andre hjemmesider</h2>
+            <p>Vores app kan indeholde links til andre hjemmesider af interesse (f.eks. Google Forms). Når du bruger disse links til at forlade vores site, skal du bemærke, at vi ikke har kontrol over den anden hjemmeside. Derfor kan vi ikke være ansvarlige for beskyttelsen og privatlivets fred for oplysninger, som du giver, mens du besøger sådanne sites, og sådanne sites er ikke omfattet af denne privatlivspolitik. Vi opfordrer dig til at være opmærksom og læse privatlivspolitikken for hver hjemmeside, du besøger.</p>
+
+            <h2>9. Dataopbevaring</h2>
+            <p>Vi opbevarer kun dine personoplysninger, så længe det er nødvendigt for de formål, hvortil de blev indsamlet, eller så længe det kræves af lovgivningen. Specifikke opbevaringsperioder er angivet under afsnit 2 for hver type af personoplysninger.</p>
+
+            <h2>10. Ændringer til denne privatlivspolitik</h2>
+            <p>Vi kan ændre denne politik fra tid til anden ved at opdatere denne side. Væsentlige ændringer vil blive meddelt dig via en tydelig meddelelse på vores website eller via e-mail, hvis du har en brugerkonto hos os. Du bør tjekke denne side lejlighedsvis for at sikre, at du er tilfreds med eventuelle ændringer. Vi vil altid angive datoen for den seneste opdatering øverst på siden.</p>
+
+            <h2>11. Kontakt os</h2>
+            <p class="contact-info">Hvis du har spørgsmål vedrørende denne privatlivspolitik eller vores behandling af dine personoplysninger, kan du kontakte os på: <a href="mailto:please@readmeastory.dk">please@readmeastory.dk</a></p>
+            <hr>
+            <p style="font-size: 0.8em; text-align: center;">Denne privatlivspolitik er udarbejdet i overensstemmelse med EU's Generelle Databeskyttelsesforordning (GDPR) og anden relevant lovgivning om databeskyttelse.</p>
+
+        </section>
+    </main>
+
+    <footer>
+        <hr>
+        <p>© Read Me A Story 2025 - Historier skabt med AI.</p>
+        <p><i>Forældreopsyn anbefales altid under læsning. ;)</i></p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    </body>
+</html>

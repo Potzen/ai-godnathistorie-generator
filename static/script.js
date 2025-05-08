@@ -33,9 +33,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const storyImageTag = document.getElementById('story-image');
     const imageErrorDiv = document.getElementById('image-error');
 
-    // FJERNEDE definitioner af audioSection og audioStatusMessages
+    // === NYT: Referencer til Cookie Consent Banner elementer ===
+    const cookieConsentBanner = document.getElementById('cookie-consent-banner');
+    const acceptCookiesButton = document.getElementById('accept-cookies-button');
+    // === SLUT: NYT ===
 
     console.log("DOM references obtained.");
+    if (cookieConsentBanner) console.log("Cookie banner reference obtained.");
+    if (acceptCookiesButton) console.log("Accept cookies button reference obtained.");
+
 
     // === Eksempeldata til Autoudfyld ===
     const exampleListeners = [ { name: "Alma", age: "5" }, { name: "Oscar", age: "7" }, { name: "Sofus", age: "3"}, { name: "Luna", age: "6" }, { name: "Noah", age: "4" }, { name: "Freja", age: "8" }, { name: "Viggo", age: "5" } ];
@@ -46,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // === Hjælpefunktioner ===
     function getRandomElement(arr) {
-        if (!arr || arr.length === 0) { console.warn("getRandomElement called with empty or null array"); return null; };
+        if (!arr || arr.length === 0) { console.warn("getRandomElement called with empty or null array"); return null; }
         return arr[Math.floor(Math.random() * arr.length)];
      }
 
@@ -192,6 +198,50 @@ document.addEventListener('DOMContentLoaded', () => {
         else { console.error("Feedback embed container not found!"); }
     }
 
+    // === NYT: Logik for Cookie Consent Banner START ===
+    function triggerAnalyticsPageView() {
+        if (typeof gtag === 'function') {
+            console.log('Triggering Google Analytics page_view event for path:', window.location.pathname);
+            gtag('event', 'page_view', {
+                page_path: window.location.pathname,
+                page_location: window.location.href, // Anbefales også at sende fuld URL
+                page_title: document.title // Og sidetitel
+            });
+        } else {
+            console.warn('gtag function not found. Analytics page_view not sent.');
+        }
+    }
+
+    if (cookieConsentBanner && acceptCookiesButton) {
+        const consentStatus = localStorage.getItem('cookieConsent');
+        console.log('Cookie consent status from localStorage:', consentStatus);
+
+        if (consentStatus === 'accepted') {
+            console.log('Cookie consent already accepted. Triggering analytics.');
+            triggerAnalyticsPageView();
+            // Banner forbliver skjult (da det har .hidden klassen fra HTML)
+        } else if (consentStatus === 'rejected') { // Hvis du tilføjer en "Afvis" knap senere
+            console.log('Cookie consent previously rejected. Analytics not triggered.');
+            // Banner forbliver skjult
+        }
+        else {
+            console.log('Cookie consent not yet given. Displaying banner.');
+            cookieConsentBanner.classList.remove('hidden');
+        }
+
+        acceptCookiesButton.addEventListener('click', () => {
+            console.log('Accept cookies button clicked.');
+            localStorage.setItem('cookieConsent', 'accepted');
+            cookieConsentBanner.classList.add('hidden');
+            console.log('Cookie consent accepted and banner hidden. Triggering analytics.');
+            triggerAnalyticsPageView();
+        });
+    } else {
+        console.warn('Cookie consent banner or accept button not found in the DOM.');
+    }
+    // === NYT: Logik for Cookie Consent Banner SLUT ===
+
+
     async function handleGenerateClick(event) {
         event.preventDefault();
         console.log("--> handleGenerateClick started");
@@ -203,7 +253,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if(listenerContainer) { listenerContainer.querySelectorAll('.listener-group').forEach(group => { const nameInput = group.querySelector('input[name="listener_name_single"]'); const ageInput = group.querySelector('input[name="listener_age_single"]'); const name = nameInput ? nameInput.value.trim() : ''; const age = ageInput ? ageInput.value.trim() : ''; if (name || age) { listeners.push({ name: name, age: age }); } }); }
         const selectedLaengde = laengdeSelect ? laengdeSelect.value : 'kort';
         const selectedMood = moodSelect ? moodSelect.value : 'neutral';
-        // const isInteractive = interactiveCheckbox ? interactiveCheckbox.checked : false; // Gammel linje udkommenteret
         const isInteractive = false; // *** ALTID falsk nu ***
         const negativePromptText = negativePromptInput ? negativePromptInput.value.trim() : '';
         console.log("--- Data Indsamlet ---");
@@ -217,14 +266,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if(generateButton) { generateButton.disabled = true; generateButton.textContent = 'Laver historie...'; }
         if(storyDisplay) storyDisplay.textContent = 'Historien genereres...';
         if(resetButton) resetButton.style.display = 'none';
-        // Skjul lyd/billede elementer INDIVIDUELT (ikke containeren)
         if(audioPlayer) { audioPlayer.pause(); audioPlayer.src = ''; audioPlayer.classList.add('hidden'); }
         if(audioLoadingDiv) audioLoadingDiv.classList.add('hidden');
         if(audioErrorDiv) audioErrorDiv.textContent = '';
         if(imageControlsDiv) imageControlsDiv.classList.add('hidden');
         if(storyImageTag) { storyImageTag.classList.add('hidden'); storyImageTag.src = ""; }
         if(imageErrorDiv) imageErrorDiv.textContent = '';
-        // FJERNEDE linje der skjulte audioStatusMessages/audioSection
         console.log("Loading state set, individual audio/image elements hidden.");
 
         // Fetch API Kald
@@ -240,17 +287,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             console.log("JSON parsed successfully:", result);
             if(storyDisplay) storyDisplay.textContent = result.story || "Modtog en tom historie.";
-            if(resetButton) resetButton.style.display = 'inline-block'; // Eller 'block' hvis centreret
-             // FJERNEDE logik der viste audioSection/audioStatusMessages
-            if (imageControlsDiv && generateImageButton) { /* Billedlogik (uændret) */ console.log("Image controls section ready (currently kept hidden)."); }
+            if(resetButton) resetButton.style.display = 'inline-block';
+            if (imageControlsDiv && generateImageButton) { console.log("Image controls section ready (currently kept hidden)."); }
             console.log("Story displayed, reset button shown.");
         } catch (error) {
              console.error('Fejl under generering (catch block):', error);
              if(storyDisplay) storyDisplay.textContent = `Ups! Noget gik galt under historiegenerering: ${error.message}. Prøv igen eller tjek konsollen for detaljer.`;
-             if(resetButton) resetButton.style.display = 'inline-block'; // Eller 'block'
+             if(resetButton) resetButton.style.display = 'inline-block';
         } finally {
              console.log("Executing finally block for story generation...");
-             if(generateButton) { generateButton.disabled = false; generateButton.textContent = 'Skab Godnathistorie'; }
+             if(generateButton) { generateButton.disabled = false; generateButton.textContent = 'Skab Godnathistorie'; } // Korrigeret tekst
              console.log("Loading state removed.");
         }
         console.log("--> handleGenerateClick finished");
@@ -264,30 +310,21 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // DET MYSTISKE TJEK - Beholder det simple tjek for nu
         if (!readAloudButton || !audioLoadingDiv || !audioErrorDiv || !audioPlayer) {
-             console.error("Audio elements check failed."); // Simplificeret fejlbesked
-             // Vis fejl i UI
+             console.error("Audio elements check failed.");
              if(audioErrorDiv) {
                 audioErrorDiv.textContent = "Fejl: Kunne ikke initialisere lyd-elementer (kontakt support hvis problemet fortsætter).";
-                audioErrorDiv.classList.remove('hidden'); // Sørg for at error div er synlig
+                audioErrorDiv.classList.remove('hidden');
              }
-             // Skjul andre lyd-elementer
              if(audioLoadingDiv) audioLoadingDiv.classList.add('hidden');
              if(audioPlayer) audioPlayer.classList.add('hidden');
-             return; // Stop funktionen
+             return;
         }
-         // FJERNEDE det duplikerede check med audioSection
-
-        console.log("Audio element check passed."); // Log at tjekket nu er OK
+        console.log("Audio element check passed.");
 
         const storyText = storyDisplay.textContent;
-
-        // FJERNEDE linje der viste audioStatusMessages/audioSection
-
-        // Vis loading, skjul fejl/afspiller INDIVIDUELT
         if(audioLoadingDiv) audioLoadingDiv.classList.remove('hidden');
-        if(audioErrorDiv) { audioErrorDiv.textContent = ''; audioErrorDiv.classList.add('hidden');} // Ryd og skjul fejl
+        if(audioErrorDiv) { audioErrorDiv.textContent = ''; audioErrorDiv.classList.add('hidden');}
         if(audioPlayer) { audioPlayer.pause(); audioPlayer.src = ''; audioPlayer.classList.add('hidden');}
         if(readAloudButton) { readAloudButton.disabled = true; readAloudButton.textContent = 'Genererer Lyd...'; }
 
@@ -309,9 +346,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const audioUrl = URL.createObjectURL(audioBlob);
             if(audioPlayer) {
                 audioPlayer.src = audioUrl;
-                audioPlayer.classList.remove('hidden'); // Vis afspiller
+                audioPlayer.classList.remove('hidden');
                 console.log("Audio player ready.");
-                // audioPlayer.play(); // Valgfrit
             } else {
                  console.error("Audio player element not found when trying to set source!");
                  throw new Error("Intern fejl: Kunne ikke finde lyd-afspiller element.");
@@ -320,11 +356,11 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Fejl under lydgenerering:", error);
             if(audioErrorDiv) {
                 audioErrorDiv.textContent = `Fejl: ${error.message}`;
-                audioErrorDiv.classList.remove('hidden'); // Vis fejl
+                audioErrorDiv.classList.remove('hidden');
             }
-            if(audioPlayer) audioPlayer.classList.add('hidden'); // Skjul afspiller ved fejl
+            if(audioPlayer) audioPlayer.classList.add('hidden');
         } finally {
-            if(audioLoadingDiv) audioLoadingDiv.classList.add('hidden'); // Skjul altid loading til sidst
+            if(audioLoadingDiv) audioLoadingDiv.classList.add('hidden');
             if(readAloudButton) {
                 readAloudButton.disabled = false;
                 readAloudButton.textContent = 'Læs Historien Højt';
@@ -335,7 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleGenerateImageClick() {
          console.warn("Billedgenerering er ikke implementeret endnu.");
-         if(imageErrorDiv) { imageErrorDiv.textContent = "Billedgenerering er ikke tilgængelig endnu."; imageErrorDiv.classList.remove('hidden'); } // Vis fejl hvis relevant
+         if(imageErrorDiv) { imageErrorDiv.textContent = "Billedgenerering er ikke tilgængelig endnu."; imageErrorDiv.classList.remove('hidden'); }
     }
 
     function handleResetClick() {
@@ -351,14 +387,12 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Removed extra groups.");
         if(storyDisplay) storyDisplay.textContent = '';
         if(resetButton) resetButton.style.display = 'none';
-        // Skjul lyd/billede elementer INDIVIDUELT
         if(audioPlayer) { audioPlayer.pause(); audioPlayer.src = ''; audioPlayer.classList.add('hidden'); }
         if(audioLoadingDiv) audioLoadingDiv.classList.add('hidden');
-        if(audioErrorDiv) { audioErrorDiv.textContent = ''; audioErrorDiv.classList.add('hidden'); } // Ryd og skjul
+        if(audioErrorDiv) { audioErrorDiv.textContent = ''; audioErrorDiv.classList.add('hidden'); }
         if(imageControlsDiv) imageControlsDiv.classList.add('hidden');
         if(storyImageTag) { storyImageTag.classList.add('hidden'); storyImageTag.src = ""; }
-        if(imageErrorDiv) { imageErrorDiv.textContent = ''; imageErrorDiv.classList.add('hidden'); } // Ryd og skjul
-        // FJERNEDE linje der skjulte audioStatusMessages/audioSection
+        if(imageErrorDiv) { imageErrorDiv.textContent = ''; imageErrorDiv.classList.add('hidden'); }
         console.log("Cleared story display and hid controls (reset, individual audio/image elements).");
         if(laengdeSelect) laengdeSelect.value = 'kort';
         if(moodSelect) moodSelect.value = 'neutral';
@@ -368,6 +402,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // === Tilknyt Event Listeners ===
+    // Initialiser siden ved at indlæse gemte lyttere FØR andre event listeners, der evt. afhænger af disse.
+    loadAndDisplaySavedListeners();
+    console.log("Initial listeners loaded.");
+
     if (generateButton) { generateButton.addEventListener('click', handleGenerateClick); console.log("Generate listener attached."); } else { console.error("Generate button not found!"); }
     if (resetButton) { resetButton.addEventListener('click', handleResetClick); console.log("Reset listener attached."); } else { console.error("Reset button not found!"); }
     if (autofillButton) { autofillButton.addEventListener('click', autofillFields); console.log("Autofill listener attached."); } else { console.error("Autofill button not found!"); }
@@ -378,8 +416,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (generateImageButton) { generateImageButton.addEventListener('click', handleGenerateImageClick); console.log("Generate Image listener attached."); } else { console.info("Generate Image button not found."); }
     document.querySelectorAll('.add-button[data-container]').forEach(button => { button.addEventListener('click', () => { const containerId = button.dataset.container; const placeholder = button.dataset.placeholder; const inputName = button.dataset.name; if(containerId && placeholder && inputName) { addInputField(containerId, placeholder, inputName); } else { console.warn("Generic add button is missing data attributes:", button); } }); console.log(`Listener attached for generic add button targeting ${button.dataset.container}`); });
 
-    // === Initialiser siden ved at indlæse gemte lyttere ===
-    loadAndDisplaySavedListeners();
-    console.log("Script loaded and initial listeners attached check complete.");
+    console.log("Script loaded and all initial event listeners (excluding cookie logic if elements missing) attached check complete.");
 
 }); // Slut på DOMContentLoaded listener

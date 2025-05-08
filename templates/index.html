@@ -5,14 +5,14 @@
     <title>Read Me A Story - AI Historie Generator</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
-        <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-M319LP9Z6P"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
 
-      gtag('config', 'G-M319LP9Z6P');
+      // OPDATERET: Tilføjet {'send_page_view': false} for at vente på samtykke
+      gtag('config', 'G-M319LP9Z6P', { 'send_page_view': false });
     </script>
 </head>
 <body>
@@ -37,7 +37,7 @@
                     {% for category, message in messages %}
                         <div class="flash-message flash-{{ category }}">
                             {{ message }}
-     PilotCody                       {# Disclaimer KUN til logout beskeden ('info' kategori) #}
+                            {# Disclaimer KUN til logout beskeden ('info' kategori) #}
                             {% if category == 'info' and 'logget ud' in message %}
                                 <p class="flash-disclaimer">(Bemærk: Dit navn kan stadig være synligt i toppen indtil næste sideindlæsning.)</p>
                             {% endif %}
@@ -140,7 +140,7 @@
                 </select>
             </div>
 
-            <div class="input-category checkbox-group hidden">
+            <div class="input-category checkbox-group hidden"> {/* */ }
                 <input type="checkbox" id="interactive-checkbox" name="interactive">
                 <label for="interactive-checkbox">Gør historien til et inddragende eventyr (med valgmuligheder)?</label>
             </div>
@@ -153,15 +153,18 @@
                         {% if not current_user.is_authenticated %}disabled title="Login for at aktivere funktionen"{% endif %}>
                     Læs Historien Højt
                 </button>
-                 </div> <button id="generate-button">Skab Historie</button>
+            </div>
+            <button id="generate-button">Skab Historie</button>
 
-        </section> <section id="historie-output">
+        </section>
 
+        <section id="historie-output">
             <div class="historie-header-controls">
                 <h2>Jeres historie</h2>
                 <div class="audio-controls-container">
                     <div id="audio-loading" class="hidden">Genererer lyd, vent venligst... <span class="spinner"></span></div>
-                    <div id="audio-error" class="feedback-status error"></div> <div class="login-prompt hidden" id="login-prompt-audio">
+                    <div id="audio-error" class="feedback-status error"></div>
+                    <div class="login-prompt hidden" id="login-prompt-audio">
                          <em>Du skal være <a href="{{ url_for('google_login') }}">logget ind</a> for at få læst historien højt.</em>
                     </div>
                     <audio id="audio-player" controls class="audio-player-style hidden">
@@ -169,13 +172,11 @@
                     </audio>
                 </div>
             </div>
-
-            <div id="story-display">
-                 </div>
-
+            <div id="story-display"></div>
             <button id="reset-button" class="utility-button" style="display: none;">Prøv Igen</button>
+        </section>
 
-        </section> <section id="feedback-section">
+        <section id="feedback-section">
              <button type="button" id="toggle-feedback-button" class="utility-button">Giv Feedback / Skjul Feedback</button>
              <div id="feedback-embed-container" class="hidden">
                  <iframe src="https://docs.google.com/forms/d/e/1FAIpQLScNfIyz-0hNlgfKAkJo-ioT99LYqjBRo8tO5HvzoXfjaY0HvA/viewform?embedded=true"
@@ -186,9 +187,12 @@
                     marginwidth="0">Indlæser…</iframe>
              </div>
         </section>
-
     </main>
 
+    <div id="cookie-consent-banner" class="hidden">
+        <p>Denne side bruger cookies til at forbedre din oplevelse og til analyseformål (Google Analytics). Ved at klikke "Accepter" giver du samtykke til brugen af disse cookies. Læs mere i vores <a href="/privacy-policy">privatlivspolitik</a>.</p>
+        <button id="accept-cookies-button" class="utility-button">Accepter</button>
+        </div>
     <footer>
         <hr>
         <p>© Read Me A Story 2025 - Historier skabt med AI.</p>
