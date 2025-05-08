@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <title>Read Me A Story - AI Historie Generator</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+        <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M319LP9Z6P"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-M319LP9Z6P');
+    </script>
 </head>
 <body>
 
@@ -27,7 +37,7 @@
                     {% for category, message in messages %}
                         <div class="flash-message flash-{{ category }}">
                             {{ message }}
-                            {# Disclaimer KUN til logout beskeden ('info' kategori) #}
+     PilotCody                       {# Disclaimer KUN til logout beskeden ('info' kategori) #}
                             {% if category == 'info' and 'logget ud' in message %}
                                 <p class="flash-disclaimer">(Bemærk: Dit navn kan stadig være synligt i toppen indtil næste sideindlæsning.)</p>
                             {% endif %}
@@ -130,7 +140,7 @@
                 </select>
             </div>
 
-            <div class="input-category checkbox-group">
+            <div class="input-category checkbox-group hidden">
                 <input type="checkbox" id="interactive-checkbox" name="interactive">
                 <label for="interactive-checkbox">Gør historien til et inddragende eventyr (med valgmuligheder)?</label>
             </div>

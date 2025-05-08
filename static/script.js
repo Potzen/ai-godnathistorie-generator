@@ -203,7 +203,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if(listenerContainer) { listenerContainer.querySelectorAll('.listener-group').forEach(group => { const nameInput = group.querySelector('input[name="listener_name_single"]'); const ageInput = group.querySelector('input[name="listener_age_single"]'); const name = nameInput ? nameInput.value.trim() : ''; const age = ageInput ? ageInput.value.trim() : ''; if (name || age) { listeners.push({ name: name, age: age }); } }); }
         const selectedLaengde = laengdeSelect ? laengdeSelect.value : 'kort';
         const selectedMood = moodSelect ? moodSelect.value : 'neutral';
-        const isInteractive = interactiveCheckbox ? interactiveCheckbox.checked : false;
+        // const isInteractive = interactiveCheckbox ? interactiveCheckbox.checked : false; // Gammel linje udkommenteret
+        const isInteractive = false; // *** ALTID falsk nu ***
         const negativePromptText = negativePromptInput ? negativePromptInput.value.trim() : '';
         console.log("--- Data Indsamlet ---");
         console.log("Listeners:", listeners); console.log("Karakterer:", karakterer); console.log("Steder:", steder); console.log("Plots:", plots); console.log("Længde:", selectedLaengde); console.log("Mood:", selectedMood); console.log("Interaktiv:", isInteractive); console.log("Negative Prompt:", negativePromptText);

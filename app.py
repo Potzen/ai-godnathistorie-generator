@@ -247,8 +247,8 @@ def generate_story():
     actual_story = "Der opstod en uventet fejl før API kald."
     try:
         print("Initialiserer Gemini model...")
-        model = genai.GenerativeModel('gemini-1.5-pro-latest')
-        print("Bruger model: gemini-1.5-pro-latest")
+        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        print("Bruger model: gemini-1.5-flash-latest")
         print("Sender anmodning til Google Gemini...")
         response = model.generate_content(
             prompt,
