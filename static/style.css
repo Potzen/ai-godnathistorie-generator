@@ -26,6 +26,13 @@
     --border-color: #d1d5db;
     --border-radius: 6px;
     --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --footer-text-color: #f0f0f0; /* NYT: Farve for footer tekst */
+    --footer-link-border-color: #aaa; /* NYT: Farve for social link border */
+}
+
+/* Global box-sizing for mere forudsigeligt layout */
+*, *::before, *::after {
+    box-sizing: border-box;
 }
 
 body {
@@ -41,33 +48,46 @@ body {
     background-repeat: no-repeat;
     background-attachment: fixed;
     background-color: var(--color-bg);
-    padding-bottom: 150px; /* Juster denne værdi efter behov baseret på bannerets højde */
+    padding-bottom: 150px; /* Plads til cookie banner / footer */
 }
 
 /* Header Styling */
 header {
-    background-color: var(--color-box-bg);
-    padding: 20px 30px;
-    margin-bottom: 25px;
-    border-radius: var(--border-radius);
-    text-align: center;
-    box-shadow: var(--box-shadow);
-    position: relative;
+    margin-bottom: 20px; /* Afstand under headeren */
+    padding: 15px 0;     /* Vertikal padding for header-området */
+}
+
+.header-inner { /* Container for at matche sidens indholdsbredde */
+    max-width: 800px; /* Samme som body max-width */
+    margin: 0 auto;   /* Centrerer .header-inner */
+    padding: 0 15px;  /* Samme side-padding som body */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo-container {
+    /* Ingen specifik styling nødvendig her, hvis #app-logo klarer det */
+}
+
+#app-logo {
+    max-width: 250px;  /* Din valgte størrelse */
+    height: auto;
+    display: block;    /* Fjerner evt. ekstra plads under billedet */
+    border-radius: var(--border-radius); /* Runde hjørner */
+    /* box-shadow: 0 10px 20px rgba(0,0,0,0.1), 0 6px 6px rgba(0,0,0,0.15); */
 }
 
 /* Login/Logout Status i Header */
 .user-status {
-    position: absolute;
-    top: 10px;
-    right: 15px;
     font-size: 0.85em;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    display: none; /* Gør login/logout knapperne usynlige */
 }
-.user-status span { color: #555; }
 
-/* Styling for Login/Logout knapper (som a-tags) */
+.user-status span {
+    color: #555;
+}
+
 a.button-login,
 a.button-logout {
     padding: 4px 8px;
@@ -89,18 +109,7 @@ a.button-logout { background-color: var(--color-secondary); color: #333 !importa
 a.button-logout:hover { background-color: var(--color-secondary-hover); transform: translateY(-1px); }
 
 
-header h1 {
-    font-family: var(--font-heading);
-    color: var(--color-primary);
-    margin-top: 5px;
-    margin-bottom: 10px;
-    font-weight: 700;
-}
-header p { margin-bottom: 5px; font-size: 0.95em; color: #555; }
-header p:last-child { margin-bottom: 0; font-style: italic; }
-
-
-/* === Styling for Flash Beskeder (Placeret i <main>) === */
+/* Flash Beskeder */
 .flash-messages-container {
     padding: 0;
     margin-bottom: 25px;
@@ -141,8 +150,6 @@ header p:last-child { margin-bottom: 0; font-style: italic; }
     font-weight: normal;
     opacity: 0.8;
 }
-/* === ----------------------------- === */
-
 
 /* Hovedindhold og Sektioner */
 main > section {
@@ -158,12 +165,14 @@ h2 {
     font-family: var(--font-heading);
     color: var(--color-primary);
     margin-top: 0;
-    margin-bottom: 20px; /* Standard bundmargin */
+    margin-bottom: 20px;
     font-weight: 500;
 }
 
 /* Input Kategorier */
-.input-category { margin-bottom: 25px; }
+.input-category {
+    margin-bottom: 25px;
+}
 .input-category label:not(.sr-only) {
     display: block;
     margin-bottom: 8px;
@@ -188,7 +197,6 @@ select {
     padding: 10px 12px;
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    box-sizing: border-box;
     font-family: var(--font-body);
     font-size: 1em;
     color: var(--color-text);
@@ -272,8 +280,6 @@ button:disabled, .disabled-button {
 #read-aloud-button:hover:not(:disabled) {
     background-color: var(--color-secondary-hover);
 }
-#autofill-button { order: 1; }
-#read-aloud-button { order: 2; }
 
 /* Fjern Knapper (-) */
 .remove-button {
@@ -288,7 +294,6 @@ button:disabled, .disabled-button {
    width: 35px;
    min-width: 35px;
    text-align: center;
-   box-sizing: border-box;
 }
 .remove-button:hover:not(:disabled) {
    background-color: var(--color-danger-hover);
@@ -335,7 +340,7 @@ button:disabled, .disabled-button {
     flex-wrap: wrap;
 }
 
-/* === Historie Output Sektion === */
+/* Historie Output Sektion */
 #historie-output {}
 
 .historie-header-controls {
@@ -364,25 +369,10 @@ button:disabled, .disabled-button {
     min-height: 40px;
     text-align: center;
 }
-
-.audio-controls-container #audio-loading {
-     margin: 5px 0;
-}
-
-.audio-controls-container #audio-error {
-    margin: 5px 0;
-    width: 100%;
-}
-
-.audio-controls-container .login-prompt {
-    margin: 5px 0;
-}
-
-.audio-controls-container .audio-player-style {
-    display: block;
-    width: 100%;
-    margin: 0;
-}
+.audio-controls-container #audio-loading { margin: 5px 0; }
+.audio-controls-container #audio-error { margin: 5px 0; width: 100%; }
+.audio-controls-container .login-prompt { margin: 5px 0; }
+.audio-controls-container .audio-player-style { display: block; width: 100%; margin: 0; }
 
 #story-display {
     background-color: #f9f9f9;
@@ -394,19 +384,32 @@ button:disabled, .disabled-button {
     margin-bottom: 15px;
 }
 
-#reset-button {
-    background-color: var(--color-secondary);
-    color: #333;
-    display: block;
-    width: auto;
-    margin: 15px auto 0 auto;
-}
-#reset-button:hover {
-     background-color: var(--color-secondary-hover);
+/* Container for historie-dele knapper OG Prøv Igen knap */
+#story-share-buttons {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
 }
 
+#story-share-buttons .utility-button {
+    min-width: 200px;
+    margin: 0;
+}
 
-/* === Globale Audio/Status Styles === */
+@media (min-width: 700px) {
+    #story-share-buttons {
+        flex-direction: row;
+        justify-content: center;
+        align-items: baseline;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+}
+
+/* Globale Audio/Status Styles */
 #audio-loading {
     display: inline-flex;
     align-items: center;
@@ -419,9 +422,8 @@ button:disabled, .disabled-button {
     text-align: center;
     color: var(--color-error-text);
 }
-.audio-player-style {
-    display: block;
-}
+.audio-player-style { display: block; }
+
 .spinner {
   display: inline-block;
   border: 4px solid rgba(0, 0, 0, 0.1);
@@ -450,9 +452,8 @@ button:disabled, .disabled-button {
     color: white;
     margin-bottom: 0;
 }
-#toggle-feedback-button:hover {
-    background-color: #5a6268;
-}
+#toggle-feedback-button:hover { background-color: #5a6268; }
+
 #feedback-embed-container {
     margin-top: 20px;
     border: 1px solid #ccc;
@@ -460,12 +461,7 @@ button:disabled, .disabled-button {
     overflow: hidden;
     background-color: #fff;
 }
-#feedback-embed-container iframe {
-    display: block;
-    width: 100%;
-    border: none;
-    min-height: 400px;
-}
+#feedback-embed-container iframe { display: block; width: 100%; border: none; min-height: 400px; }
 
 
 /* Footer */
@@ -473,12 +469,73 @@ footer {
     margin-top: 40px;
     text-align: center;
     font-size: 0.85em;
-    color: #777;
+    color: var(--footer-text-color); /* OPDATERET: Bruger ny variabel */
     padding-top: 20px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid #555; /* Lidt mørkere border for kontrast mod lys tekst */
+    /* Overvej en let gennemsigtig mørk baggrund for footeren for at sikre læsbarhed */
+    /* background-color: rgba(0, 0, 0, 0.3); */
+    /* padding-bottom: 10px; /* Hvis baggrund tilføjes */
 }
 footer p {
+    margin-bottom: 8px;
+    /* Farve arves fra footer-elementet */
+}
+
+footer .footer-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+footer .footer-info,
+footer .footer-social {
+    text-align: center;
+}
+
+footer .footer-social p {
     margin-bottom: 5px;
+    font-weight: bold;
+    color: var(--footer-text-color); /* OPDATERET */
+}
+
+footer .social-link {
+    display: inline-block;
+    margin: 0 8px 5px 8px;
+    padding: 5px 10px;
+    border: 1px solid var(--footer-link-border-color); /* OPDATERET: Bruger ny variabel */
+    border-radius: var(--border-radius);
+    color: var(--footer-text-color); /* OPDATERET */
+    text-decoration: none;
+    font-size: 0.85em;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+footer .social-link:hover {
+    background-color: rgba(255, 255, 255, 0.15); /* Lysere hover-effekt */
+    color: white; /* Sikrer hvid tekst ved hover */
+    border-color: #ccc; /* Lidt lysere kant ved hover */
+}
+
+@media (min-width: 768px) {
+    footer .footer-content {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+    footer .footer-info { text-align: left; flex-basis: 60%; }
+    footer .footer-social { text-align: right; flex-basis: 35%; }
+}
+
+footer .footer-link { /* Link til privatlivspolitik */
+    color: var(--color-primary); /* Beholder primærfarven for dette vigtige link, hvis det er tydeligt nok */
+    /* Alternativt, for hvid: color: var(--footer-text-color); */
+    text-decoration: underline;
+    font-size: 0.9em;
+}
+footer .footer-link:hover {
+    color: var(--color-primary-hover); /* Eller en lysere version af primærfarven */
+    /* Alternativt, for hvid hover: color: white; */
+    text-decoration: none;
 }
 
 
@@ -498,7 +555,7 @@ footer p {
     display: none !important;
 }
 
-/* ==================== Cookie Consent Banner Styling START ==================== */
+/* Cookie Consent Banner Styling */
 #cookie-consent-banner {
     position: fixed;
     bottom: 0;
@@ -506,7 +563,7 @@ footer p {
     width: 100%;
     background-color: rgba(50, 50, 50, 0.95);
     color: #f1f1f1;
-    padding: 20px; /* Standard padding for mobil */
+    padding: 20px;
     box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
     z-index: 1000;
     display: flex;
@@ -514,24 +571,10 @@ footer p {
     align-items: center;
     text-align: center;
     gap: 15px;
-    box-sizing: border-box; /* VIGTIGT: Inkluder padding i width/height */
 }
-
-#cookie-consent-banner p {
-    margin: 0;
-    font-size: 0.9em;
-    line-height: 1.5;
-    max-width: 90%;
-}
-
-#cookie-consent-banner a {
-    color: var(--color-primary);
-    text-decoration: underline;
-}
-
-#cookie-consent-banner a:hover {
-    color: var(--color-primary-hover);
-}
+#cookie-consent-banner p { margin: 0; font-size: 0.9em; line-height: 1.5; max-width: 90%; }
+#cookie-consent-banner a { color: var(--color-primary); text-decoration: underline; }
+#cookie-consent-banner a:hover { color: var(--color-primary-hover); }
 
 #accept-cookies-button {
     padding: 8px 20px;
@@ -539,30 +582,17 @@ footer p {
     background-color: var(--color-primary);
     color: white;
     min-width: 120px;
-    flex-shrink: 0; /* OPDATERET: Forhindrer knappen i at blive for lille */
+    flex-shrink: 0;
 }
+#accept-cookies-button:hover { background-color: var(--color-primary-hover); }
 
-#accept-cookies-button:hover {
-    background-color: var(--color-primary-hover);
-}
-
-/* Justering for større skærme */
 @media (min-width: 600px) {
     #cookie-consent-banner {
         flex-direction: row;
         justify-content: space-between;
-        align-items: center; /* OPDATERET: For bedre vertikal justering */
+        align-items: center;
         text-align: left;
-        /* OPDATERET: Juster padding for at give mere plads i højre side ift. scrollbar */
-        /* Top, Right, Bottom, Left */
         padding: 15px 35px 15px 25px;
     }
-
-    #cookie-consent-banner p {
-        max-width: none; /* OPDATERET: Fjern max-width, da flex vil håndtere det */
-        flex-grow: 1;    /* OPDATERET: Teksten tager den nødvendige plads */
-        margin-right: 20px; /* OPDATERET: Afstand mellem tekst og knap */
-    }
-    /* #accept-cookies-button har allerede flex-shrink: 0 fra den generelle regel ovenfor */
+    #cookie-consent-banner p { max-width: none; flex-grow: 1; margin-right: 20px; }
 }
-/* ==================== Cookie Consent Banner Styling SLUT ===================== */

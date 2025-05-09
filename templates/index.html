@@ -10,14 +10,14 @@
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-
-      // OPDATERET: Tilføjet {'send_page_view': false} for at vente på samtykke
       gtag('config', 'G-M319LP9Z6P', { 'send_page_view': false });
     </script>
 </head>
 <body>
-
     <header>
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Read Me A Story Logo" id="app-logo">
+        </div>
         <div class="user-status">
             {% if current_user.is_authenticated %}
                 <a href="{{ url_for('logout') }}" class="button-logout utility-button">Log ud</a>
@@ -25,9 +25,6 @@
                 <a href="{{ url_for('google_login') }}" class="button-login utility-button">Login med Google</a>
             {% endif %}
         </div>
-        <h1>Read Me A Story (BETA)</h1>
-        <p>Sidst opdateret: 2. maj 2025</p>
-        <p>Skab jeres helt egen, unikke historier med jeres børn!</p>
     </header>
 
     <main>
@@ -37,7 +34,6 @@
                     {% for category, message in messages %}
                         <div class="flash-message flash-{{ category }}">
                             {{ message }}
-                            {# Disclaimer KUN til logout beskeden ('info' kategori) #}
                             {% if category == 'info' and 'logget ud' in message %}
                                 <p class="flash-disclaimer">(Bemærk: Dit navn kan stadig være synligt i toppen indtil næste sideindlæsning.)</p>
                             {% endif %}
@@ -49,7 +45,7 @@
 
         <section id="generator">
             <h2>Byg jeres historie</h2>
-             <p>(Det er ikke nødvendigt at udfylde alle felterne.)</p>
+            <p>(Det er ikke nødvendigt at udfylde alle felterne.)</p>
 
             <div class="input-category">
                 <label>Hvem skal historien læses for?</label>
@@ -91,7 +87,7 @@
                 <label>Hvor skal historien foregå?</label>
                 <div id="sted-container">
                      <div class="input-group">
-                        <input type="text" name="sted" placeholder="f.eks. i en kagebutik, på månen">
+                        <input type="text" name="sted" id="sted-input-1" placeholder="f.eks. i en kagebutik, på månen">
                         <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
                      </div>
                 </div>
@@ -102,7 +98,7 @@
                 <label>Ting, hændelser eller morale?</label>
                 <div id="plot-container">
                     <div class="input-group">
-                        <input type="text" name="plot" placeholder="f.eks. en magisk fjer, 'at dele er godt'">
+                        <input type="text" name="plot" id="plot-input-1" placeholder="f.eks. en magisk fjer, 'at dele er godt'">
                         <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
                     </div>
                 </div>
@@ -113,7 +109,7 @@
                 <label for="negative-prompt-input">Ting der IKKE skal med i historien:</label>
                 <div class="input-group">
                      <textarea id="negative-prompt-input" name="negative_prompt" rows="3" placeholder="f.eks. 'ingen edderkopper', 'undgå monstre', 'ikke noget om at falde' (adskil med komma eller linjeskift)"></textarea>
-                     </div>
+                </div>
             </div>
 
             <div class="input-category">
@@ -140,7 +136,7 @@
                 </select>
             </div>
 
-            <div class="input-category checkbox-group hidden"> {/* */ }
+            <div class="input-category checkbox-group hidden">
                 <input type="checkbox" id="interactive-checkbox" name="interactive">
                 <label for="interactive-checkbox">Gør historien til et inddragende eventyr (med valgmuligheder)?</label>
             </div>
@@ -155,7 +151,6 @@
                 </button>
             </div>
             <button id="generate-button">Skab Historie</button>
-
         </section>
 
         <section id="historie-output">
@@ -173,7 +168,15 @@
                 </div>
             </div>
             <div id="story-display"></div>
-            <button id="reset-button" class="utility-button" style="display: none;">Prøv Igen</button>
+
+            <div id="story-share-buttons" class="hidden">
+                <button type="button" id="share-story-facebook-button" class="utility-button">Del denne historie på Facebook</button>
+                <button type="button" id="copy-story-button" class="utility-button">Kopier historie til deling</button>
+                {# === "Prøv Igen" knappen er flyttet hertil === #}
+                <button id="reset-button" class="utility-button" style="display: none;">Prøv Igen</button>
+            </div>
+
+            <button id="reset-button" class="utility-button" style="display: none; margin-top: 15px;">Prøv Igen</button>
         </section>
 
         <section id="feedback-section">
@@ -190,13 +193,24 @@
     </main>
 
     <div id="cookie-consent-banner" class="hidden">
-        <p>Denne side bruger cookies til at forbedre din oplevelse og til analyseformål (Google Analytics). Ved at klikke "Accepter" giver du samtykke til brugen af disse cookies. Læs mere i vores <a href="/privacy-policy">privatlivspolitik</a>.</p>
+        <p>Denne side bruger cookies til at forbedre din oplevelse og til analyseformål (Google Analytics). Ved at klikke "Accepter" giver du samtykke til brugen af disse cookies. Læs mere i vores <a href="{{ url_for('privacy_policy') }}">privatlivspolitik</a>.</p>
         <button id="accept-cookies-button" class="utility-button">Accepter</button>
-        </div>
+    </div>
+
     <footer>
         <hr>
-        <p>© Read Me A Story 2025 - Historier skabt med AI.</p>
-        <p><i>Forældreopsyn anbefales altid under læsning. ;)</i></p>
+        <div class="footer-content">
+            <div class="footer-info">
+                <p>© Read Me A Story 2025 - Historier skabt med AI.</p>
+                <p><i>Forældreopsyn anbefales altid under læsning. ;)</i></p>
+                <p><a href="{{ url_for('privacy_policy') }}" class="footer-link">Privatlivs- og Cookiepolitik</a></p>
+            </div>
+            <div class="footer-social">
+                <p>Følg & Del Appen:</p>
+                <a href="https://www.facebook.com/profile.php?id=61576301092618" target="_blank" rel="noopener noreferrer" class="social-link">Find os på Facebook</a>
+                <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ request.url_root.strip('/') | urlencode }}" target="_blank" rel="noopener noreferrer" class="social-link">Del på LinkedIn</a>
+            </div>
+        </div>
     </footer>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
