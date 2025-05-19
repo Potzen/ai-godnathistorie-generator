@@ -10,6 +10,7 @@
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
+      // Konfigurer gtag til ikke at sende page_view automatisk, da vi håndterer det efter cookie samtykke
       gtag('config', 'G-M319LP9Z6P', { 'send_page_view': false });
     </script>
 </head>
@@ -105,10 +106,9 @@
                  <button type="button" class="add-button" data-container="plot-container" data-placeholder="f.eks. en hemmelig dør, 'ærlighed varer længst'" data-name="plot">+ Tilføj ting/morale</button>
             </div>
 
-             <div class="input-category">
+            <div class="input-category">
                 <label for="negative-prompt-input">Ting der IKKE skal med i historien:</label>
-                <div class="input-group">
-                     <textarea id="negative-prompt-input" name="negative_prompt" rows="3" placeholder="f.eks. 'ingen edderkopper', 'undgå monstre', 'ikke noget om at falde' (adskil med komma eller linjeskift)"></textarea>
+                <div class="input-group"> <textarea id="negative-prompt-input" name="negative_prompt" rows="3" placeholder="f.eks. 'ingen edderkopper', 'undgå monstre', 'ikke noget om at falde' (adskil med komma eller linjeskift)"></textarea>
                 </div>
             </div>
 
@@ -149,13 +149,18 @@
                         {% if not current_user.is_authenticated %}disabled title="Login for at aktivere funktionen"{% endif %}>
                     Læs Historien Højt
                 </button>
+                <button type="button"
+                        id="generate-image-button"
+                        class="utility-button image-button"
+                        disabled> Generer Billede
+                </button>
             </div>
             <button id="generate-button">Skab Historie</button>
         </section>
 
         <section id="historie-output">
             <div class="historie-header-controls">
-                <h2>Jeres historie</h2>
+                <h2 id="story-section-heading">Jeres historie</h2>
                 <div class="audio-controls-container">
                     <div id="audio-loading" class="hidden">Genererer lyd, vent venligst... <span class="spinner"></span></div>
                     <div id="audio-error" class="feedback-status error"></div>
@@ -172,13 +177,35 @@
             <div id="story-share-buttons" class="hidden">
                 <button type="button" id="share-story-facebook-button" class="utility-button">Del denne historie på Facebook</button>
                 <button type="button" id="copy-story-button" class="utility-button">Kopier historie til deling</button>
-                {# === "Prøv Igen" knappen er flyttet hertil === #}
-                <button id="reset-button" class="utility-button" style="display: none;">Prøv Igen</button>
+                <button id="reset-button" class="utility-button" style="display: none;">Prøv Igen</button> {# Denne er flyttet ind her for bedre layout kontrol #}
             </div>
-
-            <button id="reset-button" class="utility-button" style="display: none; margin-top: 15px;">Prøv Igen</button>
+            </section>
+        <section id="billede-til-historien-sektion" class="hidden">
+            <h2>Billede til Historien</h2>
+            <div id="image-loading-indicator" class="hidden" style="text-align: center; margin-bottom: 15px;">
+                Genererer billede, vent venligst... <span class="spinner"></span>
+            </div>
+            <div id="generated-image-container" style="text-align: center;">
+                <img id="story-image-display" src="#" alt="Genereret billede til historien" class="hidden" style="max-width: 100%; max-height: 500px; height: auto; border-radius: var(--border-radius); margin-top: 10px; border: 1px solid var(--border-color);">
+            </div>
+            <div id="image-generation-error" class="feedback-status error" style="margin-top: 15px; text-align: center;"></div>
         </section>
 
+        <section id="sangtekster-sektion">
+            <h2>Godnatsange</h2>
+            <div class="input-category">
+                <label for="sang-dropdown">Vælg en sang:</label>
+                <select name="sang-valg" id="sang-dropdown">
+                    <option value="">-- Vælg en sang --</option>
+                    </select>
+            </div>
+            <div class="input-category">
+                <h3 id="sangtekst-titel" style="margin-bottom: 10px; color: var(--color-primary); font-weight: 500;">Sangtekst:</h3>
+                <div id="sangtekst-visning" style="background-color: #f9f9f9; padding: 15px; border-radius: var(--border-radius); border: 1px solid var(--border-color); min-height: 80px; white-space: pre-wrap;">
+                    Vælg en sang fra listen ovenfor for at se teksten her.
+                </div>
+            </div>
+        </section>
         <section id="feedback-section">
              <button type="button" id="toggle-feedback-button" class="utility-button">Giv Feedback / Skjul Feedback</button>
              <div id="feedback-embed-container" class="hidden">
