@@ -15,7 +15,10 @@ __pycache__/
 *.log
 
 # Downloadede nøgler (Hvis du gemmer en .json nøgle lokalt)
-*.json
+# *.json
+
+# Downloadede nøgler (Service Account Keys etc.)
+gen-lang-client-0269317733-c9b35424f793.json
 
 # macOS specific
 .DS_Store
