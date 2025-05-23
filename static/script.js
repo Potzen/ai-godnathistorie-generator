@@ -22,10 +22,6 @@ function trackGAEvent(action, category, label, value) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOMContentLoaded event fired. Initializing Read Me A Story script.");
-
-
     // === Hent referencer til HTML elementer ===
     // --- Historie Generator Elementer ---
     const generateButton = document.getElementById('generate-button');
@@ -857,4 +853,5 @@ async function handleGenerateImageFromStoryClick() { // Bemærk navnet
 
     console.log("Script loaded and all initial event listeners attached.");
 
-}); // Slut på DOMContentLoaded listener
+});
+// Slut på DOMContentLoaded listener

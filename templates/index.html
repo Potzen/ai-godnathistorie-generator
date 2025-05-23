@@ -21,12 +21,12 @@
         </div>
         <div class="user-status">
             {% if current_user.is_authenticated %}
-                <a href="{{ url_for('logout') }}" class="button-logout utility-button">Log ud</a>
+                <a href="{{ url_for('auth.logout') }}" class="button-logout utility-button">Log ud</a>
             {% else %}
-                <a href="{{ url_for('google_login') }}" class="button-login utility-button">Login med Google</a>
+                <a href="{{ url_for('auth.google_login') }}" class="button-login utility-button">Login med Google</a>
             {% endif %}
         </div>
-    </header>
+</header>
 
     <main>
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -165,7 +165,7 @@
                     <div id="audio-loading" class="hidden">Genererer lyd, vent venligst... <span class="spinner"></span></div>
                     <div id="audio-error" class="feedback-status error"></div>
                     <div class="login-prompt hidden" id="login-prompt-audio">
-                         <em>Du skal være <a href="{{ url_for('google_login') }}">logget ind</a> for at få læst historien højt.</em>
+                        <em>Du skal være <a href="{{ url_for('auth.google_login') }}">logget ind</a> for at få læst historien højt.</em> </div>
                     </div>
                     <audio id="audio-player" controls class="audio-player-style hidden">
                         Din browser understøtter ikke lyd-elementet.
@@ -220,17 +220,17 @@
     </main>
 
     <div id="cookie-consent-banner" class="hidden">
-        <p>Denne side bruger cookies til at forbedre din oplevelse og til analyseformål (Google Analytics). Ved at klikke "Accepter" giver du samtykke til brugen af disse cookies. Læs mere i vores <a href="{{ url_for('privacy_policy') }}">privatlivspolitik</a>.</p>
+        <p>Denne side bruger cookies til at forbedre din oplevelse og til analyseformål (Google Analytics). Ved at klikke "Accepter" giver du samtykke til brugen af disse cookies. Læs mere i vores <a href="{{ url_for('main.privacy_policy') }}">privatlivspolitik</a>.</p> ```
         <button id="accept-cookies-button" class="utility-button">Accepter</button>
     </div>
 
     <footer>
         <hr>
         <div class="footer-content">
-            <div class="footer-info">
+        <div class="footer-info">
                 <p>© Read Me A Story 2025 - Historier skabt med AI.</p>
                 <p><i>Forældreopsyn anbefales altid under læsning. ;)</i></p>
-                <p><a href="{{ url_for('privacy_policy') }}" class="footer-link">Privatlivs- og Cookiepolitik</a></p>
+                <p><a href="{{ url_for('main.privacy_policy') }}" class="footer-link">Privatlivs- og Cookiepolitik</a></p> </div>
             </div>
             <div class="footer-social">
                 <p>Følg & Del Appen:</p>

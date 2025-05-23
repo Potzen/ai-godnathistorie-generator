@@ -1,123 +1,182 @@
+# Fil: app.py
+
+# -----------------------------------------------------------------------------
+# DEL 1: IMPORTS & GLOBALE UINITIALISEREDE UDVIDELSER
+# -----------------------------------------------------------------------------
 import base64
-# Vertex AI imports
-from google.cloud import aiplatform  # Til aiplatform.init()
-import vertexai
-from vertexai.preview.vision_models import ImageGenerationModel
-import time  # Tilføjet for genforsøg-pause
-# === Importer nødvendige biblioteker ===
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash, Response
 import os
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
-# *** Database og Login Imports ***
+import time
+import secrets # Bruges af config.py til default SECRET_KEY
+import traceback
+
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash, Response
+# Herunder er den vigtige linje for Flask-Login:
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
-# *** Google OAuth Imports ***
 from authlib.integrations.flask_client import OAuth
-# *** NYT: ElevenLabs Import ***
+
+# Importer fra dine egne moduler
+from config import Config
+# Blueprints importeres inde i create_app() for at undgå cirkulære imports.
+
+# Google / AI Biblioteker
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from google.cloud import aiplatform
+import vertexai
+# Sørg for at denne import er den korrekte for den Vertex AI model du anvender for billedgenerering
+from vertexai.preview.vision_models import ImageGenerationModel
 from elevenlabs.client import ElevenLabs
 from elevenlabs import Voice
-# *** ------------------------- ***
-import traceback
-import secrets
 
+# Din inspektionsblok kan forblive her, da den kører uafhængigt ved modul-load
 try:
     print("--- Inspicerer vertexai.language_models ---")
-    import vertexai.language_models
-
+    import vertexai.language_models # Denne er kun til inspektion
     print(f"Attributter i vertexai.language_models: {dir(vertexai.language_models)}")
 except ImportError as ie:
     print(f"Kunne ikke importere vertexai.language_models for inspektion: {ie}")
 except Exception as e_inspect:
     print(f"Anden fejl under inspektion: {e_inspect}")
 
-# === Konfiguration af API Nøgler og Hemmeligheder ===
-google_api_key = os.getenv("GOOGLE_API_KEY")
-GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
-GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
-ELEVENLABS_API_KEY = os.getenv('ELEVENLABS_API_KEY')
+# Initialiser udvidelser globalt (uden app-instans)
+db = SQLAlchemy()
+login_manager = LoginManager() # LoginManager er nu defineret pga. importen ovenfor
+oauth = OAuth()
+elevenlabs_client = None # Initialiseres i create_app
 
-if not google_api_key:
-    raise ValueError(
-        "Ingen GOOGLE_API_KEY fundet. Sæt den via WSGI fil (Plan B) eller Environment Variables på Web-fanen.")
-else:
-    genai.configure(api_key=google_api_key)
-    print("Google AI API Key configured successfully.")
+# ... resten af din app.py (DEL 2, DEL 3, DEL 4) ...
+# -----------------------------------------------------------------------------
+# DEL 2: APPLICATION FACTORY FUNKTION (create_app)
+# -----------------------------------------------------------------------------
+def create_app(config_class=Config): # <--- HER DEFINERES create_app FUNKTIONEN
+    """
+    Application Factory funktion til at oprette og konfigurere Flask app'en.
+    """
+    app = Flask(__name__)
+    app.config.from_object(config_class)
 
-if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
-    print("ADVARSEL: GOOGLE_CLIENT_ID eller GOOGLE_CLIENT_SECRET mangler i miljøet!")
-
-elevenlabs_client = None
-if not ELEVENLABS_API_KEY:
-    print("ADVARSEL: ELEVENLABS_API_KEY mangler! Oplæsning vil ikke virke.")
-else:
+    # --- Initialiser API klienter og valider konfiguration ---
     try:
-        elevenlabs_client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
-        print("ElevenLabs Client Initialized.")
-    except Exception as e:
-        print(f"FEJL ved initialisering af ElevenLabs client: {e}")
-        print(traceback.format_exc())
+        config_class.validate_critical_config()
+        app.logger.info("Kritiske konfigurationsvariabler er til stede.")
+    except ValueError as e:
+        app.logger.error(f"FEJL: Manglende kritiske konfigurationsvariabler: {e}")
+        # Overvej at håndtere dette, f.eks. ved at stoppe appen.
 
-# === Konfiguration for Vertex AI ===
-GOOGLE_CLOUD_PROJECT_ID = os.getenv('GOOGLE_CLOUD_PROJECT_ID')
-VERTEX_AI_REGION = os.getenv('VERTEX_AI_REGION', 'us-central1')
-if GOOGLE_CLOUD_PROJECT_ID:  # Kun initialiser hvis ID er sat
-    try:
-        aiplatform.init(project=GOOGLE_CLOUD_PROJECT_ID, location=VERTEX_AI_REGION)
-        vertexai.init(project=GOOGLE_CLOUD_PROJECT_ID, location=VERTEX_AI_REGION)
+    # Google Generative AI (Gemini)
+    if app.config.get('GOOGLE_API_KEY'):
+        genai.configure(api_key=app.config['GOOGLE_API_KEY'])
+        app.logger.info("Google AI API Key konfigureret succesfuldt via app.config.")
+    else:
+        app.logger.warning("ADVARSEL: GOOGLE_API_KEY mangler i app.config! Gemini vil ikke virke.")
+
+    # ElevenLabs Client
+    global elevenlabs_client
+    if app.config.get('ELEVENLABS_API_KEY'):
+        try:
+            elevenlabs_client = ElevenLabs(api_key=app.config['ELEVENLABS_API_KEY'])
+            app.logger.info("ElevenLabs Client initialiseret succesfuldt via app.config.")
+        except Exception as e:
+            app.logger.error(f"FEJL ved initialisering af ElevenLabs client: {e}\n{traceback.format_exc()}")
+    else:
+        app.logger.warning("ADVARSEL: ELEVENLABS_API_KEY mangler i app.config! Oplæsning vil ikke virke.")
+
+    # Vertex AI
+    if app.config.get('GOOGLE_CLOUD_PROJECT_ID'):
+        try:
+            if app.config.get('GOOGLE_APPLICATION_CREDENTIALS'):
+                app.logger.info(f"INFO: GOOGLE_APPLICATION_CREDENTIALS er sat i config til: {app.config['GOOGLE_APPLICATION_CREDENTIALS']}")
+            else:
+                app.logger.info("INFO: GOOGLE_APPLICATION_CREDENTIALS forventes sat i miljøet.")
+            aiplatform.init(project=app.config['GOOGLE_CLOUD_PROJECT_ID'], location=app.config['VERTEX_AI_REGION'])
+            vertexai.init(project=app.config['GOOGLE_CLOUD_PROJECT_ID'], location=app.config['VERTEX_AI_REGION'])
+            app.logger.info(
+                f"Vertex AI initialiseret via app.config. Projekt: {app.config['GOOGLE_CLOUD_PROJECT_ID']}, Region: {app.config['VERTEX_AI_REGION']}")
+        except Exception as e:
+            app.logger.error(f"FEJL ved initialisering af Vertex AI: {e}\n{traceback.format_exc()}")
+    else:
+        app.logger.warning("ADVARSEL: GOOGLE_CLOUD_PROJECT_ID mangler i app.config! Vertex AI kald vil fejle.")
+
+    # Opret 'instance' mappen hvis den ikke eksisterer
+    if not os.path.exists(app.instance_path):
+        try:
+            os.makedirs(app.instance_path)
+            app.logger.info(f"Oprettet instance mappe: {app.instance_path}")
+        except OSError as e:
+            app.logger.error(f"Fejl ved oprettelse af instance mappe {app.instance_path}: {e}")
+
+    # --- Initialiser Flask Udvidelser med appen ---
+    db.init_app(app)
+    login_manager.init_app(app)
+    oauth.init_app(app)
+
+    login_manager.login_view = 'auth.google_login' # Vil pege på auth blueprint, når det er oprettet
+    login_manager.login_message = "Log venligst ind for at bruge denne funktion."
+    login_manager.login_message_category = "info"
+
+    print("DEBUG: Tjekker GOOGLE_CLIENT_ID og GOOGLE_CLIENT_SECRET...")  # <--- NY PRINT
+    client_id_found = app.config.get('GOOGLE_CLIENT_ID')
+    client_secret_found = app.config.get('GOOGLE_CLIENT_SECRET')
+    print(
+        f"DEBUG: GOOGLE_CLIENT_ID fundet: {bool(client_id_found)}, GOOGLE_CLIENT_SECRET fundet: {bool(client_secret_found)}")  # <--- NY PRINT
+
+    if client_id_found and client_secret_found:
+        oauth.register(
+            name='google',
+            server_metadata_url=app.config.get("GOOGLE_DISCOVERY_URL"),
+            client_kwargs={'scope': 'openid email profile'}
+        )
+        print("PRINT-DEBUG: OAuth Google provider registreret succesfuldt via app.config.")  # <--- ÆNDRET TIL PRINT
+    else:
         print(
-            f"Vertex AI Initialized (aiplatform & vertexai). Project: {GOOGLE_CLOUD_PROJECT_ID}, Region: {VERTEX_AI_REGION}")
-    except Exception as e:
-        print(f"FEJL ved initialisering af Vertex AI: {e}")
-        print(traceback.format_exc())
-else:
-    print("ADVARSEL: GOOGLE_CLOUD_PROJECT_ID mangler i miljøet! Vertex AI kald (billedgenerering) vil fejle.")
+            "PRINT-DEBUG: OAuth Google provider IKKE registreret pga. manglende nøgler i app.config.")  # <--- ÆNDRET TIL PRINT
+        # For yderligere debug:
+        if not client_id_found:
+            print("PRINT-DEBUG: GOOGLE_CLIENT_ID mangler eller er tom.")
+        if not client_secret_found:
+            print("PRINT-DEBUG: GOOGLE_CLIENT_SECRET mangler eller er tom.")
 
-# === Opret Flask App ===
-app = Flask(__name__)
+    # --- Importer og Registrer Blueprints ---
+    from routes.main_routes import main_bp
+    # Senere: from routes.story_routes import story_bp
 
-# === App Konfiguration ===
-app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(24))
-print(f"Using SECRET_KEY (length): {len(app.config['SECRET_KEY'])}")
+    if 'main' not in app.blueprints:
+        app.register_blueprint(main_bp)
+        app.logger.info("Blueprint 'main_bp' registreret.")
+    else:
+        app.logger.info("Blueprint 'main_bp' var allerede registreret (undlod gen-registrering).")
 
-basedir = os.path.abspath(os.path.dirname(__file__))
-instance_path = os.path.join(basedir, 'instance')
-if not os.path.exists(instance_path):
-    try:
-        os.makedirs(instance_path)
-        print(f"Created directory: {instance_path}")
-    except OSError as e:
-        print(f"Error creating instance directory: {e}")
-db_path = os.path.join(instance_path, 'app.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    from routes.auth_routes import auth_bp
+    if 'auth' not in app.blueprints:  # Tjek om auth blueprint allerede er registreret
+        app.register_blueprint(auth_bp, url_prefix='/auth')
+        app.logger.info("Blueprint 'auth_bp' registreret med prefix /auth.")
+    else:
+        app.logger.info("Blueprint 'auth_bp' var allerede registreret.")
 
-app.config['GOOGLE_CLIENT_ID'] = GOOGLE_CLIENT_ID
-app.config['GOOGLE_CLIENT_SECRET'] = GOOGLE_CLIENT_SECRET
-app.config['GOOGLE_DISCOVERY_URL'] = "https://accounts.google.com/.well-known/openid-configuration"
+    # app.register_blueprint(story_bp) # Når story_bp er klar
 
-# === Initialiser Udvidelser ===
-db = SQLAlchemy(app)
-login_manager = LoginManager(app)
-login_manager.login_view = 'google_login'
-login_manager.login_message = "Log venligst ind for at bruge denne funktion."
-login_manager.login_message_category = "info"
+    # --- Definer User Loader ---
+    @login_manager.user_loader
+    def load_user(user_id):
+        # User modellen defineres globalt længere nede i denne fil.
+        # Når den flyttes til models.py, skal den importeres her (f.eks. from .models import User)
+        try:
+            user = User.query.get(int(user_id)) # Bruger det globale User-objekt
+            return user
+        except Exception as e:
+            app.logger.error(f"Fejl ved indlæsning af bruger {user_id}: {e}")
+            return None
 
-oauth = OAuth(app)
-if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
-    oauth.register(
-        name='google',
-        client_id=GOOGLE_CLIENT_ID,
-        client_secret=GOOGLE_CLIENT_SECRET,
-        server_metadata_url=app.config.get("GOOGLE_DISCOVERY_URL"),
-        client_kwargs={'scope': 'openid email profile'}
-    )
-    print("OAuth Google provider registered.")
-else:
-    print("OAuth Google provider NOT registered due to missing credentials.")
+    app.logger.info("Flask app oprettelse fuldført.")
+    return app
 
+# -----------------------------------------------------------------------------
+# DEL 3: DATABASE MODEL(LER) & ROUTE DEFINITIONER (MIDLERTIDIGT HER)
+# -----------------------------------------------------------------------------
 
 # === Database Model (User) ===
+# DENNE SKAL SENERE FLYTTES TIL en ny fil, f.eks. models.py
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     google_id = db.Column(db.String(100), unique=True, nullable=False)
@@ -127,38 +186,18 @@ class User(UserMixin, db.Model):
     def __repr__(self):
         return f'<User id={self.id} name={self.name} email={self.email}>'
 
+# === ROUTES DER SKAL FLYTTES TIL BLUEPRINTS ===
+# Disse funktioner skal flyttes til de relevante blueprint-filer (auth_routes.py, story_routes.py).
+# De er her midlertidigt for at vise, hvor de kom fra.
+# Jeg har omdøbt dem til xxx_original_logic for at undgå navnekonflikter, indtil de er flyttet.
+# Og har erstattet 'print()' med 'current_app.logger.info()' etc.
+# samt sikret at 'elevenlabs_client' og config værdier hentes korrekt.
 
-# === User Loader Funktion ===
-@login_manager.user_loader
-def load_user(user_id):
-    try:
-        user = db.session.get(User, int(user_id))
-        return user
-    except Exception as e:
-        print(f"Error loading user {user_id}: {e}")
-        return None
-
-
-# === Routes (URL stier) ===
-@app.route('/')
-def index():
-    print(f"Accessing index route. User authenticated: {current_user.is_authenticated}")
-    return render_template('index.html')
-
-
-@app.route('/privacy-policy')
-def privacy_policy():
-    print("Accessing privacy policy route.")
-    return render_template('privacy_policy.html')
-
-
-# --- Route for historie-generering ('/generate') ---
-@app.route('/generate', methods=['POST'])
-def generate_story():
+def generate_story_original_logic():
     data = request.get_json()
     if not data:
         return jsonify(title="Fejl", story="Ingen data modtaget."), 400
-    print("Modtaget data for /generate:", data)
+    current_app.logger.info(f"Modtaget data for /generate: {data}")
 
     karakterer_data = data.get('karakterer')
     steder_liste = data.get('steder')
@@ -168,7 +207,7 @@ def generate_story():
     listeners = data.get('listeners', [])
     is_interactive = data.get('interactive', False)
     negative_prompt_text = data.get('negative_prompt', '').strip()
-    print(
+    current_app.logger.info(
         f"Valgt længde: {laengde}, Valgt stemning: {mood}, Lyttere: {listeners}, Interaktiv: {is_interactive}, Negativ Prompt: '{negative_prompt_text}'")
 
     karakter_descriptions_for_prompt = []
@@ -188,7 +227,7 @@ def generate_story():
     if plots_liste: valid_plots = [p.strip() for p in plots_liste if p and p.strip()]
     plot_str = ", ".join(valid_plots) if valid_plots else "et uspecificeret eventyr"
 
-    print(f"Input til historie (behandlet): Karakterer='{karakter_str}', Steder='{sted_str}', Plot/Morale='{plot_str}'")
+    current_app.logger.info(f"Input til historie (behandlet): Karakterer='{karakter_str}', Steder='{sted_str}', Plot/Morale='{plot_str}'")
 
     length_instruction = ""
     max_tokens_setting = 1000
@@ -201,8 +240,7 @@ def generate_story():
     else:  # kort
         length_instruction = "Skriv historien i cirka 6-8 korte, sammenhængende afsnit."
         max_tokens_setting = 1500
-
-    print(f"Længde instruktion: {length_instruction}, Max Tokens: {max_tokens_setting}")
+    current_app.logger.info(f"Længde instruktion: {length_instruction}, Max Tokens: {max_tokens_setting}")
 
     mood_instruction_map = {
         'sød': "Historien skal have en **meget sød, hjertevarm og kærlig** stemning.",
@@ -215,20 +253,20 @@ def generate_story():
         'uhyggelig': "Historien skal have en **let uhyggelig, men ikke skræmmende**, stemning, passende for en godnathistorie hvor lidt gys er ok."
     }
     mood_prompt_part = mood_instruction_map.get(mood, "Stemning: Neutral / Blandet.")
-    print(f"Stemnings instruktion (til prompt): {mood_prompt_part}")
+    current_app.logger.info(f"Stemnings instruktion (til prompt): {mood_prompt_part}")
 
     listener_context_instruction = ""
     names_list_for_ending = []
     if listeners:
         listener_descriptions = []
-        ages = []
-        for listener in listeners:
-            name = listener.get('name', '').strip()
-            age_str = listener.get('age', '').strip()
+        # ages = [] # 'ages' blev ikke brugt
+        for listener_item in listeners: 
+            name = listener_item.get('name', '').strip()
+            age_str = listener_item.get('age', '').strip()
             desc = name if name else 'et barn'
             if age_str:
                 desc += f" på {age_str} år"
-                ages.append(age_str)
+                # ages.append(age_str)
             if name:
                 names_list_for_ending.append(name)
             listener_descriptions.append(desc)
@@ -261,408 +299,196 @@ def generate_story():
     prompt_parts.append(
         "FØRST, generer en kort og fængende titel til historien. Skriv KUN titlen på den allerførste linje af dit output. Efter titlen, indsæt ET ENKELT LINJESKIFT (ikke dobbelt), og start derefter selve historien.")
     prompt_parts.append("---")
-
-    if listener_context_instruction:
-        prompt_parts.append(listener_context_instruction)
-
+    if listener_context_instruction: prompt_parts.append(listener_context_instruction)
     prompt_parts.append(f"Længdeønske: {length_instruction}")
     prompt_parts.append(f"Stemning: {mood_prompt_part}")
-
     if karakter_str: prompt_parts.append(f"Hovedperson(er): {karakter_str}")
     if sted_str: prompt_parts.append(f"Sted(er): {sted_str}")
     if plot_str: prompt_parts.append(f"Plot/Elementer/Morale: {plot_str}")
-
-    if is_interactive:
-        interactive_rules = (
-            "REGLER FOR INDDRAGENDE EVENTYR MED EKSPLICITTE VALG-STIER:\n"
-            # ... (din eksisterende logik for interaktive regler) ...
-        )
+    if is_interactive: # Denne variabel var defineret
+        interactive_rules = ("REGLER FOR INDDRAGENDE EVENTYR MED EKSPLICITTE VALG-STIER:\n") # ... (din interaktive logik her) ...
         prompt_parts.append(f"\n{interactive_rules}")
-
     prompt_parts.append("\nGENERELLE REGLER FOR HISTORIEN:")
     prompt_parts.append("- Undgå komplekse sætninger og ord. Sproget skal være letforståeligt for børn.")
     prompt_parts.append("- Inkluder gerne gentagelser, rim eller lydeffekter, hvis det passer til historien.")
     prompt_parts.append("- Sørg for en positiv morale eller et opløftende budskab, hvis det er relevant for plottet.")
     prompt_parts.append("- Undgå vold, upassende temaer eller noget, der kan give mareridt.")
-
-    if negative_prompt_text:
+    if negative_prompt_text: # Denne variabel var defineret
         prompt_parts.append(f"- VIGTIGT: Følgende elementer må IKKE indgå i historien: {negative_prompt_text}")
-
     prompt_parts.append(f"- {ending_instruction}")
     prompt_parts.append("---")
-    prompt_parts.append(
-        "Start outputtet med TITLEN på første linje, efterfulgt af ET ENKELT LINJESKIFT, og derefter selve historien:")
-
+    prompt_parts.append("Start outputtet med TITLEN på første linje, efterfulgt af ET ENKELT LINJESKIFT, og derefter selve historien:")
     prompt = "\n".join(prompt_parts)
-    print(
-        f"--- Sender FULD Prompt til Gemini (Max Tokens: {max_tokens_setting}) ---\n{prompt}\n------------------------------")
+    current_app.logger.info(f"--- Sender FULD Prompt til Gemini (Max Tokens: {max_tokens_setting}) ---\n{prompt}\n------------------------------")
 
     story_title = "Uden Titel"
     actual_story_content = "Der opstod en fejl under historiegenerering."
-
     try:
-        print("Initialiserer Gemini model...")
+        current_app.logger.info("Initialiserer Gemini model...")
         model = genai.GenerativeModel('gemini-1.5-flash-latest')
-        print(f"Bruger model: gemini-1.5-flash-latest")
-
-        print("Sender anmodning til Google Gemini...")
-        response = model.generate_content(
-            prompt,
-            generation_config=generation_config,
-            safety_settings=safety_settings,
-        )
-        print("Svar modtaget fra Google Gemini.")
-
+        current_app.logger.info(f"Bruger model: gemini-1.5-flash-latest")
+        current_app.logger.info("Sender anmodning til Google Gemini...")
+        response = model.generate_content(prompt, generation_config=generation_config, safety_settings=safety_settings)
+        current_app.logger.info("Svar modtaget fra Google Gemini.")
         raw_text_from_gemini = ""
         try:
             raw_text_from_gemini = response.text
             parts = raw_text_from_gemini.split('\n', 1)
             if len(parts) >= 1 and parts[0].strip():
                 story_title = parts[0].strip()
-                if len(parts) > 1 and parts[1].strip():
-                    actual_story_content = parts[1].strip()
+                if len(parts) > 1 and parts[1].strip(): actual_story_content = parts[1].strip()
                 elif not parts[0].strip() and len(parts) > 1 and parts[1].strip():
-                    story_title = "Uden Titel (Genereret)"
-                    actual_story_content = parts[1].strip()
+                    story_title = "Uden Titel (Genereret)"; actual_story_content = parts[1].strip()
                 elif parts[0].strip() and (len(parts) == 1 or not parts[1].strip()):
                     actual_story_content = "Historien mangler efter titlen."
-                    print(f"Kunne kun parse titel, historien mangler. Råtekst: {raw_text_from_gemini[:200]}")
+                    current_app.logger.warning(f"Kunne kun parse titel, historien mangler. Råtekst: {raw_text_from_gemini[:200]}")
                 else:
-                    story_title = "Uden Titel (Parse Fejl)"
-                    actual_story_content = raw_text_from_gemini
-                    print(f"Kunne ikke parse titel og historie optimalt. Råtekst: {raw_text_from_gemini[:200]}")
+                    story_title = "Uden Titel (Parse Fejl)"; actual_story_content = raw_text_from_gemini
+                    current_app.logger.warning(f"Kunne ikke parse titel og historie optimalt. Råtekst: {raw_text_from_gemini[:200]}")
             else:
                 story_title = "Uden Titel (Intet Linjeskift)"
                 actual_story_content = raw_text_from_gemini.strip() if raw_text_from_gemini.strip() else "Modtog tomt svar fra AI."
-                print(f"Ingen linjeskift fundet til at adskille titel. Råtekst: {raw_text_from_gemini[:200]}")
-        except ValueError as e:
-            print(f"Svar blokeret af sikkerhedsfilter eller problem med response.text: {e}")
-            print(
-                f"Prompt Feedback: {response.prompt_feedback if response and hasattr(response, 'prompt_feedback') else 'Ingen prompt feedback tilgængelig.'}")
+                current_app.logger.warning(f"Ingen linjeskift fundet til at adskille titel. Råtekst: {raw_text_from_gemini[:200]}")
+        except ValueError as e: # Safety filter
+            current_app.logger.error(f"Svar blokeret af sikkerhedsfilter eller problem med response.text: {e}")
+            current_app.logger.error(f"Prompt Feedback: {response.prompt_feedback if response and hasattr(response, 'prompt_feedback') else 'Ingen prompt feedback.'}")
             story_title = "Blokeret Indhold"
-            actual_story_content = "Beklager, historien kunne ikke laves, da den eller dele af den blev blokeret af indholdsfiltre. Prøv at justere dine input."
+            actual_story_content = "Beklager, historien kunne ikke laves, da den blev blokeret. Prøv at justere dine input."
         except Exception as e_parse:
-            print(f"Fejl under adgang til response.text eller parsing: {e_parse}")
-            print(traceback.format_exc())
+            current_app.logger.error(f"Fejl under adgang til response.text eller parsing: {e_parse}\n{traceback.format_exc()}")
             story_title = "Parse Fejl"
             actual_story_content = "Der opstod en fejl under behandling af svaret fra AI."
-            if response and response.candidates:
+            if response and response.candidates: # Fallback
                 try:
                     actual_story_content = response.candidates[0].content.parts[0].text
                     parts = actual_story_content.split('\n', 1)
                     if len(parts) >= 1 and parts[0].strip():
                         story_title = parts[0].strip()
-                        actual_story_content = parts[1].strip() if len(parts) > 1 and parts[
-                            1].strip() else "Historien mangler efter titlen."
-                    print("Fallback til parsing fra response.candidates succesfuld (delvist).")
+                        actual_story_content = parts[1].strip() if len(parts) > 1 and parts[1].strip() else "Historien mangler efter titlen (fallback)."
+                    current_app.logger.info("Fallback til parsing fra response.candidates succesfuld (delvist).")
                 except Exception as e_candidate:
-                    print(f"Kunne heller ikke hente indhold fra response.candidates: {e_candidate}")
+                    current_app.logger.error(f"Kunne heller ikke hente indhold fra response.candidates: {e_candidate}")
     except Exception as e_api:
-        print(f"Fejl ved kald til Google Gemini API: {e_api}")
-        print(traceback.format_exc())
+        current_app.logger.error(f"Fejl ved kald til Google Gemini API: {e_api}\n{traceback.format_exc()}")
         story_title = "API Fejl"
-        actual_story_content = f"Beklager, jeg kunne ikke lave en historie lige nu på grund af en teknisk fejl med AI-tjenesten. Prøv venligst igen senere."
+        actual_story_content = f"Beklager, teknisk fejl med AI-tjenesten. Prøv igen senere."
 
     if not isinstance(story_title, str): story_title = "Uden Titel (Intern Fejl)"
     if not isinstance(actual_story_content, str): actual_story_content = "Indhold mangler (Intern Fejl)"
-
-    print(f"Returnerer titel: '{story_title}'")
+    current_app.logger.info(f"Returnerer titel: '{story_title}'")
     return jsonify(title=story_title, story=actual_story_content)
 
 
-# === LOGIN/LOGOUT ROUTES ===
-@app.route('/login')
-def google_login():
-    if 'google' not in oauth._registry:
-        flash("Google login er ikke konfigureret korrekt på serveren.", "error")
-        return redirect(url_for('index'))
-    redirect_uri = url_for('google_authorize', _external=True)
-    print(f"Redirecting to Google for login. Callback URI: {redirect_uri}")
-    return oauth.google.authorize_redirect(redirect_uri)
-
-
-@app.route('/authorize')
-def google_authorize():
-    print("Received callback from Google.")
-    if 'google' not in oauth._registry:
-        flash("Google login er ikke konfigureret korrekt på serveren.", "error")
-        return redirect(url_for('index'))
-    try:
-        token = oauth.google.authorize_access_token()
-        if not token:
-            print("Failed to authorize access token.");
-            flash("Login mislykkedes (token).", "error");
-            return redirect(url_for('index'))
-        print("Access token received. Fetching user info...")
-        user_info = oauth.google.userinfo(token=token)
-        if not user_info:
-            print("Could not fetch user info.");
-            flash("Login mislykkedes (userinfo).", "error");
-            return redirect(url_for('index'))
-
-        print(f"User info received: {user_info}")
-        google_user_id = user_info.get('sub')
-        user_email = user_info.get('email')
-        user_name = user_info.get('name')
-
-        if not google_user_id:
-            print("Google user ID ('sub') not found.");
-            flash("Login mislykkedes (ID).", "error");
-            return redirect(url_for('index'))
-
-        user = User.query.filter_by(google_id=google_user_id).first()
-        if user:
-            print(f"Existing user found: {user}")
-            needs_commit = False
-            if user.name != user_name: user.name = user_name; needs_commit = True
-            if user.email != user_email:
-                existing_email = User.query.filter_by(email=user_email).first()
-                if not existing_email or existing_email.google_id == google_user_id:
-                    user.email = user_email;
-                    needs_commit = True
-                else:
-                    print(f"Warning: Email {user_email} already exists...")
-            if needs_commit:
-                try:
-                    db.session.commit(); print("User info updated.")
-                except Exception as e:
-                    db.session.rollback(); print(f"Error updating user info: {e}")
-        else:
-            print(f"New user detected. Creating user...")
-            user = User(google_id=google_user_id, name=user_name, email=user_email)
-            db.session.add(user)
-            try:
-                db.session.commit(); print(f"New user created: {user}")
-            except Exception as e:
-                db.session.rollback();
-                print(f"Error committing new user: {e}");
-                print(traceback.format_exc())
-                flash("Fejl: Kunne ikke oprette bruger.", "error");
-                return redirect(url_for('index'))
-
-        login_user(user, remember=True)
-        print(f"User {user.id} logged in successfully.")
-        flash(f"Velkommen, {user.name}!", "success")
-        return redirect(url_for('index'))
-
-    except Exception as e:
-        print(f"Error during Google authorization: {e}");
-        print(traceback.format_exc())
-        flash(f"Der opstod en uventet fejl under login: {e}", "error")
-        return redirect(url_for('index'))
-
-
-@app.route('/logout')
-@login_required
-def logout():
-    user_id_before = current_user.id if current_user.is_authenticated else 'anonymous'
-    logout_user()
-    session.clear()
-    print(f"User {user_id_before} logged out.")
-    flash("Du er nu logget ud.", "info")
-    return redirect(url_for('index'))
-
-
-# === *** NY ROUTE: Generer Lyd med ElevenLabs *** ===
-@app.route('/generate_audio', methods=['POST'])
-def generate_audio():
+def generate_audio_original_logic():
+    # Sørg for at hente elevenlabs_client korrekt, da den nu er global
+    global elevenlabs_client
     if not elevenlabs_client:
-        print("ERROR: ElevenLabs client not initialized in generate_audio.")
-        return jsonify({"error": "ElevenLabs client not initialized. Check API key setup."}), 500
-
+        current_app.logger.error("FEJL: ElevenLabs client ikke initialiseret i generate_audio_original_logic.")
+        return jsonify({"error": "ElevenLabs client ikke initialiseret."}), 500
     data = request.get_json()
     story_text = data.get('text')
-
     if not story_text:
-        print("ERROR: No text provided for audio generation.")
-        return jsonify({"error": "No text provided for audio generation."}), 400
-
-    print(f"Received request to generate audio for text starting with: {story_text[:50]}...")
-
+        current_app.logger.error("FEJL: Ingen tekst modtaget for lydgenerering.")
+        return jsonify({"error": "Ingen tekst modtaget."}), 400
+    current_app.logger.info(f"Modtaget anmodning om at generere lyd for tekst: {story_text[:50]}...")
     try:
         voice_id = "gpf7HQVro4L2OVR54kr8"
-        print(f"Requesting audio from ElevenLabs using voice: {voice_id}")
-        audio_stream = elevenlabs_client.generate(
-            text=story_text,
-            voice=Voice(voice_id=voice_id),
-            model='eleven_multilingual_v2'
-        )
-        print("Audio stream received from ElevenLabs.")
+        current_app.logger.info(f"Anmoder om lyd fra ElevenLabs med stemme: {voice_id}")
+        audio_stream = elevenlabs_client.generate(text=story_text, voice=Voice(voice_id=voice_id), model='eleven_multilingual_v2')
+        current_app.logger.info("Lyd-stream modtaget fra ElevenLabs.")
         return Response(audio_stream, mimetype='audio/mpeg')
     except Exception as e:
-        print(f"Error calling ElevenLabs API: {e}")
-        print(traceback.format_exc())
-        return jsonify({"error": f"Fejl ved generering af lyd: {e}"}), 500
+        current_app.logger.error(f"Fejl ved kald til ElevenLabs API: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": f"Fejl ved generering af lyd: {str(e)}"}), 500
 
-
-# === NY ROUTE: Billedgenerering ===
-@app.route('/generate_image_from_story', methods=['POST'])
-def generate_image_from_story():
+def generate_image_from_story_original_logic():
     data = request.get_json()
     if not data or 'story_text' not in data:
         return jsonify({"error": "Mangler 'story_text' i anmodningen."}), 400
-
     story_text = data.get('story_text')
     if not story_text.strip():
         return jsonify({"error": "'story_text' må ikke være tom."}), 400
-
-    print(f"Modtaget anmodning til /generate_image_from_story. Historielængde: {len(story_text)}")
+    current_app.logger.info(f"Modtaget anmodning til /generate_image_from_story. Historielængde: {len(story_text)}")
 
     generated_image_prompt_text = "En illustration af en scene fra historien."
     try:
-        print("Genererer billedprompt med Gemini...")
+        current_app.logger.info("Genererer billedprompt med Gemini...")
         gemini_model_for_prompting = genai.GenerativeModel('gemini-1.5-flash-latest')
+        # Hele din prompt_for_image_prompt er her...
         prompt_for_image_prompt = (
-            f"Opgave: Baseret på følgende danske historie, skal du skrive en **meget specifik og detaljeret visuel prompt på ENGELSK** (ca. 40-70 ord). "
-            f"Denne engelske prompt skal bruges af AI billedgeneratoren Vertex AI Imagen og skal følge Googles bedste praksis for Imagen-prompts.\n\n"
-            f"VIGTIGE INSTRUKTIONER TIL DEN **ENGELSKE** VISUELLE PROMPT, DU (GEMINI) SKAL GENERERE:\n"
-            f"1.  **Hovedmotiv Først (Subject First & Clear):** Start ALTID med en klar **engelsk** beskrivelse af hovedperson(er), dyr eller centrale objekter. Vær bogstavelig for at undgå fejlfortolkning.\n"
-            f"2.  **Handling og Interaktion (Action & Interaction):** Beskriv tydeligt på **engelsk**, hvad subjekt(erne) gør, og hvordan de interagerer.\n"
-            f"3.  **Omgivelser og Baggrund (Setting & Background):** Beskriv Detaljer stedet/baggrunden på **engelsk**. Inkluder vigtige elementer fra historien, der definerer scenen.\n"
-            f"4.  **Billedstil (Image Style - MEGET VIGTIGT - skal ligne en poleret 3D animationsfilm scene):\n"
-            f"    - Den **engelske** prompt skal ALTID afsluttes med en præcis stilbeskrivelse. Oversæt og brug følgende kerneelementer i din **engelske** stilbeskrivelse: "
-            f"'Style: Child-friendly high-quality 3D digital illustration, fairytale-like and imaginative.'\n"
-            f"6.  **Klarhed og Orden (Clarity & Order):** Strukturen i den **engelske** prompt du genererer bør generelt være: Subject(s) -> Action -> Setting/Details -> Style.\n"
-            f"7.  **Undgå (Avoid):** Ingen tekst i billedet.\n\n"
-            f"DANSK HISTORIE (læs denne for at forstå indholdet, som du så skal basere den engelske billedprompt på):\n{story_text[:2000]}\n\n"
-            f"GENERER DEN DETALJEREDE OG SPECIFIKKE **ENGELSKE** VISUELLE PROMPT TIL VERTEX AI IMAGEN NU (følg alle ovenstående instruktioner nøje):"
+             f"Opgave: Baseret på følgende danske historie, skal du skrive en **meget specifik og detaljeret visuel prompt på ENGELSK** (ca. 40-70 ord). "
+             f"Denne engelske prompt skal bruges af AI billedgeneratoren Vertex AI Imagen og skal følge Googles bedste praksis for Imagen-prompts.\n\n"
+             f"VIGTIGE INSTRUKTIONER TIL DEN **ENGELSKE** VISUELLE PROMPT, DU (GEMINI) SKAL GENERERE:\n"
+             f"1.  **Hovedmotiv Først (Subject First & Clear):** Start ALTID med en klar **engelsk** beskrivelse af hovedperson(er), dyr eller centrale objekter. Vær bogstavelig for at undgå fejlfortolkning.\n"
+             f"2.  **Handling og Interaktion (Action & Interaction):** Beskriv tydeligt på **engelsk**, hvad subjekt(erne) gør, og hvordan de interagerer.\n"
+             f"3.  **Omgivelser og Baggrund (Setting & Background):** Beskriv Detaljer stedet/baggrunden på **engelsk**. Inkluder vigtige elementer fra historien, der definerer scenen.\n"
+             f"4.  **Billedstil (Image Style - MEGET VIGTIGT - skal ligne en poleret 3D animationsfilm scene):\n"
+             f"    - Den **engelske** prompt skal ALTID afsluttes med en præcis stilbeskrivelse. Oversæt og brug følgende kerneelementer i din **engelske** stilbeskrivelse: "
+             f"'Style: Child-friendly high-quality 3D digital illustration, fairytale-like and imaginative.'\n"
+             f"6.  **Klarhed og Orden (Clarity & Order):** Strukturen i den **engelske** prompt du genererer bør generelt være: Subject(s) -> Action -> Setting/Details -> Style.\n" # Bemærk: Punkt 5 mangler i din originale prompt-tekst, men det er nok en skrivefejl.
+             f"7.  **Undgå (Avoid):** Ingen tekst i billedet.\n\n"
+             f"DANSK HISTORIE (læs denne for at forstå indholdet, som du så skal basere den engelske billedprompt på):\n{story_text[:2000]}\n\n"
+             f"GENERER DEN DETALJEREDE OG SPECIFIKKE **ENGELSKE** VISUELLE PROMPT TIL VERTEX AI IMAGEN NU (følg alle ovenstående instruktioner nøje):"
         )
         response_gemini = gemini_model_for_prompting.generate_content(prompt_for_image_prompt)
         generated_image_prompt_text = response_gemini.text.strip()
-        print(f"Genereret billedprompt: {generated_image_prompt_text}")
+        current_app.logger.info(f"Genereret billedprompt: {generated_image_prompt_text}")
     except Exception as e_gemini_prompt:
-        print(f"Fejl under generering af billedprompt med Gemini: {e_gemini_prompt}")
-        # Fortsæt med fallback prompten, da billedgenerering stadig kan forsøges
-        # eller returner en fejl her, hvis promptgenerering er kritisk.
-        # For nu fortsætter vi.
+        current_app.logger.error(f"Fejl under generering af billedprompt med Gemini: {e_gemini_prompt}")
 
-    if not GOOGLE_CLOUD_PROJECT_ID:
-        print("FEJL: GOOGLE_CLOUD_PROJECT_ID er ikke sat. Kan ikke kalde Vertex AI.")
-        return jsonify({"error": "Serverkonfigurationsfejl: Projekt ID mangler for billedgenerering."}), 500
+    if not current_app.config.get('GOOGLE_CLOUD_PROJECT_ID'):
+        current_app.logger.error("FEJL: GOOGLE_CLOUD_PROJECT_ID er ikke sat i app.config.")
+        return jsonify({"error": "Serverkonfigurationsfejl: Projekt ID mangler."}), 500
 
-    # Initialiser current_prompt_to_imagen med den oprindeligt genererede prompt
-    # Dette sikrer, at den er defineret, selvom løkken ikke kører eller fejler tidligt.
     current_prompt_to_imagen = generated_image_prompt_text
-
-    # Ydre try-blok for at fange den endelige fejl efter genforsøg
     try:
         max_retries = 2
         for attempt in range(max_retries):
-            # Denne try-blok er for hvert enkelt forsøg
             try:
-                print(f"Forsøg {attempt + 1} på at generere billede med Vertex AI Imagen.")
-                # Sæt/opdater current_prompt_to_imagen for dette forsøg
-                if attempt == 0:
-                    current_prompt_to_imagen = generated_image_prompt_text
-                elif attempt == 1:  # Andet forsøg - modificer prompten
-                    print("Modificerer prompt til andet forsøg...")
-                    prompt_suffix_variation = " (different visual interpretation, focus on a key moment)"
-                    current_prompt_to_imagen = generated_image_prompt_text + prompt_suffix_variation  # Start fra den oprindelige
-                    print(f"Ny modificeret prompt: {current_prompt_to_imagen}")
-
-                model_identifier_imagen3 = "imagen-3.0-generate-002"
-                print(f"Bruger Imagen model: {model_identifier_imagen3} med prompt: {current_prompt_to_imagen}")
-
-                try:
-                    model = ImageGenerationModel.from_pretrained(model_identifier_imagen3)
-                    print(f"Succesfuldt loaded Imagen model: {model_identifier_imagen3}")
-                except Exception as e_load_model:
-                    print(f"FEJL: Kunne ikke loade modellen '{model_identifier_imagen3}'. Fejl: {e_load_model}")
-                    raise ValueError(
-                        f"Kunne ikke initialisere billedgenereringsmodellen: {model_identifier_imagen3}.") from e_load_model
-
-                response_imagen = model.generate_images(
-                    prompt=current_prompt_to_imagen,
-                    number_of_images=1,
-                    guidance_scale=30,
-                )
-
+                current_app.logger.info(f"Forsøg {attempt + 1} med Imagen. Prompt: {current_prompt_to_imagen[:100]}...")
+                if attempt == 1:
+                    current_app.logger.info("Modificerer prompt til andet forsøg...")
+                    current_prompt_to_imagen += " (different visual style, try cartoonish)" # Eksempel på ændring
+                model_identifier = "imagen-3.0-generate-002" # Eller hvad du nu bruger
+                model = ImageGenerationModel.from_pretrained(model_identifier)
+                response_imagen = model.generate_images(prompt=current_prompt_to_imagen, number_of_images=1, guidance_scale=30)
                 if response_imagen and response_imagen.images:
                     image_obj = response_imagen.images[0]
                     if hasattr(image_obj, '_image_bytes') and image_obj._image_bytes:
                         image_bytes = image_obj._image_bytes
                         image_base64 = base64.b64encode(image_bytes).decode('utf-8')
                         image_data_url = f"data:image/png;base64,{image_base64}"
-                        print("Billede genereret succesfuldt og konverteret til data URL.")
-                        return jsonify({
-                            "message": "Billede genereret!",
-                            "image_url": image_data_url,
-                            "image_prompt_used": current_prompt_to_imagen
-                        })
+                        current_app.logger.info("Billede genereret succesfuldt.")
+                        return jsonify({"message": "Billede genereret!", "image_url": image_data_url, "image_prompt_used": current_prompt_to_imagen})
                     else:
-                        print(
-                            f"FEJL: _image_bytes mangler eller er tom i det returnerede billedeobjekt (forsøg {attempt + 1}).")
-                        if attempt == max_retries - 1:
-                            raise ValueError("EMPTY_IMAGE_BYTES_ERROR_AFTER_RETRIES")
+                        current_app.logger.error(f"FEJL: _image_bytes mangler (forsøg {attempt + 1}).")
+                        if attempt == max_retries - 1: raise ValueError("EMPTY_IMAGE_BYTES_ERROR_AFTER_RETRIES")
                 else:
-                    print(
-                        f"FEJL: Vertex AI Imagen returnerede et svar uden en 'images' liste eller en tom 'images' liste (forsøg {attempt + 1}).")
-                    print(f"Streng repræsentation af Fuld Imagen response: {response_imagen}")
-                    if attempt == max_retries - 1:
-                        raise ValueError("EMPTY_IMAGE_LIST_ERROR_AFTER_RETRIES")
-
-                # Pause før næste forsøg, hvis der er flere forsøg tilbage
-                if attempt < max_retries - 1:
-                    print(f"Venter før næste genforsøg...")
-                    time.sleep(1.5)
-
-            # Indre except-blok: Fanger fejl specifikt for dette forsøg
-            except Exception as e_attempt_specific:
-                print(f"Fejl under billedgenereringsforsøg {attempt + 1}: {e_attempt_specific}")
-                # Hvis det er en ikke-genprøvbar fejl, eller sidste forsøg, re-raise fejlen
-                # så den fanges af den ydre 'except Exception as e_vertex:'
-                non_retryable_error_substrings = [
-                    "quota exceeded",
-                    "permission denied",
-                    "billing",
-                    "does not exist or you do not have permission",
-                    "Kunne ikke initialisere billedgenereringsmodellen"
-                ]
-                is_non_retryable = any(sub in str(e_attempt_specific).lower() for sub in non_retryable_error_substrings)
-
-                if is_non_retryable or attempt == max_retries - 1:
-                    print(f"Fejl er ikke-genprøvbar eller sidste forsøg. Re-raiser fejlen.")
-                    raise  # Re-raise den nuværende exception
-
-                # For andre fejl, log og lad løkken fortsætte til næste forsøg
-                print(f"Fortsætter til næste genforsøg efter fejl: {e_attempt_specific}")
-                if attempt < max_retries - 1:  # Sørg for kun at sove hvis der er flere forsøg
-                    time.sleep(1.5)
-
-        # Hvis løkken fuldføres uden at returnere et billede (dvs. alle forsøg resulterede i tomme lister/bytes,
-        # men uden at kaste en fejl, der blev re-raised ovenfor), så er noget galt.
-        # Dette burde ideelt set ikke ske hvis logikken ovenfor korrekt re-raiser på sidste forsøg.
-        print("FEJL: Alle billedgenereringsforsøg mislykkedes uden at returnere et billede.")
+                    current_app.logger.error(f"FEJL: Imagen returnerede ingen billeder (forsøg {attempt + 1}). Respons: {response_imagen}")
+                    if attempt == max_retries - 1: raise ValueError("EMPTY_IMAGE_LIST_ERROR_AFTER_RETRIES")
+                if attempt < max_retries - 1: time.sleep(1.5)
+            except Exception as e_attempt: # Mere generisk for forsøg
+                current_app.logger.error(f"Fejl i billedgenereringsforsøg {attempt + 1}: {e_attempt}")
+                # Non-retryable logic
+                non_retryable = ["quota exceeded", "permission denied", "billing", "does not exist", "Kunne ikke initialisere"]
+                if any(sub in str(e_attempt).lower() for sub in non_retryable) or attempt == max_retries -1:
+                    raise
+                if attempt < max_retries -1: time.sleep(1.5)
         raise ValueError("ALL_RETRIES_FAILED_NO_IMAGE_RETURNED")
-
-
-    # Ydre except-blok: Fanger den endelige fejl efter alle genforsøg, eller ikke-genprøvbare fejl
     except Exception as e_vertex:
-        final_error_message_for_log = f"Endelig fejl under billedgenerering med Vertex AI Imagen: {e_vertex}"
-        print(final_error_message_for_log)
-        print(traceback.format_exc())
-
-        user_facing_error_message = f"Der opstod en uventet fejl under billedgenerering: {str(e_vertex)}"
-
+        current_app.logger.error(f"Endelig fejl under billedgenerering: {e_vertex}\n{traceback.format_exc()}")
+        user_error_msg = f"Uventet fejl: {str(e_vertex)}"
+        # Din brugerfejlhåndtering her...
         if "EMPTY_IMAGE_LIST_ERROR_AFTER_RETRIES" in str(e_vertex) or \
                 "EMPTY_IMAGE_BYTES_ERROR_AFTER_RETRIES" in str(e_vertex) or \
-                "ALL_RETRIES_FAILED_NO_IMAGE_RETURNED" in str(e_vertex):  # Tilføjet ny generel fejl
-            user_facing_error_message = "Billedgeneratoren kunne desværre ikke skabe et billede til denne historie, selv efter flere forsøg. Prøv eventuelt at justere historieinputtet eller prøv igen senere."
-        elif "permission denied" in str(e_vertex).lower() or "billing" in str(e_vertex).lower():
-            user_facing_error_message = "Billedgenerering fejlede pga. et problem med serverens adgangsrettigheder eller faktureringskonto. Kontakt administratoren."
-        elif "quota exceeded" in str(e_vertex).lower():
-            user_facing_error_message = "Billedgenereringskvoten er opbrugt. Prøv igen senere."
-        elif "does not exist or you do not have permission" in str(e_vertex).lower() or \
-                "Kunne ikke initialisere billedgenereringsmodellen" in str(
-            e_vertex).lower():  # Inkluderer model init fejl
-            user_facing_error_message = "Billedmodellen kunne ikke tilgås eller initialiseres korrekt. Kontakt administratoren."
+                "ALL_RETRIES_FAILED_NO_IMAGE_RETURNED" in str(e_vertex):
+            user_error_msg = "Billedgeneratoren kunne ikke skabe et billede. Prøv igen."
 
-        return jsonify({"error": user_facing_error_message, "image_prompt_used": current_prompt_to_imagen}), 500
-
+        return jsonify({"error": user_error_msg, "image_prompt_used": current_prompt_to_imagen}), 500
 
 # === Opret Database Tabeller ===
-def create_tables():
-    with app.app_context():
+def create_tables(target_app): # Modtager app instans
+    with target_app.app_context(): # Bruger den korrekte app context
         print("Checking/Creating database tables...")
         try:
             db.create_all()
@@ -672,7 +498,10 @@ def create_tables():
             print("Database tables checked/created successfully.")
 
 
-# === Start Webserveren ===
+# -----------------------------------------------------------------------------
+# DEL 4: APP KØRSEL
+# -----------------------------------------------------------------------------
 if __name__ == '__main__':
-    create_tables()
-    app.run(debug=True, port=5000)
+    app = create_app()
+    create_tables(app) # Pass app instansen til create_tables
+    app.run(debug=True, port=5000, use_reloader=False) # use_reloader=False tilføjet

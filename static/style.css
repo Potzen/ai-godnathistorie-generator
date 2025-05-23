@@ -81,7 +81,9 @@ header {
 /* Login/Logout Status i Header */
 .user-status {
     font-size: 0.85em;
-    display: none; /* Gør login/logout knapperne usynlige */
+    display: block; /* Eller flex, afhængig af ønsket layout */
+    text-align: right; /* For at justere den til højre, hvis det er ønsket */
+    margin-bottom: 10px; /* Lidt afstand, hvis den skal være over H1 */
 }
 
 .user-status span {
