@@ -46,6 +46,16 @@ class Config:
     # Vi inkluderer den her for fuldstændighedens skyld, men den bruges ikke aktivt til at *sætte* miljøvariablen.
     GOOGLE_APPLICATION_CREDENTIALS = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
 
+    # Liste over godkendte e-mailadresser til login
+    # Tilføj de e-mailadresser, der skal have adgang, her.
+    # VIGTIGT: Sørg for, at e-mailadresser skrives med små bogstaver for at undgå case-sensitivitets problemer.
+    ALLOWED_EMAIL_ADDRESSES = [
+        "philipotzen@gmail.com",
+        "en.anden.godkendt.email@example.com",
+        # Tilføj flere e-mailadresser efter behov
+    ]
+
+
     # Validering (valgfrit men god praksis)
     @staticmethod
     def validate_critical_config():
