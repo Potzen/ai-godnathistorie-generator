@@ -85,7 +85,9 @@ def generate_story_text_from_gemini(full_prompt_string, generation_config_settin
             current_app.logger.error(
                 f"ai_service: Svar blokeret af sikkerhedsfilter eller problem med response.text: {e_safety}")
             current_app.logger.error(
-                f"ai_service: Prompt Feedback: {response.prompt_feedback if response and hasattr(response, 'prompt_feedback') else 'Ingen prompt feedback.'}")
+                f"ai_service: Prompt Feedback: {response.prompt_feedback if hasattr(response, 'prompt_feedback') else 'Ingen prompt feedback.'}")
+            if hasattr(response, 'candidates') and response.candidates:
+                current_app.logger.error(f"ai_service: Blocked Candidates: {response.candidates}")
             story_title = "Blokeret Indhold"
             actual_story_content = "Beklager, historien kunne ikke laves, da den blev blokeret. Prøv at justere dine input."
         except Exception as e_parse:
@@ -217,11 +219,22 @@ def generate_image_with_vertexai(image_prompt_text):
                         f"ai_service: FEJL - _image_bytes mangler på billedeobjekt (forsøg {attempt + 1}).")
                     if attempt == max_retries - 1:
                         raise ValueError("EMPTY_IMAGE_BYTES_ERROR_AFTER_RETRIES")
-            else:
-                current_app.logger.error(
-                    f"ai_service: FEJL - Vertex AI Imagen returnerede ingen billeder (forsøg {attempt + 1}). Respons: {response_imagen}")
-                if attempt == max_retries - 1:
-                    raise ValueError("EMPTY_IMAGE_LIST_ERROR_AFTER_RETRIES")
+                else:  # Håndterer hvis response_imagen er None, eller response_imagen.images er tom/None
+                    error_details = str(response_imagen)  # Start med streng-repræsentation som fallback
+                    if response_imagen and hasattr(response_imagen,
+                                                   'error') and response_imagen.error:  # Tjek at response_imagen ikke er None
+                        error_details += f" | Error Details: {response_imagen.error}"
+                    if response_imagen and hasattr(response_imagen, 'details') and response_imagen.details:
+                        error_details += f" | Response Details Attr: {response_imagen.details}"
+                    if response_imagen and hasattr(response_imagen, 'metadata') and response_imagen.metadata:
+                        error_details += f" | Response Metadata: {response_imagen.metadata}"
+
+                    current_app.logger.error(
+                        f"ai_service: FEJL - Vertex AI Imagen returnerede ingen billeder (forsøg {attempt + 1}). Respons: {error_details}")
+                    if attempt == max_retries - 1:
+                        # Vi kaster stadig en generisk ValueError her, da den primære information er logget.
+                        # Den kaldende funktion (i routes) vil fange dette og returnere en passende brugerfejl.
+                        raise ValueError("EMPTY_IMAGE_LIST_ERROR_AFTER_RETRIES")
 
             if attempt < max_retries - 1:
                 time.sleep(1.5)  # Vent lidt før næste forsøg

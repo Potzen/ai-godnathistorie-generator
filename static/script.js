@@ -1,3 +1,6 @@
+// Fil: static/script.js
+import { generateStoryApi, generateImageApi } from './modules/api_client.js';
+
 // Kør først koden, når hele HTML dokumentet er færdigindlæst og klar
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DOMContentLoaded event fired. Initializing Read Me A Story script.");
@@ -398,16 +401,7 @@ function trackGAEvent(action, category, label, value) {
         // Nulstil evt. billeder her hvis relevant
 
         try {
-            // console.log("Story Generation: Initiating fetch call to /generate...");
-            const response = await fetch('/story/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataToSend) });
-            // console.log("Story Generation: Fetch response received. Status:", response.status);
-
-            if (!response.ok) {
-                 let errorMsg = `Serverfejl (${response.status})`;
-                 try { const errorData = await response.json(); errorMsg = errorData.error || errorData.story || `${errorMsg} ${response.statusText}`; } catch (e) { errorMsg += ` ${response.statusText || await response.text()}`; }
-                 throw new Error(errorMsg);
-            }
-            const result = await response.json();
+            const result = await generateStoryApi(dataToSend); // Kald til den importerede funktion
             // console.log("Story Generation: JSON parsed successfully:", result);
 
             if(storyDisplay) storyDisplay.textContent = result.story || "Modtog en tom historie fra serveren.";
@@ -557,32 +551,9 @@ async function handleGenerateImageFromStoryClick() { // Bemærk navnet
     if (generateImageButton) generateImageButton.disabled = true; // Deaktiver knap under kørsel
 
     try {
-        console.log("Sender historietekst til /generate_image_from_story");
-        const response = await fetch('/story/generate_image_from_story', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ story_text: currentStoryText })
-        });
-
-        // Vi fjerner det specifikke 401 tjek her, da login ikke er påkrævet for nu
-        // if (response.status === 401) {
-        //      throw new Error("Login er påkrævet, eller din session er udløbet. Log venligst ind igen.");
-        // }
-
-        if (!response.ok) { // Håndterer alle andre HTTP fejl (400, 500, etc.)
-            let errorMsg = `Serverfejl (${response.status})`;
-            try {
-                const errorData = await response.json();
-                errorMsg = errorData.error || `${errorMsg} ${response.statusText || 'Ukendt serverfejl'}`;
-            } catch (e) {
-                const textError = await response.text();
-                errorMsg += `. Server respons: ${textError || '(tom respons)'}`;
-            }
-            throw new Error(errorMsg);
-        }
-
-        const result = await response.json();
-        console.log("Svar fra /generate_image_from_story:", result);
+    // Kald den nye API funktion og vent på resultatet
+        const result = await generateImageApi(currentStoryText);
+        // console.log("Image Generation: Result received from generateImageApi:", result); // God til debugging
 
         if (result.image_url) {
             if (storyImageDisplay) {

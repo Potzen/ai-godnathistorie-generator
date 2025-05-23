@@ -140,8 +140,9 @@ def generate_story():
     except Exception as e:
         current_app.logger.error(
             f"story_routes: Fejl ved kald til ai_service.generate_story_text_from_gemini: {e}\n{traceback.format_exc()}")
-        story_title = "Fejl (Rute Service Kald)"
-        actual_story_content = "Der opstod en intern fejl under forsøg på at generere historien via AI-tjenesten."
+        error_message_for_client = "Der opstod en intern serverfejl under forsøg på at generere historien. Prøv venligst igen."
+        # Log den mere detaljerede fejl server-side, men send en generisk besked til klienten
+        return jsonify(title="Fejl ved historiegenerering", error=error_message_for_client), 500
 
     return jsonify(title=story_title, story=actual_story_content)
 
