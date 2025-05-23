@@ -2,6 +2,30 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DOMContentLoaded event fired. Initializing Read Me A Story script.");
 
+// HJÆLPEFUNKTION TIL AT SPORE GOOGLE ANALYTICS HÆNDELSER
+function trackGAEvent(action, category, label, value) {
+    const consentStatus = localStorage.getItem('cookieConsent');
+    if (consentStatus === 'accepted' && typeof gtag === 'function') {
+        // Log til konsollen for at bekræfte, at hændelsen forsøges sendt
+        console.log(`GA Event: Action='${action}', Category='${category}', Label='${label}'` + (value !== undefined ? `, Value=${value}` : ''));
+
+        gtag('event', action, {
+            'event_category': category,
+            'event_label': label,
+            'value': value // 'value' er valgfri og skal være et heltal
+            // 'non_interaction': true // Sæt til true hvis hændelsen ikke skal påvirke afvisningsprocenten
+        });
+    } else if (consentStatus !== 'accepted') {
+        console.log(`GA Event not sent (consent not accepted): Action='${action}', Category='${category}', Label='${label}'`);
+    } else if (typeof gtag !== 'function') {
+        console.warn(`GA Event not sent (gtag function not found): Action='${action}', Category='${category}', Label='${label}'`);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOMContentLoaded event fired. Initializing Read Me A Story script.");
+
+
     // === Hent referencer til HTML elementer ===
     // --- Historie Generator Elementer ---
     const generateButton = document.getElementById('generate-button');
@@ -71,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("DOM references obtained for all sections.");
 
     // === Eksempeldata til Autoudfyld (Historie) ===
-    const exampleListeners = [ { name: "Alma", age: "5" }, { name: "Oscar", age: "7" }, { name: "Sofus", age: "3"}, { name: "Luna", age: "6" }, { name: "Noah", age: "4" }, { name: "Freja", age: "8" }, { name: "Viggo", age: "5" } ];
+    const exampleListeners = [ { name: "Alma", age: "5" }, { name: "Oscar", age: "7" }, { name: "Sofus", age: "3"}, { name: "Mie", age: "6" }, { name: "Noah", age: "4" }, { name: "Freja", age: "8" }, { name: "Viggo", age: "5" } ];
     const exampleCharacters = [ { description: "en drilsk nisse", name: "Pip" }, { description: "en meget søvnig bjørn", name: "" }, { description: "et flyvende tæppe", name: "" }, { description: "en robot der elsker kage", name: "Kaptajn Kiks" }, { description: "en fe der har mistet sin tryllestav", name: "Flora" } ];
     const examplePlaces = [ "i en skov lavet af slik", "på en øde ø med talende papegøjer", "i et omvendt hus hvor alt er på loftet", "på månen hvor ostene gror", "dybt under jorden i en krystalgrotte" ];
     const examplePlots = [ "skulle finde en forsvundet stjerne", "byggede en fantastisk maskine", "holdt en overraskelsesfest", "mødte et dyr de aldrig havde set før", "lærte at trylle med farver", "'at dele er en god ting'", "'man skal være modig'", "'ærlighed varer længst'" ];
@@ -600,7 +624,10 @@ async function handleGenerateImageFromStoryClick() { // Bemærk navnet
         console.log("Reset: Started. Clear LocalStorage for listeners:", clearLocalStorageForListeners);
         if(generatorSection) {
             generatorSection.querySelectorAll('input[type="text"], textarea').forEach(input => {
-                input.value = '';
+                // Tjek om inputtet er inde i listener-containeren
+                if (!input.closest('#listener-container')) {
+                    input.value = ''; // Ryd kun hvis det IKKE er et lytter-input
+                }
             });
         }
         if(interactiveCheckbox) interactiveCheckbox.checked = false;
@@ -613,7 +640,9 @@ async function handleGenerateImageFromStoryClick() { // Bemærk navnet
                 for (let i = groups.length - 1; i > 0; i--) { groups[i].remove(); }
             }
         };
-        removeExtraGroups('listener-container', '.listener-group');
+       if (clearLocalStorageForListeners) { // Kun fjern ekstra lytter-grupper hvis vi laver et "fuldt" reset
+            removeExtraGroups('listener-container', '.listener-group');
+        }
         removeExtraGroups('karakter-container', '.character-group');
         removeExtraGroups('sted-container', '.input-group');
         removeExtraGroups('plot-container', '.input-group');
@@ -790,7 +819,7 @@ async function handleGenerateImageFromStoryClick() { // Bemærk navnet
     // Historie-generator knapper
     if (generateButton) { generateButton.addEventListener('click', handleGenerateClick); } else { console.error("Generate button (#generate-button) not found!"); }
     if (resetButton && storyShareButtonsContainer) { // Sikrer at reset knappen findes i containeren
-        storyShareButtonsContainer.querySelector('#reset-button').addEventListener('click', () => handleResetClick(true));
+        storyShareButtonsContainer.querySelector('#reset-button').addEventListener('click', () => handleResetClick(false));
     } else { console.error("Reset button (inside #story-share-buttons) not found!"); }
 
     if (autofillButton) { autofillButton.addEventListener('click', autofillFields); } else { console.error("Autofill button (#autofill-button) not found!"); }
