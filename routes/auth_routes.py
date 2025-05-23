@@ -41,22 +41,41 @@ def google_login():
 @auth_bp.route('/authorize')
 def google_authorize():
     current_app.logger.info("Received callback from Google.")
-    google_oauth_client = current_app.extensions.get('authlib.integrations.flask_client', {}).get('google')
 
+    # Hent Authlib Flask klient-udvidelsen
+    authlib_flask_extension = current_app.extensions.get('authlib.integrations.flask_client')
+
+    if not authlib_flask_extension:
+        current_app.logger.error("Authlib Flask Client ('authlib.integrations.flask_client') ikke fundet i current_app.extensions i authorize.")
+        flash("Google login er ikke konfigureret korrekt på serveren (authlib klient mangler i authorize).", "error")
+        return redirect(url_for('main.index'))
+
+    try:
+        # Tilgå 'google' klienten som en attribut
+        google_oauth_client = authlib_flask_extension.google
+    except AttributeError:
+        current_app.logger.error("Google OAuth klient ('google') ikke fundet som attribut på authlib_flask_extension i authorize.")
+        flash("Google login er ikke konfigureret korrekt på serveren (klient-attribut mangler i authorize).", "error")
+        return redirect(url_for('main.index'))
+
+    # Ekstra tjek, selvom AttributeError burde fange det.
     if not google_oauth_client:
-        current_app.logger.error("Google OAuth klient ikke fundet via current_app.extensions i authorize.")
-        flash("Google login er ikke konfigureret korrekt på serveren (authorize klient mangler).", "error")
+        current_app.logger.error("Google OAuth klient ikke fundet eller kunne ikke hentes efter attribut-tjek i authorize.")
+        flash("Google login er ikke konfigureret korrekt på serveren (klient mangler efter tjek i authorize).", "error")
         return redirect(url_for('main.index'))
 
     try:
         token = google_oauth_client.authorize_access_token()
+        # ... resten af din funktion fortsætter herfra ...
+        # (Sørg for at resten af din logik, inklusiv email-tjek, er som før)
+
         if not token:
             current_app.logger.warning("Login mislykkedes: Kunne ikke autorisere access token.")
             flash("Login mislykkedes (token).", "error")
             return redirect(url_for('main.index'))
 
         current_app.logger.info("Access token modtaget. Henter brugerinfo...")
-        user_info = google_oauth_client.userinfo(token=token)
+        user_info = google_oauth_client.userinfo(token=token) # Sørg for at userinfo kaldes på google_oauth_client
         if not user_info:
             current_app.logger.warning("Login mislykkedes: Kunne ikke hente brugerinfo.")
             flash("Login mislykkedes (userinfo).", "error")
@@ -64,7 +83,7 @@ def google_authorize():
 
         current_app.logger.info(f"Brugerinfo modtaget: {user_info}")
         google_user_id = user_info.get('sub')
-        user_email_from_google = user_info.get('email') # Gem e-mail fra Google
+        user_email_from_google = user_info.get('email')
         user_name = user_info.get('name')
 
         if not google_user_id:
@@ -72,10 +91,74 @@ def google_authorize():
             flash("Login mislykkedes (ID).", "error")
             return redirect(url_for('main.index'))
 
-        if not user_email_from_google: # Vigtigt at vi har en e-mail at tjekke mod
+        if not user_email_from_google:
             current_app.logger.warning(f"Login mislykkedes: Ingen e-mail modtaget fra Google for bruger {google_user_id}.")
             flash("Login mislykkedes: Kunne ikke hente din e-mailadresse fra Google.", "error")
             return redirect(url_for('main.index'))
+
+        normalized_email_from_google = user_email_from_google.lower()
+        allowed_emails_lower = [email.lower() for email in current_app.config.get('ALLOWED_EMAIL_ADDRESSES', [])]
+
+        if normalized_email_from_google not in allowed_emails_lower:
+            current_app.logger.warning(f"Login forsøg fra ikke-godkendt e-mail: {user_email_from_google} (Google ID: {google_user_id}).")
+            flash("Din e-mailadresse har ikke adgang til denne applikation. Kontakt venligst administratoren.", "error")
+            return redirect(url_for('main.index'))
+
+        user = User.query.filter_by(google_id=google_user_id).first()
+        if user:
+            current_app.logger.info(f"Eksisterende bruger (baseret på Google ID) fundet: {user} for e-mail {normalized_email_from_google}")
+            needs_commit = False
+            if user.name != user_name:
+                user.name = user_name
+                needs_commit = True
+            if user.email and user.email.lower() != normalized_email_from_google: # Tjek om user.email eksisterer
+                conflicting_user_by_email = User.query.filter(User.email.ilike(normalized_email_from_google), User.google_id != google_user_id).first()
+                if not conflicting_user_by_email:
+                    user.email = user_email_from_google
+                    needs_commit = True
+                else:
+                    current_app.logger.warning(f"Bruger {google_user_id}s Google e-mail ({user_email_from_google}) er allerede i brug af en anden bruger ({conflicting_user_by_email.google_id}). E-mail ikke opdateret.")
+            elif not user.email and user_email_from_google: # Hvis brugeren ikke har en email, men Google sender en
+                user.email = user_email_from_google
+                needs_commit = True
+
+
+            if needs_commit:
+                try:
+                    db.session.commit()
+                    current_app.logger.info("Brugerinfo opdateret for eksisterende bruger.")
+                except Exception as e_commit:
+                    db.session.rollback()
+                    current_app.logger.error(f"Fejl ved opdatering af brugerinfo for eksisterende bruger: {e_commit}")
+
+        else:
+            current_app.logger.info(f"Ny bruger (Google ID: {google_user_id}) med godkendt e-mail: {user_email_from_google}. Opretter bruger...")
+            existing_user_by_email = User.query.filter(User.email.ilike(normalized_email_from_google)).first()
+            if existing_user_by_email:
+                current_app.logger.error(f"Godkendt e-mail {user_email_from_google} er allerede i databasen med et andet Google ID ({existing_user_by_email.google_id}) end det nuværende ({google_user_id}).")
+                flash("Der opstod et problem med din konto. Kontakt venligst administratoren (fejlkode: EMAIL_GID_MISMATCH).", "error")
+                return redirect(url_for('main.index'))
+
+            user = User(google_id=google_user_id, name=user_name, email=user_email_from_google)
+            db.session.add(user)
+            try:
+                db.session.commit()
+                current_app.logger.info(f"Ny bruger oprettet: {user}")
+            except Exception as e_commit:
+                db.session.rollback()
+                current_app.logger.error(f"Fejl ved commit af ny bruger: {e_commit}\n{traceback.format_exc()}")
+                flash("Fejl: Kunne ikke oprette din brugerkonto.", "error")
+                return redirect(url_for('main.index'))
+
+        login_user(user, remember=True)
+        current_app.logger.info(f"Bruger {user.id} ({user.name}) logget ind succesfuldt (e-mail godkendt).")
+        flash(f"Velkommen, {user.name}!", "success")
+        return redirect(url_for('main.index'))
+
+    except Exception as e:
+        current_app.logger.error(f"Fejl under Google authorization process: {e}\n{traceback.format_exc()}")
+        flash(f"Uventet fejl under login: {str(e)[:100]}...", "error")
+        return redirect(url_for('main.index'))
 
         # --- NYT: Tjek om e-mailen er på den godkendte liste ---
         # Gør sammenligningen case-insensitive ved at konvertere begge til små bogstaver

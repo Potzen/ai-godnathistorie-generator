@@ -399,7 +399,7 @@ function trackGAEvent(action, category, label, value) {
 
         try {
             // console.log("Story Generation: Initiating fetch call to /generate...");
-            const response = await fetch('/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataToSend) });
+            const response = await fetch('/story/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataToSend) });
             // console.log("Story Generation: Fetch response received. Status:", response.status);
 
             if (!response.ok) {
@@ -558,7 +558,7 @@ async function handleGenerateImageFromStoryClick() { // Bemærk navnet
 
     try {
         console.log("Sender historietekst til /generate_image_from_story");
-        const response = await fetch('/generate_image_from_story', {
+        const response = await fetch('/story/generate_image_from_story', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ story_text: currentStoryText })
