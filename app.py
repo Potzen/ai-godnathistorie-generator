@@ -18,6 +18,7 @@ from authlib.integrations.flask_client import OAuth
 from config import Config
 from extensions import db, login_manager, oauth  # <--- DENNE LINJE ER VIGTIG!
 from models import User
+from services.rag_service import initialize_knowledge_base
 # Blueprints importeres inde i create_app() for at undgå cirkulære imports.
 
 # Google / AI Biblioteker
@@ -57,6 +58,18 @@ def create_app(config_class=Config):  # <--- HER DEFINERES create_app FUNKTIONEN
     """
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    # Konfigurer logging til at vise INFO og DEBUG beskeder i konsollen
+    import logging
+    logging.basicConfig(level=logging.DEBUG)  # Viser DEBUG, INFO, WARNING, ERROR, CRITICAL
+    # Du kan også bruge logging.INFO hvis DEBUG er for meget støj senere.
+    # Hvis du vil have endnu mere kontrol, kan du konfigurere handler for app.logger specifikt:
+    # handler = logging.StreamHandler()
+    # handler.setLevel(logging.DEBUG)
+    # app.logger.addHandler(handler)
+    # app.logger.setLevel(logging.DEBUG) # Sørg for at app.logger også har det rette niveau
+
+    app.logger.info("Flask app logger konfigureret til DEBUG niveau.")  # Test logbesked
 
     # --- Initialiser API klienter og valider konfiguration ---
     try:
@@ -118,6 +131,23 @@ def create_app(config_class=Config):  # <--- HER DEFINERES create_app FUNKTIONEN
     login_manager.login_message = "Log venligst ind for at bruge denne funktion."
     login_manager.login_message_category = "info"
 
+    @login_manager.unauthorized_handler
+    def unauthorized():
+        """
+        Håndterer uautoriserede forsøg på at tilgå beskyttede routes.
+        Returnerer JSON-fejl for API-kald (forventer JSON), ellers redirect.
+        """
+        # Hvis requestet forventer JSON (typisk et API-kald fra JavaScript)
+        if request.accept_mimetypes.accept_json and \
+                not request.accept_mimetypes.accept_html:
+            app.logger.warning(f"Uautoriseret API-kald til: {request.endpoint} fra IP: {request.remote_addr}")
+            return jsonify(error="Login påkrævet for at tilgå denne ressource.",
+                           login_url=url_for('auth.google_login')), 401
+
+        # For almindelige browser-requests, fortsæt med standard omdirigering
+        app.logger.info(f"Uautoriseret browser-kald til: {request.endpoint}. Omdirigerer til login.")
+        return redirect(url_for(login_manager.login_view))
+
     # Her sker registreringen af Google provideren
     print("DEBUG: Tjekker GOOGLE_CLIENT_ID og GOOGLE_CLIENT_SECRET...")
     client_id_found = app.config.get('GOOGLE_CLIENT_ID')
@@ -143,6 +173,7 @@ def create_app(config_class=Config):  # <--- HER DEFINERES create_app FUNKTIONEN
     from routes.main_routes import main_bp
     from routes.auth_routes import auth_bp # Eksisterende
     from routes.story_routes import story_bp
+    from routes.narrative_routes import narrative_bp
 
     if 'main' not in app.blueprints:
         app.register_blueprint(main_bp)
@@ -162,6 +193,12 @@ def create_app(config_class=Config):  # <--- HER DEFINERES create_app FUNKTIONEN
     else:
         app.logger.info("Blueprint 'story_bp' var allerede registreret.")
 
+    if 'narrative' not in app.blueprints:
+        app.register_blueprint(narrative_bp)  # narrative_bp har allerede url_prefix='/narrative' defineret
+        app.logger.info("Blueprint 'narrative_bp' registreret med prefix /narrative.")
+    else:
+        app.logger.info("Blueprint 'narrative_bp' var allerede registreret.")
+
     # Senere: from routes.story_routes import story_bp
     # app.register_blueprint(story_bp)
 
@@ -177,9 +214,19 @@ def create_app(config_class=Config):  # <--- HER DEFINERES create_app FUNKTIONEN
             app.logger.error(f"Fejl ved indlæsning af bruger {user_id}: {e}")
             return None
 
+    # --- Initialiser RAG Videnbase ---
+    with app.app_context():
+        try:
+            initialize_knowledge_base()
+            app.logger.info("RAG Videnbase initialiseret succesfuldt.")
+
+        except Exception as e:
+            # Opdateret fejlbesked til at dække både initialisering OG test
+            app.logger.error(
+                f"FEJL under initialisering eller test af RAG Videnbase: {e}\n{traceback.format_exc()}")
+
     app.logger.info("Flask app oprettelse fuldført.")
     return app
-
 
 # -----------------------------------------------------------------------------
 # DEL 3: DATABASE MODEL(LER) & ROUTE DEFINITIONER (MIDLERTIDIGT HER)

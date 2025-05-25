@@ -1,5 +1,6 @@
 # Fil: services/ai_service.py
 from flask import current_app # For at tilgå logger og config
+from flask_login import current_user
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from vertexai.preview.vision_models import ImageGenerationModel
@@ -8,6 +9,13 @@ import time
 import traceback
 import vertexai
 from prompts.image_prompt_generation_prompt import build_image_prompt_generation_prompt
+from prompts.narrative_generator_prompt import build_narrative_generator_prompt
+from prompts.character_trait_suggestion_prompt import build_character_trait_suggestion_prompt
+import json # Til at parse JSON-svar fra AI
+from prompts.narrative_briefing_prompt import build_narrative_briefing_prompt
+from prompts.narrative_drafting_prompt import build_narrative_drafting_prompt
+from services.rag_service import find_relevant_chunks_v2
+
 
 # Her vil vi senere definere funktioner som:
 # - generate_story_text(prompt_details)
@@ -179,31 +187,23 @@ def generate_image_with_vertexai(image_prompt_text):
 
     current_prompt_to_imagen = image_prompt_text
     image_data_url = None
-    max_retries = 2  # Samme retry-logik som før
+    max_retries = 2
 
     for attempt in range(max_retries):
         try:
             current_app.logger.info(
                 f"ai_service: Imagen forsøg {attempt + 1}/{max_retries}. Prompt: {current_prompt_to_imagen[:100]}...")
-            if attempt == 1:  # Andet forsøg
+            if attempt == 1:
                 current_app.logger.info("ai_service: Modificerer prompt til andet Imagen-forsøg...")
-                # Overvej en mere sofistikeret måde at ændre prompten på, hvis nødvendigt
                 current_prompt_to_imagen += ", impressionistic oil painting"
-                # ", cinematic lighting, detailed, sharp focus, vibrant colors"
-                # ", different composition"
-                # Eller måske en helt anden stil: ", cartoonish, playful"
-                # Eller tilføj negativ prompt: ", negative_prompt='text, blurry, watermark'"
 
-            # Sørg for at ImageGenerationModel er importeret øverst i filen
-            model_identifier = "imagen-3.0-generate-002"  # Eller den model du bruger
+            model_identifier = "imagen-3.0-generate-002"
             model = ImageGenerationModel.from_pretrained(model_identifier)
 
-            # Antal billeder sat til 1, som i din oprindelige kode
             response_imagen = model.generate_images(
                 prompt=current_prompt_to_imagen,
                 number_of_images=1,
-                guidance_scale=30  # Værdi fra din oprindelige kode
-                # Du kan tilføje andre parametre her om nødvendigt, f.eks. aspect_ratio, seed
+                guidance_scale=30
             )
 
             if response_imagen and response_imagen.images:
@@ -214,30 +214,28 @@ def generate_image_with_vertexai(image_prompt_text):
                     image_data_url = f"data:image/png;base64,{image_base64}"
                     current_app.logger.info("ai_service: Billede genereret succesfuldt med Vertex AI.")
                     break  # Afslut loopet, da vi har et billede
-                else:
+                else: # Denne 'else' hører til 'if hasattr(image_obj, '_image_bytes')'
                     current_app.logger.error(
                         f"ai_service: FEJL - _image_bytes mangler på billedeobjekt (forsøg {attempt + 1}).")
                     if attempt == max_retries - 1:
                         raise ValueError("EMPTY_IMAGE_BYTES_ERROR_AFTER_RETRIES")
-                else:  # Håndterer hvis response_imagen er None, eller response_imagen.images er tom/None
-                    error_details = str(response_imagen)  # Start med streng-repræsentation som fallback
-                    if response_imagen and hasattr(response_imagen,
-                                                   'error') and response_imagen.error:  # Tjek at response_imagen ikke er None
-                        error_details += f" | Error Details: {response_imagen.error}"
-                    if response_imagen and hasattr(response_imagen, 'details') and response_imagen.details:
-                        error_details += f" | Response Details Attr: {response_imagen.details}"
-                    if response_imagen and hasattr(response_imagen, 'metadata') and response_imagen.metadata:
-                        error_details += f" | Response Metadata: {response_imagen.metadata}"
+            else:  # Håndterer hvis response_imagen er None, eller response_imagen.images er tom/None
+                error_details = str(response_imagen)
+                if response_imagen and hasattr(response_imagen, 'error') and response_imagen.error:
+                    error_details += f" | Error Details: {response_imagen.error}"
+                if response_imagen and hasattr(response_imagen, 'details') and response_imagen.details:
+                    error_details += f" | Response Details Attr: {response_imagen.details}"
+                if response_imagen and hasattr(response_imagen, 'metadata') and response_imagen.metadata:
+                    error_details += f" | Response Metadata: {response_imagen.metadata}"
 
-                    current_app.logger.error(
-                        f"ai_service: FEJL - Vertex AI Imagen returnerede ingen billeder (forsøg {attempt + 1}). Respons: {error_details}")
-                    if attempt == max_retries - 1:
-                        # Vi kaster stadig en generisk ValueError her, da den primære information er logget.
-                        # Den kaldende funktion (i routes) vil fange dette og returnere en passende brugerfejl.
-                        raise ValueError("EMPTY_IMAGE_LIST_ERROR_AFTER_RETRIES")
+                current_app.logger.error(
+                    f"ai_service: FEJL - Vertex AI Imagen returnerede ingen billeder (forsøg {attempt + 1}). Respons: {error_details}")
+                if attempt == max_retries - 1:
+                    raise ValueError("EMPTY_IMAGE_LIST_ERROR_AFTER_RETRIES")
 
-            if attempt < max_retries - 1:
-                time.sleep(1.5)  # Vent lidt før næste forsøg
+            # Vent lidt før næste forsøg, hvis dette ikke er sidste forsøg, OG vi ikke har et billede endnu
+            if attempt < max_retries - 1 and not image_data_url: # image_data_url vil være None her, hvis 'break' ikke blev ramt
+                time.sleep(1.5)
 
         except Exception as e_attempt:
             current_app.logger.error(
@@ -247,12 +245,484 @@ def generate_image_with_vertexai(image_prompt_text):
             if any(sub.lower() in str(e_attempt).lower() for sub in non_retryable_errors) or attempt == max_retries - 1:
                 current_app.logger.error(
                     f"ai_service: Ikke-genoprettelig fejl eller sidste forsøg fejlet. Stopper billedgenerering.")
-                return None  # Returner None for at signalere fejl
+                return None # Returner None for at signalere fejl
 
+            # Vent også her før et retry, hvis fejlen ikke var "non-retryable" og det ikke er sidste forsøg
             if attempt < max_retries - 1:
-                time.sleep(1.5)  # Vent lidt før næste forsøg
+                time.sleep(1.5)
 
+    # Denne loglinje skal være UDENFOR for-loopet
     if not image_data_url:
         current_app.logger.error("ai_service: Kunne ikke generere billede efter alle forsøg.")
 
     return image_data_url
+
+
+def generate_narrative_story_step1_generator_ai(
+        narrative_focus,
+        child_info,
+        story_elements,
+        desired_outcome=None
+):
+    """
+    Genererer det første rå udkast til en narrativ historie (Trin 1 - Generator-AI).
+
+    Args:
+        narrative_focus (str): Det centrale tema/udfordring.
+        child_info (dict): Information om barnet.
+        story_elements (dict): Standard historieelementer (karakterer, steder, længde, stemning etc.).
+        desired_outcome (str, optional): Forælderens ønskede udgang.
+
+    Returns:
+        tuple: (story_title, actual_story_content)
+               Returnerer ("Fejl Titel (Narrativ Trin 1)", "Fejl Besked") ved fejl.
+    """
+    user_id_for_log = current_app.login_manager._login_disabled if hasattr(current_app,
+                                                                           'login_manager') and current_app.login_manager._login_disabled else (
+        current_user.id if hasattr(current_user, 'id') else 'Ukendt (narrativ)')
+    current_app.logger.info(
+        f"ai_service (Bruger: {user_id_for_log}): Starter Trin 1 - Generator-AI for narrativ historie.")
+    current_app.logger.info(f"Narrativt fokus: {narrative_focus}")
+
+    try:
+        # 1. Byg den specifikke prompt for narrativ Generator-AI
+        prompt_for_narrative_generator = build_narrative_generator_prompt(
+            narrative_focus=narrative_focus,
+            child_info=child_info,
+            story_elements=story_elements,
+            desired_outcome=desired_outcome
+        )
+        # For debugging, log evt. dele af prompten (vær forsigtig med længde/følsomme data)
+        current_app.logger.debug(
+            f"ai_service: Prompt til Narrativ Generator-AI (delvis): {prompt_for_narrative_generator[:300]}...")
+
+        # 2. Definer generation og safety settings (kan justeres specifikt for narrativt modul hvis nødvendigt)
+        # Vi genbruger standardindstillingerne fra den almindelige historiegenerator for nu.
+        # Længde styres primært via prompten, men max_output_tokens kan stadig være en global grænse.
+        story_length = story_elements.get('length', 'mellem')
+        max_tokens_setting = 1500  # Default for 'kort'
+        if story_length == 'mellem':
+            max_tokens_setting = 3000
+        elif story_length == 'lang':
+            max_tokens_setting = 7000
+
+        # Log den faktiske max_tokens_setting der vil blive brugt
+        current_app.logger.info(
+            f"ai_service: Max tokens for Narrativ Generator-AI sat til: {max_tokens_setting} baseret på længde: '{story_length}'")
+
+        generation_config_settings = {
+            "max_output_tokens": max_tokens_setting,  # Juster efter behov for narrative historier
+            "temperature": 0.75,  # Måske lidt højere for mere kreativitet i første udkast
+            # "top_p": 0.9, # Overvej at eksperimentere med top_p og top_k
+            # "top_k": 40
+        }
+        safety_settings_values = {
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        }
+
+        # 3. Kald den generiske Gemini tekstgenereringsfunktion
+        story_title, actual_story_content = generate_story_text_from_gemini(
+            prompt_for_narrative_generator,
+            generation_config_settings,
+            safety_settings_values
+        )
+
+        if "Fejl" in story_title or "blokeret" in actual_story_content.lower():  # Simpel tjek for fejl fra generate_story_text_from_gemini
+            current_app.logger.warning(
+                f"ai_service (Bruger: {user_id_for_log}): Mulig fejl eller blokeret indhold fra Narrativ Generator-AI. Titel: {story_title}")
+        else:
+            current_app.logger.info(
+                f"ai_service (Bruger: {user_id_for_log}): Første udkast til narrativ historie genereret. Titel: {story_title[:50]}...")
+
+        return story_title, actual_story_content
+
+    except Exception as e:
+        current_app.logger.error(
+            f"ai_service (Bruger: {user_id_for_log}): Fejl i generate_narrative_story_step1_generator_ai: {e}\n{traceback.format_exc()}")
+        return "Fejl Titel (Narrativ Trin 1)", f"Der opstod en intern fejl under generering af det første historieudkast: {str(e)}"
+
+def get_ai_suggested_character_traits(narrative_focus):
+    """
+    Får AI-genererede forslag til karaktertræk baseret på et narrativt fokus.
+    Bruger Gemini 1.5 Pro og forventer et JSON-svar fra AI'en.
+
+    Args:
+        narrative_focus (str): Det centrale tema/udfordring.
+
+    Returns:
+        dict: Et dictionary med forslag til karaktertræk,
+              eller et dictionary med en 'error' nøgle ved fejl.
+    """
+    user_id_for_log = current_user.id if hasattr(current_user, 'id') else 'Ukendt bruger (karaktertræk)'
+    current_app.logger.info(
+        f"ai_service (Bruger: {user_id_for_log}): Starter forslag til karaktertræk for fokus: '{narrative_focus}'")
+
+    try:
+        # 1. Byg prompten
+        prompt_for_suggestions = build_character_trait_suggestion_prompt(narrative_focus)
+        current_app.logger.debug(
+            f"ai_service: Prompt til karaktertræk-forslag (delvis): {prompt_for_suggestions[:200]}...")
+
+        # 2. Konfigurer og kald Gemini 1.5 Pro
+        # VIGTIGT: Sørg for at 'gemini-1.5-pro-latest' er en tilgængelig og passende model for din opsætning.
+        # Hvis du ikke har adgang via din API-nøgle, kan du midlertidigt bruge 'gemini-1.5-flash-latest'
+        # men husk at Pro-modellen er målet for bedre ræsonnement for Terapi-AI funktioner.
+        model_name = 'gemini-1.5-pro-latest'  # Som aftalt, start med Pro
+        # model_name = 'gemini-1.5-flash-latest' # Fallback hvis Pro giver problemer initielt
+
+        current_app.logger.info(f"ai_service: Bruger model '{model_name}' til karaktertræk-forslag.")
+        model = genai.GenerativeModel(model_name)
+
+        generation_config_settings = {
+            "max_output_tokens": 2048,  # JSON-output kan være lidt langt
+            "temperature": 0.5,  # Lavere temperatur for mere fokuseret/forudsigeligt JSON output
+            "response_mime_type": "application/json",  # Bed AI'en om at formatere output som JSON
+        }
+        safety_settings_values = {
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        }
+
+        response = model.generate_content(
+            prompt_for_suggestions,
+            generation_config=genai.types.GenerationConfig(**generation_config_settings),
+            safety_settings=safety_settings_values
+        )
+
+        current_app.logger.info(
+            f"ai_service (Bruger: {user_id_for_log}): Svar modtaget fra Gemini for karaktertræk.")
+
+        # 3. Parse AI'ens svar (forventer JSON)
+        try:
+            # response.text bør indeholde den JSON-formaterede streng
+            if response.text:
+                current_app.logger.debug(f"ai_service: Råtekst fra Gemini (karaktertræk): {response.text[:300]}...")
+                # Fjern eventuelle markdown ```json ... ``` hvis AI'en tilføjer det
+                cleaned_text = response.text.strip()
+                if cleaned_text.startswith("```json"):
+                    cleaned_text = cleaned_text[7:]
+                if cleaned_text.endswith("```"):
+                    cleaned_text = cleaned_text[:-3]
+
+                suggested_traits = json.loads(cleaned_text.strip())
+                current_app.logger.info(f"ai_service (Bruger: {user_id_for_log}): Karaktertræk parset succesfuldt.")
+                return suggested_traits
+            else:
+                current_app.logger.error(
+                    f"ai_service (Bruger: {user_id_for_log}): Tomt svar (text) fra Gemini for karaktertræk.")
+                if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                    current_app.logger.error(f"ai_service: Prompt Feedback: {response.prompt_feedback}")
+                if hasattr(response, 'candidates') and response.candidates and response.candidates[
+                    0].finish_reason != 'STOP':
+                    current_app.logger.error(f"ai_service: Finish reason: {response.candidates[0].finish_reason}")
+                    current_app.logger.error(f"ai_service: Safety ratings: {response.candidates[0].safety_ratings}")
+
+                return {"error": "AI returnerede et tomt svar for karaktertræk."}
+
+        except json.JSONDecodeError as e_json:
+            current_app.logger.error(
+                f"ai_service (Bruger: {user_id_for_log}): Fejl ved parsing af JSON fra Gemini for karaktertræk: {e_json}")
+            current_app.logger.error(f"Modtaget tekst fra AI (karaktertræk): {response.text}")
+            return {"error": "Kunne ikke parse AI'ens forslag til karaktertræk (JSON formatfejl)."}
+        except ValueError as e_safety:  # Kan opstå hvis indhold blokeres før .text tilgås
+            current_app.logger.error(
+                f"ai_service (Bruger: {user_id_for_log}): Muligvis blokeret indhold fra Gemini for karaktertræk: {e_safety}")
+            if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                current_app.logger.error(f"ai_service: Prompt Feedback: {response.prompt_feedback}")
+            return {"error": "Forslag til karaktertræk blev blokeret af sikkerhedsfiltre."}
+        except Exception as e_resp_text:
+            current_app.logger.error(
+                f"ai_service (Bruger: {user_id_for_log}): Uventet fejl ved håndtering af Gemini-svar (karaktertræk): {e_resp_text}\n{traceback.format_exc()}")
+            return {"error": f"Uventet fejl ved behandling af AI-svar for karaktertræk: {str(e_resp_text)}"}
+
+
+    except Exception as e:
+        current_app.logger.error(
+            f"ai_service (Bruger: {user_id_for_log}): Generel fejl i get_ai_suggested_character_traits: {e}\n{traceback.format_exc()}")
+        return {"error": f"Intern fejl ved hentning af AI-forslag til karaktertræk: {str(e)}"}
+
+def generate_narrative_brief(
+        narrative_focus,
+        story_goal,
+        child_name,
+        child_age,
+        child_strengths,
+        child_values,
+        child_motivation,
+        child_typical_reaction,
+        important_relations,
+        main_character_description=None,
+        story_place=None,
+        story_plot_elements=None,
+        negative_prompt=None
+):
+    """
+    Genererer et struktureret narrativt brief ved hjælp af en AI-model.
+    Dette er Trin 1 i den reviderede narrative AI-proces.
+
+    Args:
+        (Alle argumenter svarer til dem i build_narrative_briefing_prompt)
+
+    Returns:
+        str: Det genererede narrative brief som en tekststreng,
+             eller en fejlbesked streng ved fejl.
+    """
+    current_app.logger.info("AI Service: Påbegynder generering af narrativt brief (Trin 1)...")
+
+    try:
+        # Byg prompten ved hjælp af den importerede funktion
+        prompt_string = build_narrative_briefing_prompt(
+            narrative_focus=narrative_focus,
+            story_goal=story_goal,
+            child_name=child_name,
+            child_age=child_age,
+            child_strengths=child_strengths,
+            child_values=child_values,
+            child_motivation=child_motivation,
+            child_typical_reaction=child_typical_reaction,
+            important_relations=important_relations,
+            main_character_description=main_character_description,
+            story_place=story_place,
+            story_plot_elements=story_plot_elements,
+            negative_prompt=negative_prompt
+        )
+        current_app.logger.debug(
+            f"AI Service: Narrativ briefing prompt bygget (længde: {len(prompt_string)}). Første 200 tegn:\n{prompt_string[:200]}")
+
+        # Konfigurer AI-modellen (f.eks. Gemini 1.5 Flash - god til strukturerede opgaver)
+        # Vi kan genbruge safety_settings og generation_config fra generate_story_text_from_gemini
+        # eller definere nye, hvis denne opgave kræver andre indstillinger.
+        # For et brief kan vi måske have færre max_output_tokens.
+        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+
+        # Standard safety settings (kan justeres hvis nødvendigt)
+        safety_settings = {
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        }
+
+        # Generation config (juster max_output_tokens for et brief)
+        # Et brief er kortere end en hel historie.
+        generation_config_settings = {
+            "max_output_tokens": 1500,  # Juster efter behov for længden af et brief
+            "temperature": 0.6  # Lidt lavere temperatur for mere fokuseret/konsistent output til et brief
+        }
+        gen_config = genai.types.GenerationConfig(**generation_config_settings)
+
+        current_app.logger.info(
+            f"AI Service: Kalder Gemini for narrativt brief (Max Tokens: {generation_config_settings.get('max_output_tokens')}, Temp: {generation_config_settings.get('temperature')}).")
+
+        response = model.generate_content(
+            prompt_string,
+            generation_config=gen_config,
+            safety_settings=safety_settings
+        )
+
+        narrative_brief_text = ""
+        try:
+            narrative_brief_text = response.text.strip()
+            if not narrative_brief_text:
+                current_app.logger.warning("AI Service: Narrativt brief fra Gemini var tomt.")
+                return "Fejl: AI returnerede et tomt narrativt brief."
+            current_app.logger.info("AI Service: Narrativt brief genereret succesfuldt.")
+            current_app.logger.debug(
+                f"AI Service: Genereret narrativt brief (første 200 tegn):\n{narrative_brief_text[:200]}")
+        except ValueError as e_safety:
+            current_app.logger.error(
+                f"AI Service: Svar til narrativt brief blokeret af sikkerhedsfilter: {e_safety}")
+            current_app.logger.error(
+                f"AI Service: Prompt Feedback (brief): {response.prompt_feedback if hasattr(response, 'prompt_feedback') else 'Ingen prompt feedback.'}")
+            if hasattr(response, 'candidates') and response.candidates:
+                current_app.logger.error(f"AI Service: Blocked Candidates (brief): {response.candidates}")
+            return "Fejl: Indhold til narrativt brief blev blokeret. Prøv at justere dine input."
+        except Exception as e_parse:
+            current_app.logger.error(
+                f"AI Service: Fejl ved adgang til response.text eller parsing for narrativt brief: {e_parse}\n{traceback.format_exc()}")
+            # Fallback hvis .text fejler
+            if response and response.candidates:
+                try:
+                    narrative_brief_text = response.candidates[0].content.parts[0].text.strip()
+                    current_app.logger.info("AI Service: Narrativt brief (fallback fra candidates) hentet.")
+                except Exception as e_candidate_fallback:
+                    current_app.logger.error(
+                        f"AI Service: Kunne heller ikke hente narrativt brief fra response.candidates: {e_candidate_fallback}")
+                    return "Fejl: Kunne ikke parse svaret fra AI for narrativt brief."
+            else:
+                return "Fejl: Uventet svarformat fra AI for narrativt brief."
+
+        return narrative_brief_text
+
+    except Exception as e_api:
+        current_app.logger.error(
+            f"AI Service: Generel fejl under generering af narrativt brief: {e_api}\n{traceback.format_exc()}")
+        return f"Fejl: Teknisk fejl i AI-tjenesten under generering af narrativt brief."
+
+def draft_narrative_story_with_rag(
+        structured_brief,  # Output fra Trin 1
+        original_user_inputs,  # Dictionary med alle originale brugerinput
+        narrative_focus_for_rag  # Specifikt felt fra brugerinput til RAG-søgning, f.eks. 'narrative_focus' strengen
+):
+    """
+    Genererer et første udkast til en narrativ historie og refleksionsspørgsmål
+    ved hjælp af en AI-model, det strukturerede brief fra Trin 1, og RAG-kontekst.
+    Dette er Trin 2 i den reviderede narrative AI-proces.
+
+    Args:
+        structured_brief (str): Det brief, der blev genereret af Trin 1 AI.
+        original_user_inputs (dict): En dictionary med de oprindelige brugerinput.
+                                     Kan bruges til at give AI'en adgang til råtekst
+                                     eller detaljer, der måtte være opsummeret i briefet.
+        narrative_focus_for_rag (str): Den tekststreng (typisk brugerens narrative fokus),
+                                       der skal bruges til at søge i RAG-videnbasen.
+
+    Returns:
+        tuple: (story_title, story_content, reflection_questions)
+               Hvor reflection_questions er en liste af strenge.
+               Returnerer (None, "Fejlbesked...", []) ved fejl.
+    """
+    current_app.logger.info("AI Service: Påbegynder udarbejdelse af narrativ historie med RAG (Trin 2)...")
+    story_title = None
+    story_content = "Fejl: Kunne ikke generere historieudkast (Trin 2)."
+    reflection_questions = []
+
+    # 1. Hent RAG-kontekst
+    rag_chunks = []
+    if narrative_focus_for_rag and narrative_focus_for_rag.strip():
+        try:
+            current_app.logger.info(
+                f"AI Service: Henter RAG-kontekst baseret på: '{narrative_focus_for_rag[:100]}...'")
+            rag_chunks = find_relevant_chunks_v2(narrative_focus_for_rag,
+                                              top_k=2)  # Hent f.eks. top 2 relevante chunks
+            if rag_chunks:
+                current_app.logger.info(f"AI Service: {len(rag_chunks)} RAG-chunks fundet.")
+                for i, chunk_text in enumerate(rag_chunks):
+                    current_app.logger.debug(f"AI Service: RAG Chunk #{i + 1}: {chunk_text[:100]}...")
+            else:
+                current_app.logger.info("AI Service: Ingen relevante RAG-chunks fundet.")
+        except Exception as e_rag:
+            current_app.logger.error(
+                f"AI Service: Fejl under hentning af RAG-kontekst: {e_rag}\n{traceback.format_exc()}")
+            # Fortsæt uden RAG-kontekst, men log fejlen. AI'en får besked i prompten.
+            rag_chunks = []  # Sikrer at det er en tom liste
+    else:
+        current_app.logger.warning("AI Service: narrative_focus_for_rag var tom. Skipper RAG-søgning.")
+
+    try:
+        # 2. Byg prompten til Trin 2 AI'en
+        prompt_string = build_narrative_drafting_prompt(
+            structured_brief=structured_brief,
+            rag_context=rag_chunks,
+            original_user_inputs=original_user_inputs
+        )
+        current_app.logger.debug(
+            f"AI Service: Narrativ drafting prompt bygget (længde: {len(prompt_string)}). Første 300 tegn:\n{prompt_string[:300]}")
+
+        # 3. Konfigurer og kald AI-modellen
+        # Anbefalet model er Gemini 2.5 Pro ifølge modulbeskrivelsen.
+        # For nuværende test kan vi starte med 'gemini-1.5-pro-latest' eller 'gemini-1.5-flash-latest'
+        # 'gemini-1.5-pro-latest' er kraftigere og bedre til kreativ skrivning end flash.
+        # Husk at 'gemini-2.5-pro-preview-05-06' var den specifikke model nævnt.
+        # Hvis den ikke er tilgængelig via din API-nøgle, brug en tilgængelig Pro-model.
+        # Lad os prøve med 'gemini-1.5-pro-latest' som et godt kompromis for nu.
+        ai_model_name = 'gemini-1.5-pro-latest'
+        model = genai.GenerativeModel(ai_model_name)
+        current_app.logger.info(f"AI Service: Anvender AI-model '{ai_model_name}' for Trin 2.")
+
+        safety_settings = {
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        }
+
+        # For historiegenerering vil vi have højere kreativitet og længere output
+        generation_config_settings = {
+            "max_output_tokens": 4096,  # Tillad længere historier
+            "temperature": 0.8,  # Højere temperatur for mere kreativitet
+            "top_p": 0.95,  # Nucleus sampling
+            # "stop_sequences": ["--- REFLEKSIONSSPØRGSMÅL ---"] # Overvej om stop sequence er robust nok
+        }
+        gen_config = genai.types.GenerationConfig(**generation_config_settings)
+
+        current_app.logger.info(
+            f"AI Service: Kalder Gemini for narrativt historieudkast (Max Tokens: {generation_config_settings.get('max_output_tokens')}, Temp: {generation_config_settings.get('temperature')}).")
+
+        response = model.generate_content(
+            prompt_string,
+            generation_config=gen_config,
+            safety_settings=safety_settings
+        )
+
+        # 4. Parse svaret fra AI'en
+        raw_response_text = ""
+        try:
+            raw_response_text = response.text.strip()
+            if not raw_response_text:
+                current_app.logger.warning("AI Service: Historieudkast (Trin 2) fra Gemini var tomt.")
+                story_content = "Fejl: AI returnerede et tomt historieudkast."
+                return story_title, story_content, reflection_questions
+
+            current_app.logger.info("AI Service: Historieudkast (Trin 2) genereret succesfuldt.")
+            current_app.logger.debug(
+                f"AI Service: Rå output fra Trin 2 AI (første 300 tegn):\n{raw_response_text[:300]}")
+
+            # Parsing af titel, historie og refleksionsspørgsmål
+            parts = raw_response_text.split("--- REFLEKSIONSSPØRGSMÅL ---", 1)
+            story_with_title = parts[0].strip()
+
+            title_story_parts = story_with_title.split('\n', 1)
+            if title_story_parts:
+                story_title = title_story_parts[0].strip()
+                story_content = title_story_parts[1].strip() if len(title_story_parts) > 1 else ""
+            else:  # Skulle ikke ske hvis AI følger format
+                story_title = "Uden Titel (Parse Fejl)"
+                story_content = story_with_title  # Hele outputtet som historie
+
+            if len(parts) > 1 and parts[1].strip():
+                questions_raw = parts[1].strip()
+                # Split spørgsmål baseret på nummerering (f.eks. "1. ...", "2. ...")
+                # Dette er en simpel parser; kan gøres mere robust.
+                qs = questions_raw.split('\n')
+                for q_line in qs:
+                    q_line_stripped = q_line.strip()
+                    # Fjern "1. ", "2. " osv.
+                    if q_line_stripped and (q_line_stripped.startswith(tuple(f"{i}." for i in range(1, 10)))):
+                        reflection_questions.append(q_line_stripped[q_line_stripped.find('.') + 1:].strip())
+                    elif q_line_stripped:  # Hvis det ikke er nummereret, men der er tekst
+                        reflection_questions.append(q_line_stripped)
+                current_app.logger.info(f"AI Service: Parsede {len(reflection_questions)} refleksionsspørgsmål.")
+            else:
+                current_app.logger.warning("AI Service: Ingen refleksionsspørgsmål fundet efter separatoren.")
+
+            if not story_content:
+                current_app.logger.warning("AI Service: Selve historieteksten er tom efter parsing.")
+                story_content = "Historien mangler indhold."
+
+
+        except ValueError as e_safety:  # Håndter hvis AI'ens svar blokeres
+            current_app.logger.error(
+                f"AI Service: Svar til historieudkast (Trin 2) blokeret af sikkerhedsfilter: {e_safety}")
+            current_app.logger.error(
+                f"AI Service: Prompt Feedback (Trin 2): {response.prompt_feedback if hasattr(response, 'prompt_feedback') else 'Ingen prompt feedback.'}")
+            story_content = "Fejl: Indhold til historien blev blokeret af AI'en. Prøv at justere dine input."
+            # story_title forbliver None eller hvad den var før
+        except Exception as e_parse:
+            current_app.logger.error(
+                f"AI Service: Fejl ved parsing af AI-svar (Trin 2): {e_parse}\n{traceback.format_exc()}")
+            story_content = f"Fejl: Kunne ikke parse svaret fra AI for historieudkast (Trin 2). Rå output: {raw_response_text[:200]}..."
+            # story_title forbliver None
+
+    except Exception as e_general:
+        current_app.logger.error(
+            f"AI Service: Generel fejl under udarbejdelse af historieudkast (Trin 2): {e_general}\n{traceback.format_exc()}")
+        story_content = f"Fejl: Teknisk fejl i AI-tjenesten under udarbejdelse af historieudkast (Trin 2)."
+        # story_title forbliver None
+
+    return story_title, story_content, reflection_questions
