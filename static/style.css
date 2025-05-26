@@ -212,12 +212,25 @@ select:focus {
     box-shadow: 0 0 0 2px rgba(77, 182, 172, 0.3);
 }
 
-/* Specifik styling for input par */
-.character-group .input-pair,
-.listener-group .input-pair {
-     flex: 1;
+/* Sikrer at relation-group opfører sig som de andre flex-containere */
+.relation-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 10px;
 }
-.input-group input[type="text"],
+
+/* Gælder for input-par i character, listener OG relation groups */
+.character-group .input-pair,
+.listener-group .input-pair,
+.relation-group .input-pair {
+     flex: 1; /* Hvert input-par tager lige meget plads */
+     min-width: 0; /* Vigtigt for at flex-shrink kan virke korrekt med inputfelter */
+}
+
+.input-pair input[type="text"] {
+    width: 100%; /* Får inputfeltet til at fylde hele .input-pair containeren */
+}
 .character-group .input-pair input[type="text"],
 .listener-group .input-pair input[type="text"] {
     margin-bottom: 0;
@@ -283,19 +296,21 @@ button:disabled, .disabled-button {
     background-color: var(--color-secondary-hover);
 }
 
-/* Fjern Knapper (-) */
+/* Justering for remove-button hvis den ikke allerede er sat til ikke at gro */
 .remove-button {
    background-color: var(--color-danger);
    color: white;
-   padding: 6px 0;
+   padding: 6px 0; /* Sørg for padding er ensartet, du kan justere højden med line-height eller fast højde */
    font-size: 0.9em;
-   line-height: 1;
-   margin-left: 0;
-   flex-shrink: 0;
+   line-height: 1.4; /* Juster for at matche inputfelternes højde bedre */
+   margin-left: 0; /* Bør allerede være 0 pga. gap i parent */
+   flex-shrink: 0; /* Forhindrer knappen i at blive mindre */
    border-radius: var(--border-radius);
-   width: 35px;
-   min-width: 35px;
+   width: 35px; /* Fast bredde */
+   min-width: 35px; /* Fast minimumsbredde */
    text-align: center;
+   height: 38px; /* Prøv at matche inputfelternes højde - juster efter behov */
+   box-sizing: border-box; /* Sørg for at padding og border er inkluderet i width/height */
 }
 .remove-button:hover:not(:disabled) {
    background-color: var(--color-danger-hover);
@@ -597,4 +612,103 @@ footer .footer-link:hover {
         padding: 15px 35px 15px 25px;
     }
     #cookie-consent-banner p { max-width: none; flex-grow: 1; margin-right: 20px; }
+}
+
+/* =========== Fane Navigation Styling =========== */
+.tab-navigation {
+    display: flex;
+    margin-bottom: 20px;
+    background-color: var(--color-box-bg);
+    /* Juster padding: mindre i top/bund af selve containeren, mere på siderne */
+    padding: 5px 15px 0px 15px; /* Reduceret top padding, mere side padding */
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.tab-button {
+    /* Juster padding: primært top og sider, mindre i bund for at trække stregen op */
+    padding: 12px 15px 8px 15px; /* Øget top/bund lidt for balance, men mindre bund end før */
+    cursor: pointer;
+    border: none;
+    background-color: transparent;
+    font-size: 1.1em;
+    font-weight: 500;
+    color: var(--color-text-secondary, #555);
+    border-bottom: 3px solid transparent;
+    /* Fjern margin-bottom: -2px; da vi ikke længere har en separat border på .tab-navigation at overlappe */
+    transition: color 0.3s ease, border-bottom-color 0.3s ease;
+    line-height: 1.2; /* Kan hjælpe med at centrere teksten bedre ift. padding */
+}
+
+.tab-button:hover {
+    color: var(--color-primary);
+}
+
+.tab-button.active {
+    color: var(--color-primary);
+    font-weight: 700;
+    border-bottom-color: var(--color-primary);
+    /* Vi behøver ikke nødvendigvis at ændre padding her, hvis justeringen på .tab-button er nok */
+}
+
+/* Skjul sektioner der ikke er aktive (JavaScript vil fjerne denne klasse) */
+.content-section.hidden {
+    display: none;
+}
+
+
+/* =========== Narrativ Info Dropdown Styling =========== */
+.narrative-info-dropdown {
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: #f9f9f9; /* Lidt anderledes baggrund for at adskille dem */
+}
+
+.dropdown-toggle {
+    width: 100%;
+    padding: 12px 15px;
+    background-color: transparent; /* Matcher .narrative-info-dropdown baggrunden */
+    border: none;
+    text-align: left;
+    font-size: 1em;
+    font-weight: bold;
+    color: var(--color-primary);
+    cursor: pointer;
+    display: flex; /* For at justere pilen */
+    justify-content: space-between; /* Placerer pilen til højre */
+    align-items: center;
+    border-radius: var(--border-radius); /* Runde hjørner også på knappen når den er "lukket" */
+}
+
+.dropdown-toggle:hover {
+    /* Overvej en let baggrundsfarve-ændring ved hover, hvis ønsket */
+    /* background-color: #efefef; */
+}
+
+.dropdown-arrow {
+    font-size: 0.8em;
+    transition: transform 0.3s ease;
+}
+
+.dropdown-toggle.open .dropdown-arrow {
+    transform: rotate(180deg); /* Roter pilen når dropdown er åben */
+}
+
+.dropdown-content {
+    padding: 0px 15px 15px 15px; /* Padding kun i bunden og siderne når den er åben */
+    border-top: 1px solid var(--border-color); /* En linje mellem knap og indhold */
+    background-color: var(--color-box-bg); /* Hvid baggrund for indholdet */
+    border-radius: 0 0 var(--border-radius) var(--border-radius); /* Runde hjørner i bunden */
+}
+
+/* Sørg for at .hidden klassen virker globalt (den er allerede i din style.css, men for en sikkerheds skyld) */
+.hidden {
+    display: none !important;
+}
+
+/* Styling for "Andet..." inputfelter der vises dynamisk */
+.other-input {
+    margin-top: 8px; /* Lidt plads over fritekstfeltet når det vises */
+    width: 100%; /* Fyld bredden ligesom select-boksen */
 }

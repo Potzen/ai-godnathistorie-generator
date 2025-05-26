@@ -14,14 +14,9 @@ from prompts.character_trait_suggestion_prompt import build_character_trait_sugg
 import json # Til at parse JSON-svar fra AI
 from prompts.narrative_briefing_prompt import build_narrative_briefing_prompt
 from prompts.narrative_drafting_prompt import build_narrative_drafting_prompt
+from prompts.narrative_editing_prompt import build_narrative_editing_prompt
 from services.rag_service import find_relevant_chunks_v2
 
-
-# Her vil vi senere definere funktioner som:
-# - generate_story_text(prompt_details)
-# - generate_image_prompt(story_text)
-# - generate_image(image_prompt)
-# - (Senere) generate_audio_tts(text_to_speak)
 
 def generate_story_text_from_gemini(full_prompt_string, generation_config_settings, safety_settings_values):
     """
@@ -726,3 +721,131 @@ def draft_narrative_story_with_rag(
         # story_title forbliver None
 
     return story_title, story_content, reflection_questions
+
+def edit_narrative_story(
+        story_draft_title: str,
+        story_draft_content: str,
+        original_user_inputs: dict
+):
+    """
+    Finpudser et eksisterende narrativt historieudkast ved hjælp af Redaktør-AI (Trin 3).
+
+    Args:
+        story_draft_title (str): Titlen på historieudkastet fra Trin 2.
+        story_draft_content (str): Selve historieudkastet fra Trin 2.
+        original_user_inputs (dict): De oprindelige brugerinput for kontekst.
+
+    Returns:
+        tuple: (edited_title, edited_content)
+               Returnerer (None, "Fejlbesked...") eller (original_title, "Fejlbesked...") ved fejl.
+    """
+    current_app.logger.info("AI Service: Påbegynder Trin 3 - Redigering af narrativ historie...")
+    edited_title = story_draft_title # Fallback til original titel
+    edited_content = "Fejl: Kunne ikke redigere historieudkast (Trin 3)."
+
+    try:
+        # 1. Byg prompten til Redaktør-AI'en
+        prompt_string = build_narrative_editing_prompt(
+            story_draft_title=story_draft_title,
+            story_draft_content=story_draft_content,
+            original_user_inputs=original_user_inputs
+        )
+        current_app.logger.debug(
+            f"AI Service: Narrativ editing prompt bygget (længde: {len(prompt_string)}). Første 300 tegn:\n{prompt_string[:300]}")
+
+        # 2. Konfigurer og kald AI-modellen (Gemini 1.5 Flash er et godt valg her [cite: 149, 150])
+        # Modulbeskrivelsen nævner Gemini 2.0 Flash, men vi bruger 'gemini-1.5-flash-latest' som er tilgængelig.
+        ai_model_name = 'gemini-1.5-flash-latest'
+        model = genai.GenerativeModel(ai_model_name)
+        current_app.logger.info(f"AI Service: Anvender AI-model '{ai_model_name}' for Trin 3 (Redaktør).")
+
+        # Safety settings (kan genbruges)
+        safety_settings = {
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        }
+
+        # Generation config for redigering:
+        # Max output tokens bør være lidt mere end forventet output for at give plads.
+        # Temperatur kan være lidt lavere for at holde sig tættere på originalen, men stadig tillade forbedringer.
+        # Længden bestemmes af brugerens input 'length' i original_user_inputs [cite: 156]
+        story_length = original_user_inputs.get('length', 'mellem')
+        max_tokens_for_editing = 2048  # Default for 'kort' / 'mellem'
+        if story_length == 'lang':
+            max_tokens_for_editing = 4096 # Mere plads til lange historier
+        elif story_length == 'mellem':
+             max_tokens_for_editing = 3072 # Lidt mere end kort
+
+        current_app.logger.info(
+            f"AI Service (Redaktør): Max tokens sat til {max_tokens_for_editing} baseret på ønsket længde '{story_length}'.")
+
+        generation_config_settings = {
+            "max_output_tokens": max_tokens_for_editing,
+            "temperature": 0.65, # Lidt lavere for mere fokuseret redigering
+            # "top_p": 0.9, # Kan overvejes
+        }
+        gen_config = genai.types.GenerationConfig(**generation_config_settings)
+
+        current_app.logger.info(
+            f"AI Service: Kalder Gemini for redigering af historie (Max Tokens: {gen_config.max_output_tokens}, Temp: {gen_config.temperature}).")
+
+        response = model.generate_content(
+            prompt_string,
+            generation_config=gen_config,
+            safety_settings=safety_settings
+        )
+
+        # 3. Parse svaret fra AI'en (forventer titel på første linje, så historien)
+        raw_edited_text = ""
+        try:
+            raw_edited_text = response.text.strip()
+            if not raw_edited_text:
+                current_app.logger.warning("AI Service: Redigeret historie (Trin 3) fra Gemini var tomt. Returnerer originalt udkast.")
+                # Hvis redigering fejler eller returnerer tomt, kan vi overveje at returnere det uredigerede udkast fra Trin 2
+                return story_draft_title, story_draft_content + "\n\n(Redigering mislykkedes, viser uredigeret udkast)"
+
+            current_app.logger.info("AI Service: Redigeret historie (Trin 3) modtaget.")
+            current_app.logger.debug(
+                f"AI Service: Rå output fra Trin 3 AI (første 300 tegn):\n{raw_edited_text[:300]}")
+
+            # Simpel parsing: titel på første linje, resten er historie
+            parts = raw_edited_text.split('\n', 1)
+            if len(parts) >= 1 and parts[0].strip():
+                edited_title = parts[0].strip()
+                if len(parts) > 1 and parts[1].strip():
+                    edited_content = parts[1].strip()
+                else: # Kun titel, ingen historie - usandsynligt for redigering
+                    current_app.logger.warning(f"AI Service (Redaktør): Modtog kun titel, ingen historietekst. Titel: '{edited_title}'. Råtekst: {raw_edited_text[:200]}")
+                    edited_content = "Historien mangler efter titlen (Redigeringsfejl)."
+            else: # Tom respons eller ingen linjeskift (usandsynligt hvis AI følger prompt)
+                current_app.logger.warning(f"AI Service (Redaktør): Kunne ikke parse titel og historie fra redigeret output. Råtekst: {raw_edited_text[:200]}")
+                edited_title = story_draft_title # Fallback til original titel
+                edited_content = raw_edited_text # Brug råtekst som fallback for indhold
+
+            if not edited_content:
+                 current_app.logger.warning("AI Service (Redaktør): Selve historieteksten er tom efter parsing. Returnerer original.")
+                 return story_draft_title, story_draft_content + "\n\n(Redigering resulterede i tom historie, viser uredigeret udkast)"
+
+
+        except ValueError as e_safety:
+            current_app.logger.error(
+                f"AI Service: Svar til redigeret historie (Trin 3) blokeret: {e_safety}")
+            current_app.logger.error(
+                f"AI Service: Prompt Feedback (Trin 3): {response.prompt_feedback if hasattr(response, 'prompt_feedback') else 'Ingen prompt feedback.'}")
+            edited_content = f"Fejl: Indhold til den redigerede historie blev blokeret. Viser uredigeret udkast: \n\n{story_draft_content}"
+            # edited_title forbliver originalens titel
+        except Exception as e_parse:
+            current_app.logger.error(
+                f"AI Service: Fejl ved parsing af AI-svar (Trin 3): {e_parse}\n{traceback.format_exc()}")
+            edited_content = f"Fejl: Kunne ikke parse AI-svar for redigeret historie (Trin 3). Viser uredigeret: \n\n{story_draft_content}"
+            # edited_title forbliver originalens titel
+
+    except Exception as e_general:
+        current_app.logger.error(
+            f"AI Service: Generel fejl under redigering af historie (Trin 3): {e_general}\n{traceback.format_exc()}")
+        edited_content = f"Fejl: Teknisk fejl i AI-service (Trin 3). Viser uredigeret: \n\n{story_draft_content}"
+        # edited_title forbliver originalens titel
+
+    return edited_title, edited_content

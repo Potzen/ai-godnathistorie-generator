@@ -26,7 +26,6 @@ function trackGAEvent(action, category, label, value) {
 }
 
     // === Hent referencer til HTML elementer ===
-    // --- Historie Generator Elementer ---
     const generateButton = document.getElementById('generate-button');
     const resetButton = document.getElementById('reset-button'); // Bemærk: Denne er nu inde i story-share-buttons
 
@@ -92,6 +91,324 @@ function trackGAEvent(action, category, label, value) {
     let allSongsData = []; // Global variabel til at gemme sangdata
 
     console.log("DOM references obtained for all sections.");
+
+    // === NYT: Fane Navigation Funktionalitet ===
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const contentSections = document.querySelectorAll('.content-section');
+
+    if (tabButtons.length > 0 && contentSections.length > 0) {
+        // Sæt den første fane og sektion som aktiv/synlig ved start
+        // (HTML'en har allerede .active på første knap, og den første sektion er ikke .hidden)
+        // Vi kan sikre, at kun den korrekte sektion vises, hvis HTML ikke er sat op:
+        // const initiallyActiveTabTarget = document.querySelector('.tab-button.active').dataset.tabTarget;
+        // contentSections.forEach(section => {
+        //     if (section.id === initiallyActiveTabTarget.substring(1)) { // fjerner '#'
+        //         section.classList.remove('hidden');
+        //     } else {
+        //         section.classList.add('hidden');
+        //     }
+        // });
+
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Deaktiver alle faner og skjul alle sektioner først
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                contentSections.forEach(section => section.classList.add('hidden'));
+
+                // Aktiver den klikkede fane
+                button.classList.add('active');
+
+                // Vis den korresponderende sektion
+                const targetId = button.dataset.tabTarget; // f.eks. "#generator" eller "#narrative-support-module"
+                const targetSection = document.querySelector(targetId);
+                if (targetSection) {
+                    targetSection.classList.remove('hidden');
+                    console.log(`Tab switched to: ${targetId}`);
+                } else {
+                    console.error(`Target section ${targetId} not found for tab button.`);
+                }
+            });
+        });
+        console.log("Tab navigation functionality initialized.");
+    } else {
+        console.warn("Tab buttons or content sections not found. Tab navigation will not work.");
+    }
+    // === SLUT PÅ NYT: Fane Navigation Funktionalitet ===
+
+// === SLUT PÅ NYT: Fane Navigation Funktionalitet ===
+
+    // === NYT: Dropdown Funktionalitet for Narrativ Støtte ===
+    const dropdownToggles = document.querySelectorAll('.narrative-info-dropdown .dropdown-toggle');
+
+    if (dropdownToggles.length > 0) {
+        dropdownToggles.forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                const content = toggle.nextElementSibling; // .dropdown-content er lige efter knappen
+                if (content && content.classList.contains('dropdown-content')) {
+                    content.classList.toggle('hidden');
+                    toggle.classList.toggle('open'); // For at style pilen via CSS
+                    console.log(`Dropdown toggled for: ${toggle.textContent.trim().substring(0, 30)}... Is hidden: ${content.classList.contains('hidden')}`);
+                } else {
+                    console.error("Could not find dropdown content for toggle:", toggle);
+                }
+            });
+        });
+        console.log("Narrative info dropdown functionality initialized.");
+    } else {
+        console.warn("No dropdown toggles found. Narrative info dropdowns will not work.");
+    }
+    // === SLUT PÅ NYT: Dropdown Funktionalitet for Narrativ Støtte ===
+
+    // === NYT: "Andet..." Funktionalitet for Dynamiske Selects ===
+    const dynamicSelects = document.querySelectorAll('.dynamic-select');
+
+    if (dynamicSelects.length > 0) {
+        dynamicSelects.forEach(selectElement => {
+            selectElement.addEventListener('change', function() { // Brug 'function' for at 'this' refererer til selectElement
+                const otherInputId = this.dataset.otherInputId;
+                const otherInputElement = document.getElementById(otherInputId);
+
+                if (otherInputElement) {
+                    if (this.value === 'other') {
+                        otherInputElement.classList.remove('hidden');
+                        otherInputElement.focus(); // Sæt fokus på feltet for bekvemmelighed
+                        console.log(`"Andet..." valgt for ${this.id}. Viser inputfelt: ${otherInputId}`);
+                    } else {
+                        otherInputElement.classList.add('hidden');
+                        otherInputElement.value = ''; // Ryd feltet når det skjules
+                        console.log(`Anden option end "Andet..." valgt for ${this.id}. Skjuler inputfelt: ${otherInputId}`);
+                    }
+                } else {
+                    console.error(`Could not find "other" input element with ID: ${otherInputId} for select: ${this.id}`);
+                }
+            });
+        });
+        console.log("Dynamic select 'other...' functionality initialized.");
+    } else {
+        console.warn("No dynamic select elements found. 'Other...' functionality will not be available.");
+    }
+    // === SLUT PÅ NYT: "Andet..." Funktionalitet for Dynamiske Selects ===
+
+    // === NYT: Dynamiske Inputfelter for "Vigtige Relationer" (Narrativ Støtte) ===
+    const narrativeRelationsContainer = document.getElementById('narrative-relations-container');
+    const narrativeAddRelationButton = document.getElementById('narrative-add-relation-button');
+    let narrativeRelationCounter = 1; // For unikke ID'er
+
+    function createNarrativeRelationGroup() {
+        narrativeRelationCounter++;
+        const relationGroup = document.createElement('div');
+        relationGroup.className = 'relation-group';
+
+        // Navnefelt
+        const namePair = document.createElement('div');
+        namePair.className = 'input-pair';
+        const nameLabel = document.createElement('label');
+        nameLabel.htmlFor = `narrative-relation-name-${narrativeRelationCounter}`;
+        nameLabel.className = 'sr-only';
+        nameLabel.textContent = 'Relations Navn';
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.name = 'narrative_relation_name';
+        nameInput.id = `narrative-relation-name-${narrativeRelationCounter}`;
+        nameInput.placeholder = 'Navn (f.eks. Onkel Bo)';
+        namePair.appendChild(nameLabel);
+        namePair.appendChild(nameInput);
+
+        // Typefelt
+        const typePair = document.createElement('div');
+        typePair.className = 'input-pair';
+        const typeLabel = document.createElement('label');
+        typeLabel.htmlFor = `narrative-relation-type-${narrativeRelationCounter}`;
+        typeLabel.className = 'sr-only';
+        typeLabel.textContent = 'Relationstype';
+        const typeInput = document.createElement('input');
+        typeInput.type = 'text';
+        typeInput.name = 'narrative_relation_type';
+        typeInput.id = `narrative-relation-type-${narrativeRelationCounter}`;
+        typeInput.placeholder = 'Relation (f.eks. Nabo, Lærer)';
+        typePair.appendChild(typeLabel);
+        typePair.appendChild(typeInput);
+
+        // Fjern-knap
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.textContent = '-';
+        removeButton.className = 'remove-button'; // Ikke 'initial-remove-button' her
+        removeButton.addEventListener('click', () => {
+            relationGroup.remove();
+            // Her kunne man tilføje logik til at gemme til LocalStorage, hvis det var ønsket for relationer
+        });
+
+        relationGroup.appendChild(namePair);
+        relationGroup.appendChild(typePair);
+        relationGroup.appendChild(removeButton);
+
+        return relationGroup;
+    }
+
+    if (narrativeAddRelationButton && narrativeRelationsContainer) {
+        narrativeAddRelationButton.addEventListener('click', () => {
+            const newGroup = createNarrativeRelationGroup();
+            narrativeRelationsContainer.appendChild(newGroup);
+            console.log("New narrative relation group added.");
+        });
+
+        // Gør den første fjern-knap (hvis den findes og er 'initial') funktionel
+        const initialNarrativeRelationRemoveButton = narrativeRelationsContainer.querySelector('.relation-group .initial-remove-button');
+        if (initialNarrativeRelationRemoveButton) {
+            initialNarrativeRelationRemoveButton.addEventListener('click', (e) => {
+                // Forhindr at fjerne den første gruppe helt, ryd kun dens felter,
+                // da vi forventer mindst én gruppe.
+                // Eller tillad fjernelse hvis det er okay at have nul relationer.
+                // For nu, lad os rydde felterne.
+                const parentGroup = e.target.closest('.relation-group');
+                if (parentGroup) {
+                    parentGroup.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
+                    console.log("Initial narrative relation group fields cleared.");
+                }
+            });
+            // Overvej at fjerne 'initial-remove-button' klassen og 'aria-hidden' efter den er gjort funktionel,
+            // eller bedre: Skift dens funktionalitet til at rydde felter i stedet for at fjerne gruppen.
+            // For nu lader vi den være, da den er skjult via CSS.
+        }
+        console.log("Dynamic narrative relations functionality initialized.");
+    } else {
+        console.warn("Add narrative relation button or container not found. Dynamic relations will not work.");
+    }
+    // === SLUT PÅ NYT: Dynamiske Inputfelter for "Vigtige Relationer" (Narrativ Støtte) ===
+
+// === SLUT PÅ NYT: Dynamiske Inputfelter for "Vigtige Relationer" (Narrativ Støtte) ===
+
+    // === NYT: Dynamiske Inputfelter for Standard Historieelementer (Narrativ Støtte) ===
+
+    // Funktion til at tilføje "Hovedkarakter (Narrativ)"
+    const narrativeMainCharsContainer = document.getElementById('narrative-main-characters-container');
+    const narrativeAddMainCharButton = document.getElementById('narrative-add-main-char-button');
+    let narrativeMainCharCounter = 1; // For unikke ID'er
+
+    function createNarrativeMainCharacterGroup() {
+        narrativeMainCharCounter++;
+        const characterGroup = document.createElement('div');
+        characterGroup.className = 'character-group'; // Genbruger styling
+
+        // Beskrivelsesfelt
+        const descPair = document.createElement('div');
+        descPair.className = 'input-pair';
+        const descLabel = document.createElement('label');
+        descLabel.htmlFor = `narrative-main-char-desc-${narrativeMainCharCounter}`;
+        descLabel.className = 'sr-only';
+        descLabel.textContent = 'Beskrivelse';
+        const descInput = document.createElement('input');
+        descInput.type = 'text';
+        descInput.name = 'narrative_main_char_desc';
+        descInput.id = `narrative-main-char-desc-${narrativeMainCharCounter}`;
+        descInput.placeholder = 'Beskrivelse (f.eks. en finurlig robot)';
+        descPair.appendChild(descLabel);
+        descPair.appendChild(descInput);
+
+        // Navnefelt
+        const namePair = document.createElement('div');
+        namePair.className = 'input-pair';
+        const nameLabel = document.createElement('label');
+        nameLabel.htmlFor = `narrative-main-char-name-${narrativeMainCharCounter}`;
+        nameLabel.className = 'sr-only';
+        nameLabel.textContent = 'Navn';
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.name = 'narrative_main_char_name';
+        nameInput.id = `narrative-main-char-name-${narrativeMainCharCounter}`;
+        nameInput.placeholder = 'Navn (valgfrit)';
+        namePair.appendChild(nameLabel);
+        namePair.appendChild(nameInput);
+
+        // Fjern-knap
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.textContent = '-';
+        removeButton.className = 'remove-button';
+        removeButton.addEventListener('click', () => {
+            characterGroup.remove();
+        });
+
+        characterGroup.appendChild(descPair);
+        characterGroup.appendChild(namePair);
+        characterGroup.appendChild(removeButton);
+
+        return characterGroup;
+    }
+
+    if (narrativeAddMainCharButton && narrativeMainCharsContainer) {
+        narrativeAddMainCharButton.addEventListener('click', () => {
+            const newGroup = createNarrativeMainCharacterGroup();
+            narrativeMainCharsContainer.appendChild(newGroup);
+            console.log("New narrative main character group added.");
+        });
+        // Gør evt. første 'initial-remove-button' funktionel (f.eks. ryd felter)
+        // (Lignende logik som for 'Vigtige Relationer' kan tilføjes her hvis nødvendigt)
+    } else {
+        console.warn("Add narrative main character button or container not found.");
+    }
+
+    // Generel funktion til at tilføje simple inputfelter (Steder, Plot)
+    const genericAddButtons = document.querySelectorAll('.generic-add-button');
+    let genericInputCounter = {}; // Holder styr på tællere for forskellige typer
+
+    if (genericAddButtons.length > 0) {
+        genericAddButtons.forEach(button => {
+            button.addEventListener('click', function() { // Brug 'function' for 'this'
+                const containerId = this.dataset.containerId;
+                const inputName = this.dataset.inputName;
+                const placeholder = this.dataset.inputPlaceholder;
+                const idPrefix = this.dataset.inputIdPrefix;
+                const container = document.getElementById(containerId);
+
+                if (!container) {
+                    console.error(`Generic add button: Container with ID '${containerId}' not found.`);
+                    return;
+                }
+
+                // Initialiser tæller for denne type hvis den ikke findes
+                if (genericInputCounter[idPrefix] === undefined) {
+                    genericInputCounter[idPrefix] = 1;
+                }
+                genericInputCounter[idPrefix]++;
+
+                const inputGroup = document.createElement('div');
+                inputGroup.className = 'input-group';
+
+                const label = document.createElement('label');
+                label.htmlFor = `${idPrefix}-${genericInputCounter[idPrefix]}`;
+                label.className = 'sr-only';
+                label.textContent = placeholder; // Simpel label tekst
+
+                const newInput = document.createElement('input');
+                newInput.type = 'text';
+                newInput.name = inputName;
+                newInput.id = `${idPrefix}-${genericInputCounter[idPrefix]}`;
+                newInput.placeholder = placeholder;
+
+                const removeButton = document.createElement('button');
+                removeButton.type = 'button';
+                removeButton.textContent = '-';
+                removeButton.className = 'remove-button';
+                removeButton.addEventListener('click', () => {
+                    inputGroup.remove();
+                });
+
+                inputGroup.appendChild(label); // Selvom sr-only, god praksis
+                inputGroup.appendChild(newInput);
+                inputGroup.appendChild(removeButton);
+                container.appendChild(inputGroup);
+                console.log(`Generic input added to ${containerId} with name ${inputName}`);
+            });
+        });
+        console.log("Generic add button functionality initialized.");
+    } else {
+        console.warn("No generic add buttons found.");
+    }
+    // === SLUT PÅ NYT: Dynamiske Inputfelter for Standard Historieelementer (Narrativ Støtte) ===
+
 
     // === Eksempeldata til Autoudfyld (Historie) ===
     const exampleListeners = [ { name: "Alma", age: "5" }, { name: "Oscar", age: "7" }, { name: "Sofus", age: "3"}, { name: "Mie", age: "6" }, { name: "Noah", age: "4" }, { name: "Freja", age: "8" }, { name: "Viggo", age: "5" } ];
