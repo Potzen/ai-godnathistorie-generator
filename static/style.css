@@ -441,6 +441,21 @@ button:disabled, .disabled-button {
 }
 .audio-player-style { display: block; }
 
+
+/* Generel Loading Spinner (kan genbruges) */
+.loading-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    text-align: center;
+}
+
+.loading-indicator.hidden {
+    display: none;
+}
+
 .spinner {
   display: inline-block;
   border: 4px solid rgba(0, 0, 0, 0.1);
@@ -453,6 +468,15 @@ button:disabled, .disabled-button {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Feedback Sektion */
@@ -667,18 +691,21 @@ footer .footer-link:hover {
 
 .dropdown-toggle {
     width: 100%;
-    padding: 12px 15px;
-    background-color: transparent; /* Matcher .narrative-info-dropdown baggrunden */
+    padding: 10px 15px; /* Lidt mindre padding kan også hjælpe med det visuelle */
+    background-color: transparent;
     border: none;
     text-align: left;
-    font-size: 1em;
-    font-weight: bold;
+    /* Juster font-size her. 0.9em eller 0.95em kan være et godt udgangspunkt.
+       Eller en fast værdi som 14px eller 15px, hvis det passer bedre med din label-tekst.
+       Vi prøver med 0.9em først. */
+    font-size: 0.9em;
+    font-weight: bold; /* Behold fed skrift for at indikere det er en klikbar overskrift */
     color: var(--color-primary);
     cursor: pointer;
-    display: flex; /* For at justere pilen */
-    justify-content: space-between; /* Placerer pilen til højre */
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    border-radius: var(--border-radius); /* Runde hjørner også på knappen når den er "lukket" */
+    border-radius: var(--border-radius);
 }
 
 .dropdown-toggle:hover {
@@ -687,12 +714,15 @@ footer .footer-link:hover {
 }
 
 .dropdown-arrow {
-    font-size: 0.8em;
+    font-size: 0.9em;
+    line-height: 1;
     transition: transform 0.3s ease;
+    transform: rotate(0deg); /* Med HTML-pil ◀ peger den nu mod venstre */
+    padding-right: 10px;
 }
 
 .dropdown-toggle.open .dropdown-arrow {
-    transform: rotate(180deg); /* Roter pilen når dropdown er åben */
+    transform: rotate(90deg); /* Med HTML-pil ◀, roterer 90 grader for at pege ned ▼ */
 }
 
 .dropdown-content {
@@ -711,4 +741,140 @@ footer .footer-link:hover {
 .other-input {
     margin-top: 8px; /* Lidt plads over fritekstfeltet når det vises */
     width: 100%; /* Fyld bredden ligesom select-boksen */
+}
+
+.narrative-output-section {
+    background-color: var(--color-box-bg);
+    padding: 20px 25px;
+    margin-top: 0;
+    margin-bottom: 25px; /* VIGTIGT for luft mellem sektionsbokse */
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    border: 1px solid var(--border-color);
+}
+
+/* For H2 i sektioner, der IKKE er dropdowns (som "Historien" og "Refleksionsspørgsmål") */
+.narrative-output-section > h2 {
+    font-family: var(--font-heading);
+    color: var(--color-primary);
+    margin-top: 0;
+    margin-bottom: 18px;
+    font-size: 1.4em;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 12px;
+}
+
+/* Styling for alle dropdown-knapper */
+.narrative-info-dropdown > .dropdown-toggle {
+    width: 100%;
+    padding: 10px 0px 10px 15px; /* Top, Højre, Bund, Venstre. 15px tilføjet til venstre */
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+    font-family: var(--font-heading);
+    font-size: 0.9em; /* Matcher H2 */
+    font-weight: 500; /* Matcher H2 */
+    color: var(--color-primary); /* Matcher H2 */
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0; /* Indholdet i .dropdown-content skal have top-margin/padding */
+}
+/* Sørg for at den lukkede tilstand for den specifikke pil også er defineret korrekt */
+.narrative-info-dropdown > .dropdown-toggle .dropdown-arrow {
+    font-size: 0.7em; /* Eller 0.9em hvis du foretrækker den størrelse */
+    line-height: 1; /* Kan hjælpe med centrering */
+    padding-right: 10px; /* Bevar luft til højre */
+    transition: transform 0.3s ease;
+    transform: rotate(0deg); /* SIKRER AT ◀ peger mod venstre i lukket tilstand */
+}
+
+/* KORREKTION for åben tilstand for den specifikke pil */
+.narrative-info-dropdown > .dropdown-toggle.open .dropdown-arrow {
+    transform: rotate(-90deg); /* Får ◀ til at pege nedad ▼ */
+}
+
+.narrative-info-dropdown > .dropdown-content {
+    padding-top: 15px; /* Luft mellem toggle-knap og første item i dropdown */
+}
+
+/* Generel styling for de indre indholdsbokse */
+.narrative-content-box {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: var(--border-radius);
+    border: 1px solid #dee2e6;
+    min-height: 35px;
+    margin-top: 8px; /* Afstand fra H3 i debug-items, eller fra H2 hvis det er det første element */
+}
+
+/* Specifikt for historiens titel og indhold */
+.narrative-story-title {
+    font-family: var(--font-heading);
+    font-size: 1.3em;
+    color: var(--color-text);
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+/* Selve historieteksten (nu ID'et på den indre div) */
+/* Hvis du vil style den indre div #narrative-generated-story specifikt */
+#narrative-generated-story.narrative-story-content-inner {
+    white-space: pre-wrap;
+    font-size: 1em;
+    line-height: 1.75;
+    color: var(--color-text);
+    padding: 0; /* Padding styres af .narrative-content-box udenom */
+    background-color: transparent; /* Baggrund styres af .narrative-content-box udenom */
+    border: none; /* Kant styres af .narrative-content-box udenom */
+}
+
+
+/* For refleksionsspørgsmålslisten inden i sin .narrative-content-box */
+#narrative-reflection-section .narrative-content-box ul {
+    padding-left: 20px;
+    margin: 0;
+    list-style-position: outside;
+}
+#narrative-reflection-section .narrative-content-box ul li {
+    margin-bottom: 12px;
+    line-height: 1.6;
+    color: var(--color-text);
+    font-size: 0.95em;
+}
+#narrative-reflection-section .narrative-content-box ul li:last-child {
+    margin-bottom: 0;
+}
+
+
+/* For debug-sektionens underpunkter */
+#narrative-debug-section .debug-info-item { /* Denne div er inden i .dropdown-content */
+    margin-bottom: 18px;
+}
+#narrative-debug-section .debug-info-item:last-child {
+    margin-bottom: 5px;
+}
+#narrative-debug-section .debug-info-item h3 {
+    font-family: var(--font-body);
+    color: #333;
+    margin-top: 0;
+    margin-bottom: 6px;
+    font-size: 1em;
+    font-weight: 700;
+}
+#narrative-debug-section .narrative-content-box pre {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    min-height: auto;
+    white-space: pre-wrap;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85em;
+    line-height: 1.5;
+    color: #212529;
+    max-height: 180px; /* Justeret */
+    overflow-y: auto;
+    word-wrap: break-word;
 }

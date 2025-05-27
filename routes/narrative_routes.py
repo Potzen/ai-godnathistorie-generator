@@ -115,7 +115,7 @@ def generate_narrative_story():
         return jsonify({"error": "En uventet intern serverfejl opstod under narrativ generering."}), 500
 
 @narrative_bp.route('/suggest_character_traits', methods=['POST'])
-@login_required
+# @login_required
 def suggest_character_traits():
     user_id_for_log = current_user.id if hasattr(current_user, 'id') else 'Ukendt bruger (karaktertræk login påkrævet)'
     current_app.logger.info(f"Narrative route /suggest_character_traits kaldt af bruger: {user_id_for_log}")

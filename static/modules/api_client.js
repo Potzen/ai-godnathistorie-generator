@@ -70,5 +70,73 @@ export async function generateImageApi(storyText) {
     return result;
 }
 
+/**
+ * Sender det narrative fokus til backend for at få forslag til karaktertræk.
+ * @param {string} narrativeFocus - Brugerens input for historiens centrale tema/udfordring.
+ * @returns {Promise<object>} Et promise der resolver med JSON-svar fra serveren (forventer forslag eller error).
+ * @throws {Error} Kaster en fejl hvis netværksrespons ikke er ok, eller ved andre fejl.
+ */
+export async function suggestCharacterTraitsApi(narrativeFocus) {
+    console.log("api_client.js: suggestCharacterTraitsApi called with focus:", narrativeFocus);
+    const response = await fetch('/narrative/suggest_character_traits', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ narrative_focus: narrativeFocus })
+    });
+
+    if (!response.ok) {
+        let errorMsg = `Serverfejl under forslag til karaktertræk (${response.status})`;
+        try {
+            const errorData = await response.json();
+            errorMsg = errorData.error || `${errorMsg} ${response.statusText || ''}`;
+        } catch (e) {
+            const textError = await response.text();
+            errorMsg += ` ${response.statusText || textError || '(ukendt serverfejl)'}`;
+        }
+        console.error("api_client.js: Server error in suggestCharacterTraitsApi:", errorMsg);
+        throw new Error(errorMsg);
+    }
+
+    const result = await response.json();
+    console.log("api_client.js: Character trait suggestions received from server:", result);
+    return result;
+}
+
+/**
+ * Sender alle data for en narrativ historie til backend for generering.
+ * @param {object} narrativeData - Objektet der indeholder alle input til den narrative historie.
+ * @returns {Promise<object>} Et promise der resolver med JSON-svar fra serveren (forventer historie, titel, spørgsmål eller error).
+ * @throws {Error} Kaster en fejl hvis netværksrespons ikke er ok, eller ved andre fejl.
+ */
+export async function generateNarrativeStoryApi(narrativeData) {
+    console.log("api_client.js: generateNarrativeStoryApi called with data:", narrativeData);
+    const response = await fetch('/narrative/generate_narrative_story', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(narrativeData)
+    });
+
+    if (!response.ok) {
+        let errorMsg = `Serverfejl under generering af narrativ historie (${response.status})`;
+        try {
+            const errorData = await response.json();
+            errorMsg = errorData.error || errorData.story || `${errorMsg} ${response.statusText || ''}`;
+        } catch (e) {
+            const textError = await response.text();
+            errorMsg += ` ${response.statusText || textError || '(ukendt serverfejl)'}`;
+        }
+        console.error("api_client.js: Server error in generateNarrativeStoryApi:", errorMsg);
+        throw new Error(errorMsg);
+    }
+
+    const result = await response.json();
+    console.log("api_client.js: Narrative story data received from server:", result);
+    return result;
+}
 
 // Flere API-funktioner vil blive tilføjet her senere (f.eks. for billeder, lyd, narrativ støtte)
+

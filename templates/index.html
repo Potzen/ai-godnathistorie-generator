@@ -167,217 +167,228 @@
             <p>Skab historier med et specifikt pædagogisk eller følelsesmæssigt fokus.</p>
 
             <div class="narrative-info-dropdown">
-                <button type="button" class="dropdown-toggle">Hvad er Narrativ Terapi? <span class="dropdown-arrow">&#9660;</span></button>
+                <button type="button" class="dropdown-toggle">Hvad er Narrativ Terapi? <span class="dropdown-arrow">&#9664;</span></button>
                 <div class="dropdown-content hidden">
-                    <p><em>Detaljeret beskrivelse af narrativ terapi, hvordan det virker, hvordan det hjælper børn, og hvordan appen anvender teorierne. Inkluderer også en tydelig disclaimer om, at appen ikke er et terapi-værktøj. (Dette indhold tilføjes senere)</em></p>
+                    <p><em>Detaljeret beskrivelse af narrativ terapi... (Dette indhold tilføjes senere)</em></p>
                 </div>
             </div>
 
             <div class="narrative-info-dropdown">
-                <button type="button" class="dropdown-toggle">Vejledning til Narrativ Historiefortælling <span class="dropdown-arrow">&#9660;</span></button>
+                <button type="button" class="dropdown-toggle">Vejledning til Narrativ Historiefortælling <span class="dropdown-arrow">&#9664;</span></button>
                 <div class="dropdown-content hidden">
-                    <p><em>Vejledning til forældre om effektiv udfyldning af inputfelter, integration med barnet, spørgsmålsteknikker, og de narrative trin i praksis. (Dette indhold tilføjes senere)</em></p>
+                    <p><em>Vejledning til forældre om effektiv udfyldning... (Dette indhold tilføjes senere)</em></p>
                 </div>
             </div>
 
             <div class="input-category">
-                    <label for="narrative-focus-input">Tema, Udfordring eller Fokus for Historien (Obligatorisk):</label>
-                    <textarea id="narrative-focus-input" name="narrative_focus" rows="3" placeholder="Eks: Min datter er bange for monstre under sengen, At lære at sige undskyld, Følelsen af at være genert..."></textarea>
-                    </div>
-
-                <div class="input-category">
-                    <label for="narrative-goal-input">Ønsket Udgang/Mål for Historien (Anbefalet):</label>
-                    <textarea id="narrative-goal-input" name="narrative_goal" rows="2" placeholder="Eks: At barnet føler sig mere modigt, At barnet lærer at bede om hjælp..."></textarea>
-                    </div>
-
-                <div class="input-category">
-                    <label>Information om Barnet (Hovedperson):</label>
-                    <div id="narrative-child-info-container">
-                        <div class="listener-group"> <div class="input-pair">
-                               <label for="narrative-child-name-1" class="sr-only">Barnets Navn</label>
-                                <input type="text" name="narrative_child_name" id="narrative-child-name-1" placeholder="Barnets Navn">
-                            </div>
-                            <div class="input-pair">
-                               <label for="narrative-child-age-1" class="sr-only">Barnets Alder</label>
-                                <input type="text" name="narrative_child_age" id="narrative-child-age-1" placeholder="Alder (f.eks. 6)">
-                            </div>
-                            </div>
-                    </div>
-                    </div>
-
+                <label for="narrative-focus-input">Tema, Udfordring eller Fokus for Historien (Obligatorisk):</label>
+                <textarea id="narrative-focus-input" name="narrative_focus" rows="3" placeholder="Eks: Min datter er bange for monstre under sengen, At lære at sige undskyld, Følelsen af at være genert..."></textarea>
+            </div>
             <div class="input-category">
-                    <label for="narrative-child-strengths-select">Barnets Karakteristika/Styrker (vælg eller beskriv):</label>
-                    <select name="narrative_child_strengths_select" id="narrative-child-strengths-select" class="dynamic-select" data-other-input-id="narrative-child-strengths-other">
-                        <option value="">-- Vælg en styrke --</option>
-                        <option value="Modig">Modig</option>
-                        <option value="Klog">Klog</option>
-                        <option value="Venlig">Venlig</option>
-                        <option value="Kreativ">Kreativ</option>
-                        <option value="Tålmodig">Tålmodig</option>
-                        <option value="Nysgerrig">Nysgerrig</option>
-                        <option value="Omsorgsfuld">Omsorgsfuld</option>
-                        <option value="Sjov">Sjov</option>
-                        <option value="Stærk">Stærk</option>
-                        <option value="Fantasifuld">Fantasifuld</option>
-                        <option value="Hjælpsom">Hjælpsom</option>
-                        <option value="Vedholdende">Vedholdende</option>
-                        <option value="other">Andet (beskriv nedenfor)...</option>
-                    </select>
-                    <input type="text" name="narrative_child_strengths_other" id="narrative-child-strengths-other" class="hidden other-input" placeholder="Beskriv anden styrke/karakteristik">
-                    </div>
-
-                <div class="input-category">
-                    <label for="narrative-child-values-select">Barnets Værdier/Overbevisninger (valgfri):</label>
-                    <select name="narrative_child_values_select" id="narrative-child-values-select" class="dynamic-select" data-other-input-id="narrative-child-values-other">
-                        <option value="">-- Vælg en værdi --</option>
-                        <option value="Retfærdighed">Retfærdighed</option>
-                        <option value="Ærlighed">Ærlighed</option>
-                        <option value="Empati">Empati</option>
-                        <option value="Samarbejde">Samarbejde</option>
-                        <option value="Frihed">Frihed</option>
-                        <option value="Loyalitet">Loyalitet</option>
-                        <option value="Omsorg">Omsorg</option>
-                        <option value="At gøre sit bedste">At gøre sit bedste</option>
-                        <option value="other">Andet (beskriv nedenfor)...</option>
-                    </select>
-                    <input type="text" name="narrative_child_values_other" id="narrative-child-values-other" class="hidden other-input" placeholder="Beskriv anden værdi/overbevisning">
-                    </div>
-
+                <label for="narrative-goal-input">Ønsket Udgang/Mål for Historien (Anbefalet):</label>
+                <textarea id="narrative-goal-input" name="narrative_goal" rows="2" placeholder="Eks: At barnet føler sig mere modigt, At barnet lærer at bede om hjælp..."></textarea>
+            </div>
             <div class="input-category">
-                    <label for="narrative-child-motivation">Barnets Motivation/Ønske (valgfri, udover problemfokus):</label>
-                    <input type="text" id="narrative-child-motivation" name="narrative_child_motivation" placeholder="Eks: Ønsker at finde en ven, Vil gerne lære at flyve...">
-                    </div>
-
-                <div class="input-category">
-                    <label for="narrative-child-reaction">Barnets Typiske Adfærd/Reaktion på Udfordringen (valgfri):</label>
-                    <textarea id="narrative-child-reaction" name="narrative_child_reaction" rows="2" placeholder="Eks: Trækker sig typisk tilbage, men vil gerne lære at sige fra..."></textarea>
-                    </div>
-
-                <div class="input-category">
-                    <label>Vigtige Relationer for Barnet (valgfri):</label>
-                    <div id="narrative-relations-container">
-                        <div class="relation-group"> <div class="input-pair">
-                               <label for="narrative-relation-name-1" class="sr-only">Relations Navn</label>
-                                <input type="text" name="narrative_relation_name" id="narrative-relation-name-1" placeholder="Navn (f.eks. Bedstemor Anna)">
-                            </div>
-                            <div class="input-pair">
-                               <label for="narrative-relation-type-1" class="sr-only">Relationstype</label>
-                                <input type="text" name="narrative_relation_type" id="narrative-relation-type-1" placeholder="Relation (f.eks. Bedste ven, Kæledyr)">
-                            </div>
-                             <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+                <label>Information om Barnet (Hovedperson):</label>
+                <div id="narrative-child-info-container">
+                    <div class="listener-group"> <div class="input-pair">
+                           <label for="narrative-child-name-1" class="sr-only">Barnets Navn</label>
+                            <input type="text" name="narrative_child_name" id="narrative-child-name-1" placeholder="Barnets Navn">
                         </div>
-                    </div>
-                    <button type="button" id="narrative-add-relation-button" class="add-button">+ Tilføj relation</button>
-                    </div>
-
-                <hr style="margin: 30px 0;">
-                <h4 style="margin-bottom: 15px;">Generelle Historieelementer (valgfri):</h4>
-
-                <div class="input-category">
-                    <label>Hovedkarakter(er) i Historien (udover barnets spejling):</label>
-                    <div id="narrative-main-characters-container">
-                        <div class="character-group">
-                             <div class="input-pair">
-                                <label for="narrative-main-char-desc-1" class="sr-only">Beskrivelse</label>
-                                <input type="text" name="narrative_main_char_desc" id="narrative-main-char-desc-1" placeholder="Beskrivelse (f.eks. en talende ræv)">
-                             </div>
-                             <div class="input-pair">
-                                <label for="narrative-main-char-name-1" class="sr-only">Navn</label>
-                                <input type="text" name="narrative_main_char_name" id="narrative-main-char-name-1" placeholder="Navn (valgfrit)">
-                             </div>
-                             <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+                        <div class="input-pair">
+                           <label for="narrative-child-age-1" class="sr-only">Barnets Alder</label>
+                            <input type="text" name="narrative_child_age" id="narrative-child-age-1" placeholder="Alder (f.eks. 6)">
                         </div>
-                    </div>
-                    <button type="button" id="narrative-add-main-char-button" class="add-button">+ Tilføj hovedkarakter</button>
+                        </div>
                 </div>
-
-                <div class="input-category">
-                    <label>Sted(er) hvor historien skal foregå:</label>
-                    <div id="narrative-places-container">
-                         <div class="input-group">
-                            <label for="narrative-place-input-1" class="sr-only">Sted</label>
-                            <input type="text" name="narrative_place" id="narrative-place-input-1" placeholder="f.eks. en hemmelig have, et rumskib">
-                            <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+            </div>
+            <div class="input-category">
+                <label for="narrative-child-strengths-select">Barnets Karakteristika/Styrker (vælg eller beskriv):</label>
+                <select name="narrative_child_strengths_select" id="narrative-child-strengths-select" class="dynamic-select" data-other-input-id="narrative-child-strengths-other">
+                    <option value="">-- Vælg en styrke --</option><option value="Modig">Modig</option><option value="Klog">Klog</option><option value="Venlig">Venlig</option><option value="Kreativ">Kreativ</option><option value="Tålmodig">Tålmodig</option><option value="Nysgerrig">Nysgerrig</option><option value="Omsorgsfuld">Omsorgsfuld</option><option value="Sjov">Sjov</option><option value="Stærk">Stærk</option><option value="Fantasifuld">Fantasifuld</option><option value="Hjælpsom">Hjælpsom</option><option value="Vedholdende">Vedholdende</option><option value="other">Andet (beskriv nedenfor)...</option>
+                </select>
+                <input type="text" name="narrative_child_strengths_other" id="narrative-child-strengths-other" class="hidden other-input" placeholder="Beskriv anden styrke/karakteristik">
+            </div>
+            <div class="input-category">
+                <label for="narrative-child-values-select">Barnets Værdier/Overbevisninger (valgfri):</label>
+                <select name="narrative_child_values_select" id="narrative-child-values-select" class="dynamic-select" data-other-input-id="narrative-child-values-other">
+                    <option value="">-- Vælg en værdi --</option><option value="Retfærdighed">Retfærdighed</option><option value="Ærlighed">Ærlighed</option><option value="Empati">Empati</option><option value="Samarbejde">Samarbejde</option><option value="Frihed">Frihed</option><option value="Loyalitet">Loyalitet</option><option value="Omsorg">Omsorg</option><option value="At gøre sit bedste">At gøre sit bedste</option><option value="other">Andet (beskriv nedenfor)...</option>
+                </select>
+                <input type="text" name="narrative_child_values_other" id="narrative-child-values-other" class="hidden other-input" placeholder="Beskriv anden værdi/overbevisning">
+            </div>
+            <div class="input-category">
+                <label for="narrative-child-motivation">Barnets Motivation/Ønske (valgfri, udover problemfokus):</label>
+                <input type="text" id="narrative-child-motivation" name="narrative_child_motivation" placeholder="Eks: Ønsker at finde en ven, Vil gerne lære at flyve...">
+            </div>
+            <div class="input-category">
+                <label for="narrative-child-reaction">Barnets Typiske Adfærd/Reaktion på Udfordringen (valgfri):</label>
+                <textarea id="narrative-child-reaction" name="narrative_child_reaction" rows="2" placeholder="Eks: Trækker sig typisk tilbage, men vil gerne lære at sige fra..."></textarea>
+            </div>
+            <div class="input-category">
+                <label>Vigtige Relationer for Barnet (valgfri):</label>
+                <div id="narrative-relations-container">
+                    <div class="relation-group"> <div class="input-pair">
+                           <label for="narrative-relation-name-1" class="sr-only">Relations Navn</label>
+                            <input type="text" name="narrative_relation_name" id="narrative-relation-name-1" placeholder="Navn (f.eks. Bedstemor Anna)">
+                        </div>
+                        <div class="input-pair">
+                           <label for="narrative-relation-type-1" class="sr-only">Relationstype</label>
+                            <input type="text" name="narrative_relation_type" id="narrative-relation-type-1" placeholder="Relation (f.eks. Bedste ven, Kæledyr)">
+                        </div>
+                         <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+                    </div>
+                </div>
+                <button type="button" id="narrative-add-relation-button" class="add-button">+ Tilføj relation</button>
+            </div>
+            <hr style="margin: 30px 0;">
+            <h4 style="margin-bottom: 15px;">Generelle Historieelementer (valgfri):</h4>
+            <div class="input-category">
+                <label>Hovedkarakter(er) i Historien (udover barnets spejling):</label>
+                <div id="narrative-main-characters-container">
+                    <div class="character-group">
+                         <div class="input-pair">
+                            <label for="narrative-main-char-desc-1" class="sr-only">Beskrivelse</label>
+                            <input type="text" name="narrative_main_char_desc" id="narrative-main-char-desc-1" placeholder="Beskrivelse (f.eks. en talende ræv)">
                          </div>
+                         <div class="input-pair">
+                            <label for="narrative-main-char-name-1" class="sr-only">Navn</label>
+                            <input type="text" name="narrative_main_char_name" id="narrative-main-char-name-1" placeholder="Navn (valgfrit)">
+                         </div>
+                         <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
                     </div>
-                    <button type="button" class="add-button generic-add-button" data-container-id="narrative-places-container" data-input-name="narrative_place" data-input-placeholder="f.eks. under en regnbue" data-input-id-prefix="narrative-place-input">+ Tilføj sted</button>
                 </div>
+                <button type="button" id="narrative-add-main-char-button" class="add-button">+ Tilføj hovedkarakter</button>
+            </div>
+            <div class="input-category">
+                <label>Sted(er) hvor historien skal foregå:</label>
+                <div id="narrative-places-container">
+                     <div class="input-group">
+                        <label for="narrative-place-input-1" class="sr-only">Sted</label>
+                        <input type="text" name="narrative_place" id="narrative-place-input-1" placeholder="f.eks. en hemmelig have, et rumskib">
+                        <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+                     </div>
+                </div>
+                <button type="button" class="add-button generic-add-button" data-container-id="narrative-places-container" data-input-name="narrative_place" data-input-placeholder="f.eks. under en regnbue" data-input-id-prefix="narrative-place-input">+ Tilføj sted</button>
+            </div>
+            <div class="input-category">
+                <label>Plot-elementer eller Ønsket Morale for historien:</label>
+                <div id="narrative-plot-container">
+                    <div class="input-group">
+                        <label for="narrative-plot-input-1" class="sr-only">Plot/Morale</label>
+                        <input type="text" name="narrative_plot" id="narrative-plot-input-1" placeholder="f.eks. en forsvundet skat, 'at være en god ven'">
+                        <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+                    </div>
+                </div>
+                 <button type="button" class="add-button generic-add-button" data-container-id="narrative-plot-container" data-input-name="narrative_plot" data-input-placeholder="f.eks. en magisk konkurrence" data-input-id-prefix="narrative-plot-input">+ Tilføj plot/morale</button>
+            </div>
+            <div class="input-category">
+                <label for="narrative-negative-prompt-input">Ting der IKKE skal med i historien:</label>
+                <div class="input-group"> <textarea id="narrative-negative-prompt-input" name="narrative_negative_prompt" rows="2" placeholder="f.eks. 'ingen hekse', 'undgå at nogen græder'"></textarea>
+                </div>
+            </div>
+            <div class="input-category">
+                <label for="narrative-length-select">Vælg historie længde:</label>
+                <select name="narrative_length" id="narrative-length-select">
+                    <option value="kort">Kort</option>
+                    <option value="mellem" selected>Mellem</option>
+                    <option value="lang">Lang</option>
+                </select>
+            </div>
+            <div class="input-category">
+                <label for="narrative-mood-select">Vælg stemning:</label>
+                <select name="narrative_mood" id="narrative-mood-select">
+                    <option value="neutral" selected>Neutral / Blandet</option>
+                    <option value="håbefuld">Håbefuld</option>
+                    <option value="tænksom">Tænksom</option>
+                    <option value="magisk">Magisk</option>
+                    <option value="eventyrlig">Eventyrlig</option>
+                    <option value="rolig">Rolig / Afslappende</option>
+                    <option value="sjov">Sjov / Humoristisk</option>
+                </select>
+            </div>
+            <hr style="margin: 30px 0;">
 
-                <div class="input-category">
-                    <label>Plot-elementer eller Ønsket Morale for historien:</label>
-                    <div id="narrative-plot-container">
-                        <div class="input-group">
-                            <label for="narrative-plot-input-1" class="sr-only">Plot/Morale</label>
-                            <input type="text" name="narrative_plot" id="narrative-plot-input-1" placeholder="f.eks. en forsvundet skat, 'at være en god ven'">
-                            <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+            <div class="narrative-actions" style="margin-top: 25px; display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
+                <button type="button" id="narrative-suggest-traits-button" class="utility-button">Foreslå Karaktertræk (AI)</button>
+                <button type="button" id="narrative-generate-story-button" class="primary-action-button" style="background-color: var(--color-primary); color: white; font-size: 1.1em; padding: 12px 20px;">Generer Narrativ Historie</button>
+            </div>
+
+            <hr style="margin: 30px 0;">
+
+            <div id="narrative-loading-indicator" class="narrative-loading-spinner hidden" style="margin-top: 20px;">
+                Genererer narrativ historie, vent venligst... <span class="spinner"></span>
+            </div>
+            <div id="narrative-error-display" class="flash-message flash-error hidden" style="margin-top: 20px;"></div>
+
+            <section id="narrative-generated-story-section" class="narrative-output-section hidden">
+                <h2>Historien</h2>
+                <div id="narrative-generated-title" class="narrative-story-title"></div>
+                <div class="narrative-content-box">
+                    <div id="narrative-generated-story" class="narrative-story-content-inner">
+                        Vent venligst, eller tryk "Generer Narrativ Historie"...
+                    </div>
+                </div>
+            </section>
+
+            <section id="narrative-reflection-section" class="narrative-output-section hidden">
+                <h2>Refleksionsspørgsmål til Oplæseren</h2>
+                <div class="narrative-content-box">
+                    <ul id="narrative-reflection-questions-list">
+                        <li>Spørgsmål vises her efter generering.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="narrative-debug-section" class="narrative-output-section narrative-info-dropdown hidden">
+                <button type="button" class="dropdown-toggle">
+                    Teknisk Reference / Debug Information <span class="dropdown-arrow">&#9664;</span>
+                </button>
+                <div class="dropdown-content hidden">
+                    <div class="debug-info-item">
+                        <h3>Status:</h3>
+                        <div class="narrative-content-box">
+                            <pre id="narrative-debug-status">Venter på generering...</pre>
                         </div>
                     </div>
-                     <button type="button" class="add-button generic-add-button" data-container-id="narrative-plot-container" data-input-name="narrative_plot" data-input-placeholder="f.eks. en magisk konkurrence" data-input-id-prefix="narrative-plot-input">+ Tilføj plot/morale</button>
-                </div>
-
-                <div class="input-category">
-                    <label for="narrative-negative-prompt-input">Ting der IKKE skal med i historien:</label>
-                    <div class="input-group"> <textarea id="narrative-negative-prompt-input" name="narrative_negative_prompt" rows="2" placeholder="f.eks. 'ingen hekse', 'undgå at nogen græder'"></textarea>
+                    <div class="debug-info-item">
+                        <h3>Narrativt Brief (AI Trin 1 Output):</h3>
+                        <div class="narrative-content-box">
+                            <pre id="narrative-debug-brief">Venter på generering...</pre>
+                        </div>
                     </div>
-                </div>
-
-                <div class="input-category">
-                    <label for="narrative-length-select">Vælg historie længde:</label>
-                    <select name="narrative_length" id="narrative-length-select">
-                        <option value="kort">Kort</option>
-                        <option value="mellem" selected>Mellem</option>
-                        <option value="lang">Lang</option>
-                    </select>
-                </div>
-
-                <div class="input-category">
-                    <label for="narrative-mood-select">Vælg stemning:</label>
-                    <select name="narrative_mood" id="narrative-mood-select">
-                        <option value="neutral" selected>Neutral / Blandet</option>
-                        <option value="håbefuld">Håbefuld</option>
-                        <option value="tænksom">Tænksom</option>
-                        <option value="magisk">Magisk</option>
-                        <option value="eventyrlig">Eventyrlig</option>
-                        <option value="rolig">Rolig / Afslappende</option>
-                        <option value="sjov">Sjov / Humoristisk</option>
-                        </select>
-                </div>
-
-                <hr style="margin: 30px 0;">
-
-                <div class="narrative-actions" style="margin-top: 25px; display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
-                    <button type="button" id="narrative-suggest-traits-button" class="utility-button">Foreslå Karaktertræk (AI)</button>
-                    <button type="button" id="narrative-generate-story-button" class="primary-action-button" style="background-color: var(--color-primary); color: white; font-size: 1.1em; padding: 12px 20px;">Generer Narrativ Historie</button>
-                </div>
-
-
-            <div id="narrative-story-output" style="margin-top: 20px;">
-                 </div>
-
-        </section>
-
-        <section id="historie-output">
+                    <div class="debug-info-item">
+                        <h3>Udkast Titel (AI Trin 2 Output):</h3>
+                        <div class="narrative-content-box">
+                            <pre id="narrative-debug-draft-title">Venter på generering...</pre>
+                        </div>
+                    </div>
+                    <div class="debug-info-item">
+                        <h3>Udkast Indhold (AI Trin 2 Output - Uddrag):</h3>
+                        <div class="narrative-content-box">
+                            <pre id="narrative-debug-draft-content">Venter på generering...</pre>
+                        </div>
+                    </div>
+                </div> </section> </section> <section id="historie-output">
             <div class="historie-header-controls">
                 <h2 id="story-section-heading">Jeres historie</h2>
                 <div class="audio-controls-container">
                     <div id="audio-loading" class="hidden">Genererer lyd, vent venligst... <span class="spinner"></span></div>
                     <div id="audio-error" class="feedback-status error"></div>
                     <div class="login-prompt hidden" id="login-prompt-audio">
-                        <em>Du skal være <a href="{{ url_for('auth.google_login') }}">logget ind</a> for at få læst historien højt.</em> </div>
+                        <em>Du skal være <a href="{{ url_for('auth.google_login') }}">logget ind</a> for at få læst historien højt.</em>
                     </div>
-                    <audio id="audio-player" controls class="audio-player-style hidden">
-                        Din browser understøtter ikke lyd-elementet.
-                    </audio>
                 </div>
+                <audio id="audio-player" controls class="audio-player-style hidden">
+                    Din browser understøtter ikke lyd-elementet.
+                </audio>
             </div>
-            <div id="story-display"></div>
-
-            <div id="story-share-buttons" class="hidden">
+            <div id="story-display"></div> <div id="story-share-buttons" class="hidden">
                 <button type="button" id="share-story-facebook-button" class="utility-button">Del denne historie på Facebook</button>
                 <button type="button" id="copy-story-button" class="utility-button">Kopier historie til deling</button>
-                <button id="reset-button" class="utility-button" style="display: none;">Prøv Igen</button> {# Denne er flyttet ind her for bedre layout kontrol #}
+                <button id="reset-button" class="utility-button" style="display: none;">Prøv Igen</button>
             </div>
-            </section>
+        </section>
+
         <section id="billede-til-historien-sektion" class="hidden">
             <h2>Billede til Historien (Beta-version)</h2>
             <div id="image-loading-indicator" class="hidden" style="text-align: center; margin-bottom: 15px;">
@@ -395,7 +406,7 @@
                 <label for="sang-dropdown">Vælg en sang:</label>
                 <select name="sang-valg" id="sang-dropdown">
                     <option value="">-- Vælg en sang --</option>
-                    </select>
+                </select>
             </div>
             <div class="input-category">
                 <h3 id="sangtekst-titel" style="margin-bottom: 10px; color: var(--color-primary); font-weight: 500;">Sangtekst:</h3>
@@ -418,7 +429,7 @@
     </main>
 
     <div id="cookie-consent-banner" class="hidden">
-        <p>Denne side bruger cookies til at forbedre din oplevelse og til analyseformål (Google Analytics). Ved at klikke "Accepter" giver du samtykke til brugen af disse cookies. Læs mere i vores <a href="{{ url_for('main.privacy_policy') }}">privatlivspolitik</a>.</p> ```
+        <p>Denne side bruger cookies til at forbedre din oplevelse og til analyseformål (Google Analytics). Ved at klikke "Accepter" giver du samtykke til brugen af disse cookies. Læs mere i vores <a href="{{ url_for('main.privacy_policy') }}">privatlivspolitik</a>.</p>
         <button id="accept-cookies-button" class="utility-button">Accepter</button>
     </div>
 
