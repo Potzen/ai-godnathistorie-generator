@@ -102,6 +102,14 @@ function trackGAEvent(action, category, label, value) {
     const narrativeChildValuesOther = document.getElementById('narrative-child-values-other');
     const narrativeChildMotivationInput = document.getElementById('narrative-child-motivation');
     const narrativeChildReactionTextarea = document.getElementById('narrative-child-reaction');
+
+    // NYT: Felter for Problem-Karakter
+    const narrativeProblemIdentityNameInput = document.getElementById('narrative-problem-identity-name');
+    const narrativeProblemRoleFunctionInput = document.getElementById('narrative-problem-role-function');
+    const narrativeProblemPurposeIntentionInput = document.getElementById('narrative-problem-purpose-intention');
+    const narrativeProblemBehaviorActionInput = document.getElementById('narrative-problem-behavior-action');
+    const narrativeProblemInfluenceInput = document.getElementById('narrative-problem-influence');
+
     // Tilføjelse af main characters, places, plot for narrative
     const narrativeMainCharactersContainer = document.getElementById('narrative-main-characters-container');
     const narrativePlacesContainer = document.getElementById('narrative-places-container');
@@ -1496,6 +1504,122 @@ async function handleNarrativeGenerateClick() {
     // Indlæs gemte lyttere for historie-sektionen
     loadAndDisplaySavedListeners();
 
+    // Funktion til at forudfylde felter med AI-forslag
+   // Funktion til at forudfylde felter med AI-forslag
+    function populateCharacterTraitFields(suggestions) {
+        console.log("populateCharacterTraitFields kaldt med forslag:", suggestions);
+        const aiSuggestionClass = 'ai-suggested-input';
+        let attemptedToFillProblemCharacter = false;
+
+        function setSimpleInput(element, value) {
+            if (element && value && element.value.trim() === '') {
+                element.value = value;
+                element.classList.add(aiSuggestionClass);
+                element.addEventListener('input', () => element.classList.remove(aiSuggestionClass), { once: true });
+                return true; // Indikerer at feltet blev ændret
+            } else if (element && value && element.value.trim() !== '') {
+                console.log(`Skipped pre-filling ${element.id || 'element'} because it already has user input: "${element.value.trim()}"`);
+            }
+            return false; // Indikerer at feltet ikke blev ændret
+        }
+
+        // Problem-karakter forslag
+        if (suggestions && suggestions.problem_character_suggestions) {
+            const ps = suggestions.problem_character_suggestions;
+            console.log("Forsøger at anvende forslag til Problem-Karakter:", ps);
+            // Vi sætter attemptedToFillProblemCharacter til true, hvis der overhovedet er forslag til problem karakteren.
+            // Selve udfyldningen afhænger af, om felterne er tomme.
+            if (Object.keys(ps).length > 0) { // Tjek om der er nøgler i problem_character_suggestions
+                attemptedToFillProblemCharacter = true; // Vi har forslag at arbejde med
+                 // Kald setSimpleInput for hvert felt. Det er ikke nødvendigt at tjekke returværdien her for denne logik.
+                setSimpleInput(narrativeProblemIdentityNameInput, ps.identity_name ? ps.identity_name[0] : null);
+                setSimpleInput(narrativeProblemRoleFunctionInput, ps.role_function ? ps.role_function[0] : null);
+                setSimpleInput(narrativeProblemPurposeIntentionInput, ps.purpose_intention ? ps.purpose_intention[0] : null);
+                setSimpleInput(narrativeProblemBehaviorActionInput, ps.behavior_action ? ps.behavior_action[0] : null);
+                setSimpleInput(narrativeProblemInfluenceInput, ps.influence_on_protagonist ? ps.influence_on_protagonist[0] : null);
+            }
+        } else {
+            console.log("Ingen forslag til Problem-Karakter modtaget i suggestions objektet.");
+        }
+
+        // Protagonist-karakter forslag (bliver ignoreret som før)
+        if (suggestions && suggestions.protagonist_character_suggestions) {
+            console.log("Forslag til Protagonist-Karakter modtaget, men vil IKKE blive anvendt.");
+        }
+
+        console.log("populateCharacterTraitFields udført. Forsøgte at udfylde problem-karakter:", attemptedToFillProblemCharacter);
+        return attemptedToFillProblemCharacter; // Returnerer true hvis der var forslag til problem-karakteren
+    }
+
+    // === Event Listeners for Narrativ Støtte Knapper ===
+    if (narrativeSuggestTraitsButton) {
+        narrativeSuggestTraitsButton.addEventListener('click', async () => {
+            console.log("Narrative 'Suggest Traits' button clicked.");
+            const focusText = narrativeFocusInput ? narrativeFocusInput.value.trim() : "";
+
+            if (!focusText) {
+                alert("Udfyld venligst 'Tema, Udfordring eller Fokus for Historien' først.");
+                if (narrativeFocusInput) narrativeFocusInput.focus();
+                return;
+            }
+
+            const originalButtonText = narrativeSuggestTraitsButton.textContent;
+            narrativeSuggestTraitsButton.disabled = true;
+            narrativeSuggestTraitsButton.textContent = "Foreslår træk...";
+
+            try {
+                const suggestions = await suggestCharacterTraitsApi(focusText);
+                console.log("Forslag til karaktertræk modtaget fra API:", suggestions);
+
+                if (suggestions && !suggestions.error) {
+                    const attemptedProblemFill = populateCharacterTraitFields(suggestions);
+
+                    if (attemptedProblemFill) {
+                        // Tjek om nogle af problemkarakter-felterne faktisk blev udfyldt (blev ændret)
+                        let actuallyFilledSomething = false;
+                        if (suggestions.problem_character_suggestions) {
+                            const ps = suggestions.problem_character_suggestions;
+                            if ((ps.identity_name && ps.identity_name[0] && narrativeProblemIdentityNameInput.value === ps.identity_name[0]) ||
+                                (ps.role_function && ps.role_function[0] && narrativeProblemRoleFunctionInput.value === ps.role_function[0]) ||
+                                (ps.purpose_intention && ps.purpose_intention[0] && narrativeProblemPurposeIntentionInput.value === ps.purpose_intention[0]) ||
+                                (ps.behavior_action && ps.behavior_action[0] && narrativeProblemBehaviorActionInput.value === ps.behavior_action[0]) ||
+                                (ps.influence_on_protagonist && ps.influence_on_protagonist[0] && narrativeProblemInfluenceInput.value === ps.influence_on_protagonist[0])
+                            ) {
+                                actuallyFilledSomething = true;
+                            }
+                        }
+
+                        if (actuallyFilledSomething) {
+                             console.log("AI har foreslået karaktertræk for Problem-Karakteren, og felter er opdateret."); // Erstatter alert med console.log
+                        } else if (attemptedProblemFill && !actuallyFilledSomething) {
+                            console.log("AI havde forslag til Problem-Karakteren, men alle relevante felter var allerede udfyldt eller matchede forslaget.");
+                        } else { // !attemptedProblemFill (bør dækkes af det ydre 'else'-tilfælde)
+                            console.log("Ingen forslag til Problem-Karakteren blev anvendt (muligvis ingen forslag fra AI).");
+                        }
+                    } else {
+                         console.log("AI returnerede ingen forslag til Problem-Karakteren (attemptedProblemFill var false).");
+                    }
+
+                } else if (suggestions && suggestions.error) {
+                    alert(`Fejl under forslag til karaktertræk: ${suggestions.error}`);
+                    console.error("Fejl fra suggestCharacterTraitsApi:", suggestions.error);
+                } else {
+                    alert("AI kunne ikke generere forslag (uventet svar fra server). Tjek konsollen.");
+                    console.warn("Uventet eller tomt svar (uden fejl) fra suggestCharacterTraitsApi:", suggestions);
+                }
+
+            } catch (error) {
+                console.error("Fejl ved API kald til suggestCharacterTraitsApi:", error);
+                alert(`Der opstod en fejl under hentning af karaktertræk-forslag: ${error.message}`);
+            } finally {
+                narrativeSuggestTraitsButton.disabled = false;
+                narrativeSuggestTraitsButton.textContent = originalButtonText;
+            }
+        });
+    } else {
+        console.warn("Knappen '#narrative-suggest-traits-button' blev ikke fundet.");
+    }
+
     // Historie-generator knapper
     if (generateButton) { generateButton.addEventListener('click', handleGenerateClick); } else { console.error("Generate button (#generate-button) not found!"); }
     if (resetButton && storyShareButtonsContainer) { // Sikrer at reset knappen findes i containeren
@@ -1555,33 +1679,30 @@ async function handleNarrativeGenerateClick() {
             try {
                 const suggestions = await suggestCharacterTraitsApi(focusText);
                 console.log("Forslag til karaktertræk modtaget fra API:", suggestions);
-                // TODO: Implementer UI opdatering med de modtagne forslag.
-                // For nu, vis en alert eller log.
+
                 if (suggestions && !suggestions.error) {
-                    alert("Forslag til karaktertræk er modtaget (se konsollen). UI-opdatering mangler.");
-                    // Eksempel på forudfyldning (skal udbygges betydeligt):
-                    // if (suggestions.protagonist_character_suggestions && suggestions.protagonist_character_suggestions.strengths && suggestions.protagonist_character_suggestions.strengths.length > 0) {
-                    //     const firstStrength = suggestions.protagonist_character_suggestions.strengths[0];
-                    //     // Prøv at finde en matchende option i select, ellers sæt "other" og udfyld other-feltet
-                    //     const strengthOption = Array.from(narrativeChildStrengthsSelect.options).find(opt => opt.text === firstStrength || opt.value === firstStrength);
-                    //     if (strengthOption) {
-                    //         narrativeChildStrengthsSelect.value = strengthOption.value;
-                    //         if (narrativeChildStrengthsOther) narrativeChildStrengthsOther.classList.add('hidden');
-                    //     } else if (narrativeChildStrengthsOther) {
-                    //         narrativeChildStrengthsSelect.value = 'other';
-                    //         narrativeChildStrengthsOther.value = firstStrength;
-                    //         narrativeChildStrengthsOther.classList.remove('hidden');
-                    //     }
-                    // }
-                    // Lignende logik for andre felter... Dette er komplekst og kræver omhyggelig implementering.
+                    const attemptedProblemFill = populateCharacterTraitFields(suggestions);
+
+                    if (attemptedProblemFill) {
+                        console.log("Forsøg på at forudfylde problem-karakter felter er udført baseret på AI forslag.");
+                        // Ingen alert her - brugeren ser den visuelle ændring.
+                    } else {
+                        console.log("Ingen forslag til Problem-Karakteren blev anvendt (enten ingen forslag eller felter var allerede udfyldt).");
+                        // Ingen alert her heller.
+                    }
                 } else if (suggestions && suggestions.error) {
+                    // Denne alert er en fejlmeddelelse og bør blive for nu.
                     alert(`Fejl under forslag til karaktertræk: ${suggestions.error}`);
+                    console.error("Fejl fra suggestCharacterTraitsApi:", suggestions.error);
                 } else {
-                    alert("Modtog et uventet svar for karaktertræk-forslag.");
+                    // Dette dækker tilfælde, hvor 'suggestions' er null, undefined, eller en anden uventet (men ikke-fejl) struktur.
+                    console.warn("Uventet eller tomt svar (uden fejl) fra suggestCharacterTraitsApi:", suggestions);
+                    // Ingen alert her. Brugeren ser blot, at intet sker.
                 }
 
             } catch (error) {
                 console.error("Fejl ved API kald til suggestCharacterTraitsApi:", error);
+                // Denne alert er en fejlmeddelelse og bør blive for nu.
                 alert(`Der opstod en fejl under hentning af karaktertræk-forslag: ${error.message}`);
             } finally {
                 narrativeSuggestTraitsButton.disabled = false;

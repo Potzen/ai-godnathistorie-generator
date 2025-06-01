@@ -240,6 +240,51 @@
                 </div>
                 <button type="button" id="narrative-add-relation-button" class="add-button">+ Tilføj relation</button>
             </div>
+            <div class="narrative-info-dropdown input-category"> <button type="button" class="dropdown-toggle">Beskriv Problem-Karakteren (Eksternalisering) <span class="dropdown-arrow">&#9664;</span></button>
+                <div class="dropdown-content hidden">
+                    <div class="narrative-info-dropdown inner-dropdown" style="margin-bottom: 20px; border: 1px dashed var(--color-secondary); background-color: #fdfdfd;"> <button type="button" class="dropdown-toggle inner-dropdown-toggle" style="font-size: 0.9em; padding: 8px 12px;">Vejledning: Hvad er Eksternalisering? <span class="dropdown-arrow">&#9664;</span></button>
+                        <div class="dropdown-content inner-dropdown-content hidden" style="padding: 10px 12px;">
+                            <p style="font-size: 0.85em; line-height: 1.6;">Eksternalisering er et kerneprincip i narrativ terapi. Det handler om at adskille et problem eller en udfordring fra barnets identitet. I stedet for at sige "barnet *er* vredt", ser man vreden som noget ydre – f.eks. en "Vredetrold", der kommer på besøg.</p>
+                            <ul style="font-size: 0.85em; line-height: 1.6; padding-left: 18px; margin-bottom: 0;">
+                                <li style="margin-bottom: 5px;"><strong>Giv problemet et navn/en form:</strong> Det gør det lettere at tale om (f.eks. "Bekymringsmonsteret", "Skældud-Skyen", "GenerthedsSpøgelset").</li>
+                                <li style="margin-bottom: 5px;"><strong>Adskil fra barnet:</strong> Problemet er noget, der påvirker barnet, ikke noget barnet *er*.</li>
+                                <li style="margin-bottom: 5px;"><strong>Øget handlekraft:</strong> Når problemet er "udenfor", kan barnet bedre forholde sig til det, undersøge det, og endda "forhandle" eller "kæmpe" med det.</li>
+                                <li style="margin-bottom: 0px;"><strong>Reducer skam/skyld:</strong> Det er ikke barnets skyld, at problemet er der.</li>
+                            </ul>
+                            <p style="font-size: 0.85em; line-height: 1.6; margin-top:10px;">Når du udfylder felterne nedenfor for "Problem-Karakteren", tænk på, hvordan du kan give den udfordring, historien skal handle om, en sådan ydre form.</p>
+                        </div>
+                    </div>
+                    <p style="font-size: 0.85em; color: #555; margin-top: 10px; margin-bottom: 15px;"><em>Dette hjælper AI'en med at give "problemet" en ydre form i historien (f.eks. "Vredestrolden", "Generthedsskyggen"). Udfyld de felter, der giver mening for din historie.</em></p>
+                    <div class="input-category" style="margin-bottom:15px;">
+                        <label for="narrative-problem-identity-name">Problemets Navn/Identitet:</label>
+                        <input type="text" id="narrative-problem-identity-name" name="narrative_problem_identity_name" placeholder="F.eks. Kede-Klodsen, Drille-Spøgelset">
+                    </div>
+
+                    <div class="input-category" style="margin-bottom:15px;">
+                        <label for="narrative-problem-role-function">Problemets Rolle/Funktion:</label>
+                        <input type="text" id="narrative-problem-role-function" name="narrative_problem_role_function" placeholder="F.eks. dukker op når ting er svære">
+                    </div>
+
+                    <div class="input-category" style="margin-bottom:15px;">
+                        <label for="narrative-problem-purpose-intention">Problemets Formål/Intention:</label>
+                        <input type="text" id="narrative-problem-purpose-intention" name="narrative_problem_purpose_intention" placeholder="F.eks. vil have al opmærksomhed">
+                    </div>
+
+                    <div class="input-category" style="margin-bottom:15px;">
+                        <label for="narrative-problem-behavior-action">Problemets Typiske Adfærd/Handling:</label>
+                        <input type="text" id="narrative-problem-behavior-action" name="narrative_problem_behavior_action" placeholder="F.eks. råber højt, hvisker usynligt">
+                    </div>
+
+                    <div class="input-category" style="margin-bottom: 5px;"> <label for="narrative-problem-influence">Problemets Indflydelse på Hovedpersonen:</label>
+                        <input type="text" id="narrative-problem-influence" name="narrative_problem_influence" placeholder="F.eks. gør hovedpersonen ked af det">
+                    </div>
+
+                    <div style="margin-top: 15px; text-align: left;">
+                        <button type="button" id="narrative-suggest-traits-button" class="utility-button">Foreslå Karaktertræk (AI)</button>
+                    </div>
+                </div>
+
+            </div>
             <hr style="margin: 30px 0;">
             <h4 style="margin-bottom: 15px;">Generelle Historieelementer (valgfri):</h4>
             <div class="input-category">
@@ -309,7 +354,6 @@
             <hr style="margin: 30px 0;">
 
             <div class="narrative-actions" style="margin-top: 25px; display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
-                <button type="button" id="narrative-suggest-traits-button" class="utility-button">Foreslå Karaktertræk (AI)</button>
                 <button type="button" id="narrative-generate-story-button" class="primary-action-button" style="background-color: var(--color-primary); color: white; font-size: 1.1em; padding: 12px 20px;">Generer Narrativ Historie</button>
             </div>
 

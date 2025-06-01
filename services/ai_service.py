@@ -361,18 +361,14 @@ def get_ai_suggested_character_traits(narrative_focus):
         current_app.logger.debug(
             f"ai_service: Prompt til karaktertræk-forslag (delvis): {prompt_for_suggestions[:200]}...")
 
-        # 2. Konfigurer og kald Gemini 1.5 Pro
-        # VIGTIGT: Sørg for at 'gemini-1.5-pro-latest' er en tilgængelig og passende model for din opsætning.
-        # Hvis du ikke har adgang via din API-nøgle, kan du midlertidigt bruge 'gemini-1.5-flash-latest'
-        # men husk at Pro-modellen er målet for bedre ræsonnement for Terapi-AI funktioner.
-        model_name = 'gemini-1.5-pro-latest'  # Som aftalt, start med Pro
-        # model_name = 'gemini-1.5-flash-latest' # Fallback hvis Pro giver problemer initielt
+        # 2. Konfigurer og kald Gemini 2.5 Pro
+        model_name = 'gemini-2.5-pro-preview-05-06'
 
         current_app.logger.info(f"ai_service: Bruger model '{model_name}' til karaktertræk-forslag.")
         model = genai.GenerativeModel(model_name)
 
         generation_config_settings = {
-            "max_output_tokens": 2048,  # JSON-output kan være lidt langt
+            "max_output_tokens": 8192,  # JSON-output kan være lidt langt
             "temperature": 0.5,  # Lavere temperatur for mere fokuseret/forudsigeligt JSON output
             "response_mime_type": "application/json",  # Bed AI'en om at formatere output som JSON
         }
@@ -441,27 +437,18 @@ def get_ai_suggested_character_traits(narrative_focus):
             f"ai_service (Bruger: {user_id_for_log}): Generel fejl i get_ai_suggested_character_traits: {e}\n{traceback.format_exc()}")
         return {"error": f"Intern fejl ved hentning af AI-forslag til karaktertræk: {str(e)}"}
 
+
+
 def generate_narrative_brief(
-        narrative_focus,
-        story_goal,
-        child_name,
-        child_age,
-        child_strengths,
-        child_values,
-        child_motivation,
-        child_typical_reaction,
-        important_relations,
-        main_character_description=None,
-        story_place=None,
-        story_plot_elements=None,
-        negative_prompt=None
+        original_user_inputs: dict  # Modtager nu hele dictionary med brugerinput
 ):
     """
-    Genererer et struktureret narrativt brief ved hjælp af en AI-model.
-    Dette er Trin 1 i den reviderede narrative AI-proces.
+    Genererer et struktureret narrativt brief ved hjælp af en AI-model (Trin 1).
+    AI'en instrueres af en prompt (bygget af build_narrative_briefing_prompt)
+    til at opsummere de originale brugerinput i et specifikt format.
 
     Args:
-        (Alle argumenter svarer til dem i build_narrative_briefing_prompt)
+        original_user_inputs (dict): En dictionary indeholdende alle brugerens inputfelter.
 
     Returns:
         str: Det genererede narrative brief som en tekststreng,
@@ -470,44 +457,27 @@ def generate_narrative_brief(
     current_app.logger.info("AI Service: Påbegynder generering af narrativt brief (Trin 1)...")
 
     try:
-        # Byg prompten ved hjælp af den importerede funktion
-        prompt_string = build_narrative_briefing_prompt(
-            narrative_focus=narrative_focus,
-            story_goal=story_goal,
-            child_name=child_name,
-            child_age=child_age,
-            child_strengths=child_strengths,
-            child_values=child_values,
-            child_motivation=child_motivation,
-            child_typical_reaction=child_typical_reaction,
-            important_relations=important_relations,
-            main_character_description=main_character_description,
-            story_place=story_place,
-            story_plot_elements=story_plot_elements,
-            negative_prompt=negative_prompt
-        )
+        # Byg prompten ved hjælp af den importerede funktion,
+        # som nu selv håndterer udpakning af værdier fra original_user_inputs.
+        prompt_string = build_narrative_briefing_prompt(original_user_inputs)
+
         current_app.logger.debug(
             f"AI Service: Narrativ briefing prompt bygget (længde: {len(prompt_string)}). Første 200 tegn:\n{prompt_string[:200]}")
 
-        # Konfigurer AI-modellen (f.eks. Gemini 1.5 Flash - god til strukturerede opgaver)
-        # Vi kan genbruge safety_settings og generation_config fra generate_story_text_from_gemini
-        # eller definere nye, hvis denne opgave kræver andre indstillinger.
-        # For et brief kan vi måske have færre max_output_tokens.
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        # Konfigurer AI-modellen
+        model = genai.GenerativeModel('gemini-2.5-pro-preview-05-06')  # Opdateret model for Trin 1
 
-        # Standard safety settings (kan justeres hvis nødvendigt)
+        # Justerede safety settings for brief-generering for at minimere blokering
         safety_settings = {
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
         }
 
-        # Generation config (juster max_output_tokens for et brief)
-        # Et brief er kortere end en hel historie.
         generation_config_settings = {
-            "max_output_tokens": 1500,  # Juster efter behov for længden af et brief
-            "temperature": 0.6  # Lidt lavere temperatur for mere fokuseret/konsistent output til et brief
+            "max_output_tokens": 4096,  # Forøget for 2.5 Pro modellen
+            "temperature": 0.5  # Lavere temp for mere præcis opsummering af input
         }
         gen_config = genai.types.GenerationConfig(**generation_config_settings)
 
@@ -522,35 +492,48 @@ def generate_narrative_brief(
 
         narrative_brief_text = ""
         try:
-            narrative_brief_text = response.text.strip()
-            if not narrative_brief_text:
-                current_app.logger.warning("AI Service: Narrativt brief fra Gemini var tomt.")
-                return "Fejl: AI returnerede et tomt narrativt brief."
-            current_app.logger.info("AI Service: Narrativt brief genereret succesfuldt.")
-            current_app.logger.debug(
-                f"AI Service: Genereret narrativt brief (første 200 tegn):\n{narrative_brief_text[:200]}")
-        except ValueError as e_safety:
+            # Forbedret tjek af respons og finish_reason
+            if response.candidates and response.candidates[0].content.parts:
+                if response.candidates[0].finish_reason == 1:  # FINISH_REASON_STOP
+                    narrative_brief_text = response.text.strip()
+                    if not narrative_brief_text:
+                        current_app.logger.warning(
+                            "AI Service: Narrativt brief fra Gemini var tomt, selvom finish_reason var STOP.")
+                        return "Fejl: AI returnerede et tomt narrativt brief."
+                    current_app.logger.info("AI Service: Narrativt brief genereret succesfuldt.")
+                    current_app.logger.debug(
+                        f"AI Service: Genereret narrativt brief (første 200 tegn):\n{narrative_brief_text[:200]}")
+                else:  # Håndter andre finish_reasons
+                    finish_reason_val = response.candidates[0].finish_reason
+                    current_app.logger.error(
+                        f"AI Service: Uventet finish_reason ({finish_reason_val}) for narrativt brief. Safety Ratings: {response.candidates[0].safety_ratings}")
+                    if finish_reason_val == 2:  # SAFETY
+                        return "Fejl: Indhold til narrativt brief blev blokeret af sikkerhedsfilter (selvom sat til NONE). Undersøg prompt/input nærmere."
+                    elif finish_reason_val == 3:  # MAX_TOKENS
+                        return "Fejl: AI ramte token-grænsen under generering af narrativt brief. Input er muligvis for langt."
+                    else:
+                        return f"Fejl: AI kunne ikke generere et komplet narrativt brief (finish_reason: {finish_reason_val})."
+            else:  # Ingen valid 'parts' i content
+                current_app.logger.error(
+                    "AI Service: Ingen valid 'parts' fundet i content fra Gemini for narrativt brief.")
+                current_app.logger.error(
+                    f"AI Service: Prompt Feedback (brief): {response.prompt_feedback if hasattr(response, 'prompt_feedback') else 'Ingen prompt feedback.'}")
+                if response.candidates:
+                    current_app.logger.error(f"AI Service: Candidate (brief): {response.candidates[0]}")
+                return "Fejl: AI returnerede intet indhold for narrativt brief (ingen 'parts')."
+
+        except ValueError as e_text_access:  # Fanger specifikt hvis .text fejler pga. ingen valid part
             current_app.logger.error(
-                f"AI Service: Svar til narrativt brief blokeret af sikkerhedsfilter: {e_safety}")
+                f"AI Service: Fejl ved adgang til response.text (muligvis blokeret indhold, selv med BLOCK_NONE): {e_text_access}")
             current_app.logger.error(
                 f"AI Service: Prompt Feedback (brief): {response.prompt_feedback if hasattr(response, 'prompt_feedback') else 'Ingen prompt feedback.'}")
             if hasattr(response, 'candidates') and response.candidates:
                 current_app.logger.error(f"AI Service: Blocked Candidates (brief): {response.candidates}")
-            return "Fejl: Indhold til narrativt brief blev blokeret. Prøv at justere dine input."
-        except Exception as e_parse:
+            return "Fejl: Kunne ikke tilgå tekst-svar fra AI for narrativt brief (muligvis blokeret)."
+        except Exception as e_parse:  # Generel parsing eller anden fejl
             current_app.logger.error(
-                f"AI Service: Fejl ved adgang til response.text eller parsing for narrativt brief: {e_parse}\n{traceback.format_exc()}")
-            # Fallback hvis .text fejler
-            if response and response.candidates:
-                try:
-                    narrative_brief_text = response.candidates[0].content.parts[0].text.strip()
-                    current_app.logger.info("AI Service: Narrativt brief (fallback fra candidates) hentet.")
-                except Exception as e_candidate_fallback:
-                    current_app.logger.error(
-                        f"AI Service: Kunne heller ikke hente narrativt brief fra response.candidates: {e_candidate_fallback}")
-                    return "Fejl: Kunne ikke parse svaret fra AI for narrativt brief."
-            else:
-                return "Fejl: Uventet svarformat fra AI for narrativt brief."
+                f"AI Service: Generel fejl ved behandling af AI-svar for narrativt brief: {e_parse}\n{traceback.format_exc()}")
+            return "Fejl: Generel fejl under behandling af AI-svar for narrativt brief."
 
         return narrative_brief_text
 
@@ -558,6 +541,7 @@ def generate_narrative_brief(
         current_app.logger.error(
             f"AI Service: Generel fejl under generering af narrativt brief: {e_api}\n{traceback.format_exc()}")
         return f"Fejl: Teknisk fejl i AI-tjenesten under generering af narrativt brief."
+
 
 def draft_narrative_story_with_rag(
         structured_brief,  # Output fra Trin 1
@@ -626,7 +610,7 @@ def draft_narrative_story_with_rag(
         # Husk at 'gemini-2.5-pro-preview-05-06' var den specifikke model nævnt.
         # Hvis den ikke er tilgængelig via din API-nøgle, brug en tilgængelig Pro-model.
         # Lad os prøve med 'gemini-1.5-pro-latest' som et godt kompromis for nu.
-        ai_model_name = 'gemini-1.5-pro-latest'
+        ai_model_name = 'gemini-2.5-pro-preview-05-06'
         model = genai.GenerativeModel(ai_model_name)
         current_app.logger.info(f"AI Service: Anvender AI-model '{ai_model_name}' for Trin 2.")
 
@@ -637,17 +621,28 @@ def draft_narrative_story_with_rag(
             HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
         }
 
-        # For historiegenerering vil vi have højere kreativitet og længere output
+        story_length_preference = original_user_inputs.get('length', 'mellem')
+        max_tokens_for_draft = 8192  # Default til den højeste værdi (for 'lang' og fallback)
+
+        if story_length_preference == 'kort':
+            max_tokens_for_draft = 2048  # Lavere grænse for "kort" (plads til ca. 6-8 afsnit + spørgsmål)
+        elif story_length_preference == 'mellem':
+            max_tokens_for_draft = 4096  # Mellem grænse for "mellem" (plads til ca. 10-14 afsnit + spørgsmål)
+        # Hvis 'lang', forbliver den 8192
+
+        current_app.logger.info(
+            f"AI Service (Trin 2 Udkast): Ønsket længde '{story_length_preference}'. Sætter max_tokens_for_draft til {max_tokens_for_draft}.")
+        # --- SLUT PÅ NY DYNAMISK MAX_OUTPUT_TOKENS LOGIK ---
+
         generation_config_settings = {
-            "max_output_tokens": 4096,  # Tillad længere historier
-            "temperature": 0.8,  # Højere temperatur for mere kreativitet
-            "top_p": 0.95,  # Nucleus sampling
-            # "stop_sequences": ["--- REFLEKSIONSSPØRGSMÅL ---"] # Overvej om stop sequence er robust nok
+            "max_output_tokens": max_tokens_for_draft,  # BRUGER NU DEN DYNAMISKE VÆRDI
+            "temperature": 0.6,
+            "top_p": 0.95,
         }
         gen_config = genai.types.GenerationConfig(**generation_config_settings)
 
         current_app.logger.info(
-            f"AI Service: Kalder Gemini for narrativt historieudkast (Max Tokens: {generation_config_settings.get('max_output_tokens')}, Temp: {generation_config_settings.get('temperature')}).")
+            f"AI Service: Kalder Gemini for narrativt historieudkast (Max Tokens: {gen_config.max_output_tokens}, Temp: {gen_config.temperature}).")
 
         response = model.generate_content(
             prompt_string,
@@ -666,7 +661,8 @@ def draft_narrative_story_with_rag(
 
             current_app.logger.info("AI Service: Historieudkast (Trin 2) genereret succesfuldt.")
             current_app.logger.debug(
-                f"AI Service: Rå output fra Trin 2 AI (første 300 tegn):\n{raw_response_text[:300]}")
+                f"AI Service: KOMPLET Rå output fra Trin 2 AI:\n---- START ----\n{raw_response_text}\n---- SLUT ----")
+
 
             # Parsing af titel, historie og refleksionsspørgsmål
             parts = raw_response_text.split("--- REFLEKSIONSSPØRGSMÅL ---", 1)
@@ -755,34 +751,34 @@ def edit_narrative_story(
 
         # 2. Konfigurer og kald AI-modellen (Gemini 1.5 Flash er et godt valg her [cite: 149, 150])
         # Modulbeskrivelsen nævner Gemini 2.0 Flash, men vi bruger 'gemini-1.5-flash-latest' som er tilgængelig.
-        ai_model_name = 'gemini-1.5-flash-latest'
+        ai_model_name = 'gemini-2.5-pro-preview-05-06'
         model = genai.GenerativeModel(ai_model_name)
         current_app.logger.info(f"AI Service: Anvender AI-model '{ai_model_name}' for Trin 3 (Redaktør).")
 
         # Safety settings (kan genbruges)
         safety_settings = {
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-        }
+                     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                     HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                     HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                 }
 
         # Generation config for redigering:
         # Max output tokens bør være lidt mere end forventet output for at give plads.
         # Temperatur kan være lidt lavere for at holde sig tættere på originalen, men stadig tillade forbedringer.
         # Længden bestemmes af brugerens input 'length' i original_user_inputs [cite: 156]
-        story_length = original_user_inputs.get('length', 'mellem')
-        max_tokens_for_editing = 2048  # Default for 'kort' / 'mellem'
-        if story_length == 'lang':
-            max_tokens_for_editing = 4096 # Mere plads til lange historier
-        elif story_length == 'mellem':
-             max_tokens_for_editing = 3072 # Lidt mere end kort
+        # story_length = original_user_inputs.get('length', 'mellem')
+        # max_tokens_for_editing = 2048  # Default for 'kort' / 'mellem'
+        # if story_length == 'lang':
+        #    max_tokens_for_editing = 4096 # Mere plads til lange historier
+        # elif story_length == 'mellem':
+        #     max_tokens_for_editing = 3072 # Lidt mere end kort
 
-        current_app.logger.info(
-            f"AI Service (Redaktør): Max tokens sat til {max_tokens_for_editing} baseret på ønsket længde '{story_length}'.")
+        # current_app.logger.info(
+        #    f"AI Service (Redaktør): Max tokens sat til {max_tokens_for_editing} baseret på ønsket længde '{story_length}'.")
 
         generation_config_settings = {
-            "max_output_tokens": max_tokens_for_editing,
+            "max_output_tokens": 8192, #max_tokens_for_editing hvis den skal følge overstående
             "temperature": 0.65, # Lidt lavere for mere fokuseret redigering
             # "top_p": 0.9, # Kan overvejes
         }

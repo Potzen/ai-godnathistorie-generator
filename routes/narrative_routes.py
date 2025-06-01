@@ -30,21 +30,7 @@ def generate_narrative_story():
 
     try:
         current_app.logger.info(f"Bruger {user_id_for_log}: Starter TRIN 1 - Generering af narrativt brief...")
-        narrative_brief = generate_narrative_brief(
-            narrative_focus=narrative_focus,
-            story_goal=original_user_inputs.get('story_goal', ''),
-            child_name=original_user_inputs.get('child_name', ''),
-            child_age=original_user_inputs.get('child_age', ''),
-            child_strengths=original_user_inputs.get('child_strengths', []),
-            child_values=original_user_inputs.get('child_values', []),
-            child_motivation=original_user_inputs.get('child_motivation', ''),
-            child_typical_reaction=original_user_inputs.get('child_typical_reaction', ''),
-            important_relations=original_user_inputs.get('important_relations', []),
-            main_character_description=original_user_inputs.get('main_character_description'),
-            story_place=original_user_inputs.get('story_place'),
-            story_plot_elements=original_user_inputs.get('story_plot_elements'),
-            negative_prompt=original_user_inputs.get('negative_prompt')
-        )
+        narrative_brief = generate_narrative_brief(original_user_inputs)
 
         if isinstance(narrative_brief, str) and narrative_brief.lower().startswith("fejl:"):
             current_app.logger.error(f"Bruger {user_id_for_log} (TRIN 1): Fejl fra generate_narrative_brief: {narrative_brief}")
