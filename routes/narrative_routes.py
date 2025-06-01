@@ -10,17 +10,28 @@ from services.ai_service import (
 
 narrative_bp = Blueprint('narrative', __name__, url_prefix='/narrative')
 
+
 @narrative_bp.route('/generate_narrative_story', methods=['POST'])
-# @login_required # Stadig udkommenteret for test
+@login_required  # Nu aktiv
 def generate_narrative_story():
+    # Tjek om brugeren har 'premium' rolle
+    if current_user.role != 'premium':
+        current_app.logger.warning(
+            f"Uautoriseret forsøg på adgang til '/generate_narrative_story' af bruger: "
+            f"{current_user.email} (Rolle: {current_user.role})"
+        )
+        return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403  # Forbidden
+
     original_user_inputs = request.get_json()
     if not original_user_inputs:
         current_app.logger.error("Narrative Route: Ingen JSON data modtaget.")
         return jsonify({"error": "Ingen JSON data modtaget"}), 400
 
     # Definer user_id_for_log her, så den er tilgængelig i hele funktionen
-    user_id_for_log = current_user.id if hasattr(current_user, 'id') and current_user.is_authenticated else 'Ukendt (narrativ test)'
-    current_app.logger.info(f"Narrative Route (Bruger: {user_id_for_log}): Modtaget data for /generate_narrative_story: {original_user_inputs}")
+    # user_id_for_log defineres allerede nedenfor, så vi behøver ikke ændre den del
+    user_id_for_log = current_user.id  # Kan nu bruge current_user.id direkte her, da brugeren er logget ind
+    current_app.logger.info(
+        f"Narrative Route (Bruger: {user_id_for_log}, E-mail: {current_user.email}): Modtaget data for /generate_narrative_story: {original_user_inputs}")
 
     # --- TRIN 1: Generer Narrativt Brief ---
     narrative_focus = original_user_inputs.get('narrative_focus')
@@ -100,26 +111,37 @@ def generate_narrative_story():
             f"Bruger {user_id_for_log}: Uventet fejl i /generate_narrative_story endpoint: {e}\n{traceback.format_exc()}")
         return jsonify({"error": "En uventet intern serverfejl opstod under narrativ generering."}), 500
 
+
 @narrative_bp.route('/suggest_character_traits', methods=['POST'])
-# @login_required
+@login_required  # Tilføjet/aktiveret
 def suggest_character_traits():
-    user_id_for_log = current_user.id if hasattr(current_user, 'id') else 'Ukendt bruger (karaktertræk login påkrævet)'
-    current_app.logger.info(f"Narrative route /suggest_character_traits kaldt af bruger: {user_id_for_log}")
+    # Tjek om brugeren har 'premium' rolle
+    if current_user.role != 'premium':
+        current_app.logger.warning(
+            f"Uautoriseret forsøg på adgang til '/suggest_character_traits' af bruger: "
+            f"{current_user.email} (Rolle: {current_user.role})"
+        )
+        return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403  # Forbidden
+
+    current_app.logger.info(
+        f"Narrative route /suggest_character_traits kaldt af bruger: {current_user.email} (ID: {current_user.id})")
 
     if not request.is_json:
-        current_app.logger.warning(f"Bruger {user_id_for_log}: Kald til /suggest_character_traits uden JSON data.")
+        current_app.logger.warning(f"Bruger {current_user.email}: Kald til /suggest_character_traits uden JSON data.")
         return jsonify({"error": "Anmodning skal være JSON."}), 415
 
     data = request.get_json()
-    current_app.logger.debug(f"Bruger {user_id_for_log}: Modtaget rådata for /suggest_character_traits: {data}")
+    # current_app.logger.debug(f"Bruger {current_user.email}: Modtaget rådata for /suggest_character_traits: {data}") # Overvej om denne er nødvendig, da vi logger den næste
 
     narrative_focus = data.get('narrative_focus')
 
     if not narrative_focus or not isinstance(narrative_focus, str) or not narrative_focus.strip():
-        current_app.logger.warning(f"Bruger {user_id_for_log}: 'narrative_focus' mangler eller er ugyldigt for /suggest_character_traits.")
+        current_app.logger.warning(
+            f"Bruger {current_user.email}: 'narrative_focus' mangler eller er ugyldigt for /suggest_character_traits.")
         return jsonify({"error": "Obligatorisk felt 'narrative_focus' mangler eller er tomt."}), 400
 
-    current_app.logger.info(f"Bruger {user_id_for_log}: narrative_focus for karaktertræk-forslag: '{narrative_focus}'")
+    current_app.logger.info(
+        f"Bruger {current_user.email}: narrative_focus for karaktertræk-forslag: '{narrative_focus}'")
 
     try:
         current_app.logger.info(f"Bruger {user_id_for_log}: Kalder ai_service for at få forslag til karaktertræk.")

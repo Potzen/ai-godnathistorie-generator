@@ -17,6 +17,7 @@ from authlib.integrations.flask_client import OAuth
 # Importer fra dine egne moduler
 from config import Config
 from extensions import db, login_manager, oauth  # <--- DENNE LINJE ER VIGTIG!
+from extensions import db, login_manager, oauth, migrate # Tilføjet migrate
 from models import User
 from services.rag_service import initialize_knowledge_base
 # Blueprints importeres inde i create_app() for at undgå cirkulære imports.
@@ -126,6 +127,7 @@ def create_app(config_class=Config):  # <--- HER DEFINERES create_app FUNKTIONEN
     db.init_app(app)
     login_manager.init_app(app)
     oauth.init_app(app)
+    migrate.init_app(app, db)  # Initialiser Flask-Migrate
 
     login_manager.login_view = 'auth.google_login'  # Vil pege på auth blueprint, når det er oprettet
     login_manager.login_message = "Log venligst ind for at bruge denne funktion."
@@ -208,7 +210,7 @@ def create_app(config_class=Config):  # <--- HER DEFINERES create_app FUNKTIONEN
         # User modellen defineres globalt længere nede i denne fil.
         # Når den flyttes til models.py, skal den importeres her (f.eks. from .models import User)
         try:
-            user = User.query.get(int(user_id))  # Bruger det globale User-objekt
+            user = db.session.get(User, int(user_id)) # Opdateret linje  # Bruger det globale User-objekt
             return user
         except Exception as e:
             app.logger.error(f"Fejl ved indlæsning af bruger {user_id}: {e}")

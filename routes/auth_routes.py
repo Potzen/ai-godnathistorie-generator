@@ -1,5 +1,5 @@
 # Fil: routes/auth_routes.py
-from flask import Blueprint, redirect, url_for, flash, current_app, session
+from flask import Blueprint, redirect, url_for, flash, current_app, session, request, render_template
 import traceback
 from flask_login import login_user, logout_user, login_required, current_user
 from extensions import db  # Importerer db fra extensions
@@ -122,6 +122,25 @@ def google_authorize():
                 user.email = user_email_from_google
                 needs_commit = True
 
+                # Tildel rolle baseret på e-mail lister fra config
+                premium_emails = [e.lower() for e in current_app.config.get('PREMIUM_TIER_GOOGLE_EMAILS', [])]
+                basic_emails = [e.lower() for e in current_app.config.get('BASIC_TIER_GOOGLE_EMAILS', [])]
+                current_role = user.role  # Gem nuværende rolle for at se om den ændres
+
+                if normalized_email_from_google in premium_emails:
+                    user.role = 'premium'
+                elif normalized_email_from_google in basic_emails:
+                    user.role = 'basic'
+                else:
+                    user.role = 'free'
+
+                if user.role != current_role:
+                    needs_commit = True
+                    current_app.logger.info(
+                        f"Bruger {user.email} rolle opdateret fra '{current_role}' til '{user.role}'.")
+                elif not current_role:  # Hvis rollen var None/tom før (usandsynligt med default, men for en sikkerheds skyld)
+                    needs_commit = True
+                    current_app.logger.info(f"Bruger {user.email} rolle sat til '{user.role}'.")
 
             if needs_commit:
                 try:
@@ -139,7 +158,20 @@ def google_authorize():
                 flash("Der opstod et problem med din konto. Kontakt venligst administratoren (fejlkode: EMAIL_GID_MISMATCH).", "error")
                 return redirect(url_for('main.index'))
 
-            user = User(google_id=google_user_id, name=user_name, email=user_email_from_google)
+            # Bestem rolle for ny bruger
+            assigned_role = 'free'  # Standardrollen fra User modellen vil også være 'free', men vi er eksplicitte her.
+            premium_emails = [e.lower() for e in current_app.config.get('PREMIUM_TIER_GOOGLE_EMAILS', [])]
+            basic_emails = [e.lower() for e in current_app.config.get('BASIC_TIER_GOOGLE_EMAILS', [])]
+
+            # normalized_email_from_google er allerede defineret tidligere i funktionen
+            if normalized_email_from_google in premium_emails:
+                assigned_role = 'premium'
+            elif normalized_email_from_google in basic_emails:
+                assigned_role = 'basic'
+
+            current_app.logger.info(f"Ny bruger {normalized_email_from_google} tildeles rollen '{assigned_role}'.")
+
+            user = User(google_id=google_user_id, name=user_name, email=user_email_from_google, role=assigned_role)
             db.session.add(user)
             try:
                 db.session.commit()
@@ -160,82 +192,40 @@ def google_authorize():
         flash(f"Uventet fejl under login: {str(e)[:100]}...", "error")
         return redirect(url_for('main.index'))
 
-        # --- NYT: Tjek om e-mailen er på den godkendte liste ---
-        # Gør sammenligningen case-insensitive ved at konvertere begge til små bogstaver
-        normalized_email_from_google = user_email_from_google.lower()
-        allowed_emails_lower = [email.lower() for email in current_app.config.get('ALLOWED_EMAIL_ADDRESSES', [])]
+@auth_bp.route('/login-email', methods=['GET', 'POST'])
+def email_password_login():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))  # Hvis allerede logget ind, send til forside
 
-        if normalized_email_from_google not in allowed_emails_lower:
-            current_app.logger.warning(f"Login forsøg fra ikke-godkendt e-mail: {user_email_from_google} (Google ID: {google_user_id}).")
-            flash("Din e-mailadresse har ikke adgang til denne applikation. Kontakt venligst administratoren.", "error")
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+
+        if not email or not password:
+            flash('E-mail og kodeord skal udfyldes.', 'warning')
+            return redirect(url_for('auth.email_password_login'))
+
+        user = User.query.filter(User.email.ilike(email.lower())).first()
+
+        if user and user.password_hash and user.check_password(password):
+            login_user(user,
+                       remember=request.form.get('remember_me', type=bool))  # Husk mig funktionalitet (valgfri)
+            current_app.logger.info(f"Bruger {user.email} logget ind succesfuldt med e-mail/kodeord.")
+            flash(f'Velkommen tilbage, {user.name or user.email}!', 'success')
+
+            # Håndter redirect efter login (f.eks. hvis brugeren prøvede at tilgå en beskyttet side)
+            next_page = request.args.get('next')
+            if next_page and next_page.startswith('/'):  # Sikkerhedscheck for next_page
+                return redirect(next_page)
             return redirect(url_for('main.index'))
-        # --- SLUT PÅ NYT TJEK ---
+        else:
+            current_app.logger.warning(f"Mislykket login forsøg for e-mail: {email}.")
+            flash('Ugyldig e-mail eller kodeord. Prøv igen.', 'danger')
+            # Vi redirecter for at undgå at POST-data genindsendes ved refresh
+            return redirect(url_for('auth.email_password_login'))
 
-        # Fortsæt med at finde eller oprette brugeren, nu hvor vi ved, e-mailen er godkendt
-        user = User.query.filter_by(google_id=google_user_id).first()
-        if user: # Bruger med dette Google ID findes allerede
-            current_app.logger.info(f"Eksisterende bruger (baseret på Google ID) fundet: {user} for e-mail {normalized_email_from_google}")
-            # Opdater navn og e-mail hvis de har ændret sig hos Google,
-            # men kun hvis e-mailen ikke konflikter med en anden eksisterende bruger.
-            needs_commit = False
-            if user.name != user_name:
-                user.name = user_name
-                needs_commit = True
-            if user.email.lower() != normalized_email_from_google:
-                # Tjek om den nye e-mail (fra Google) allerede er i brug af en *anden* bruger
-                conflicting_user_by_email = User.query.filter(User.email.ilike(normalized_email_from_google), User.google_id != google_user_id).first()
-                if not conflicting_user_by_email:
-                    user.email = user_email_from_google # Opdater til den e-mail Google sender
-                    needs_commit = True
-                else:
-                    current_app.logger.warning(f"Bruger {google_user_id}s Google e-mail ({user_email_from_google}) er allerede i brug af en anden bruger ({conflicting_user_by_email.google_id}). E-mail ikke opdateret.")
-
-            if needs_commit:
-                try:
-                    db.session.commit()
-                    current_app.logger.info("Brugerinfo opdateret for eksisterende bruger.")
-                except Exception as e_commit:
-                    db.session.rollback()
-                    current_app.logger.error(f"Fejl ved opdatering af brugerinfo for eksisterende bruger: {e_commit}")
-
-        else: # Ny bruger (Google ID ikke set før), men e-mailen ER på godkendt liste
-              # Vi skal nu oprette brugeren.
-            current_app.logger.info(f"Ny bruger (Google ID: {google_user_id}) med godkendt e-mail: {user_email_from_google}. Opretter bruger...")
-
-            # Ekstra sikkerhed: Tjek om e-mailen (som vi ved er godkendt) allerede er knyttet til en *anden* Google ID i vores DB
-            # Dette burde ikke ske ofte, hvis Google ID er vores primære nøgle, men for en sikkerheds skyld.
-            existing_user_by_email = User.query.filter(User.email.ilike(normalized_email_from_google)).first()
-            if existing_user_by_email:
-                # Dette er en mærkelig situation: e-mailen er godkendt, men allerede i DB med et andet google_id.
-                # Måske skal brugeren logge ind med den *oprindelige* Google-konto, der var knyttet til e-mailen?
-                # Eller vi kan tillade opdatering af google_id på den eksisterende e-mail bruger (mere komplekst).
-                # For nu, lad os give en fejl, da det indikerer en potentiel datakonflikt.
-                current_app.logger.error(f"Godkendt e-mail {user_email_from_google} er allerede i databasen med et andet Google ID ({existing_user_by_email.google_id}) end det nuværende ({google_user_id}).")
-                flash("Der opstod et problem med din konto. Kontakt venligst administratoren (fejlkode: EMAIL_GID_MISMATCH).", "error")
-                return redirect(url_for('main.index'))
-
-            user = User(google_id=google_user_id, name=user_name, email=user_email_from_google) # Brug e-mail fra Google
-            db.session.add(user)
-            try:
-                db.session.commit()
-                current_app.logger.info(f"Ny bruger oprettet: {user}")
-            except Exception as e_commit:
-                db.session.rollback()
-                current_app.logger.error(f"Fejl ved commit af ny bruger: {e_commit}\n{traceback.format_exc()}")
-                flash("Fejl: Kunne ikke oprette din brugerkonto.", "error")
-                return redirect(url_for('main.index'))
-
-        # Fælles for både eksisterende (godkendt) og nyoprettet (godkendt) bruger:
-        login_user(user, remember=True)
-        current_app.logger.info(f"Bruger {user.id} ({user.name}) logget ind succesfuldt (e-mail godkendt).")
-        flash(f"Velkommen, {user.name}!", "success")
-        return redirect(url_for('main.index'))
-
-    except Exception as e:
-        current_app.logger.error(f"Fejl under Google authorization process: {e}\n{traceback.format_exc()}")
-        flash(f"Uventet fejl under login: {str(e)[:100]}...", "error")
-        return redirect(url_for('main.index'))
-
+    # Hvis metoden er GET, eller hvis POST fejler og vi ikke omdirigerer internt i POST-blokken
+    return render_template('login_email.html')  # Vi opretter denne fil senere
 
 @auth_bp.route('/logout')
 @login_required

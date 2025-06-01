@@ -18,7 +18,7 @@ from prompts.narrative_editing_prompt import build_narrative_editing_prompt
 from services.rag_service import find_relevant_chunks_v2
 
 
-def generate_story_text_from_gemini(full_prompt_string, generation_config_settings, safety_settings_values):
+def generate_story_text_from_gemini(full_prompt_string, generation_config_settings, safety_settings_values, target_model_name='gemini-1.5-flash-latest'):
     """
     Genererer en historie (titel og indhold) ved hjælp af Google Gemini.
 
@@ -40,7 +40,12 @@ def generate_story_text_from_gemini(full_prompt_string, generation_config_settin
     actual_story_content = "Der opstod en fejl under historiegenerering i AI-tjenesten."
 
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')  # Sørg for at modelnavn er korrekt
+        # Brug det tilsendte modelnavn, med en fallback hvis det er None eller tomt
+        actual_model_to_use = target_model_name if target_model_name and target_model_name.strip() else 'gemini-1.5-flash-latest'
+        current_app.logger.info(f"ai_service: Anvender model '{actual_model_to_use}' for historiegenerering.")
+        model = genai.GenerativeModel(actual_model_to_use)
+
+        # Omdan dicts til de korrekte typer for API'et, hvis nødvændigt
 
         # Omdan dicts til de korrekte typer for API'et, hvis nødvendigt
         # For genai.types.GenerationConfig og safety_settings, hvis de ikke allerede er det.

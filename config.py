@@ -55,6 +55,17 @@ class Config:
         # Tilføj flere e-mailadresser efter behov
     ]
 
+    # E-mail lister for specifikke brugerroller (Google Login)
+    # Brugere på disse lister skal også være i ALLOWED_EMAIL_ADDRESSES
+    BASIC_TIER_GOOGLE_EMAILS = [
+        # "basic_google_bruger1@gmail.com",
+        # "basic_google_bruger2@example.com",
+    ]
+
+    PREMIUM_TIER_GOOGLE_EMAILS = [
+        # "premium_google_bruger1@gmail.com",
+        "philipotzen@gmail.com",  # Eksempel: philipotzen@gmail.com er premium
+    ]
 
     # Validering (valgfrit men god praksis)
     @staticmethod
