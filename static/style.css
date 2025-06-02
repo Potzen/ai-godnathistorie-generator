@@ -887,99 +887,99 @@ footer .footer-link:hover {
     word-wrap: break-word;
 }
 
-/* Wrapper for AI Model Vælger (NY) */
+/* static/style.css */
+
+/* Wrapper for AI Model Vælger */
 .ai-model-selector-wrapper {
     display: flex;
-    align-items: center; /* Centrerer elementerne vertikalt */
-    gap: 8px;          /* Afstand mellem Off-label, switch, og On-label */
-    margin-top: 4px;   /* Lidt luft under hoved-labelen */
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
 }
 
-/* Styling for Off/On labels (NY) */
 .ai-model-choice-label {
     font-size: 0.9em;
     color: var(--color-text);
-    cursor: default; /* De er ikke direkte klikbare for at ændre state */
+    cursor: default;
 }
 
-/* Gør den aktive label lidt tydeligere (Valgfrit, men god UX) */
 .ai-model-selector-wrapper input[type="checkbox"]:not(:checked) ~ #ai-model-label-off,
 .ai-model-selector-wrapper input[type="checkbox"]:checked ~ #ai-model-label-on {
     font-weight: bold;
-    /* color: var(--color-primary); /* Kan også give den primærfarven */
 }
 
-/* Justeringer til eksisterende switch-styling */
+/* Switch-containeren (holder på selve switchen) */
 .switch-container {
     position: relative;
     display: inline-block;
-    width: 44px;  /* <<< Mindre bredde */
-    height: 24px; /* <<< Mindre højde */
+    width: 44px;  /* Bredden af slider-sporet */
+    height: 24px; /* Højden af slider-sporet */
     vertical-align: middle;
 }
 
+/* Skjuler den faktiske checkbox */
 .switch-container input[type="checkbox"] {
     opacity: 0;
     width: 0;
     height: 0;
 }
 
-.slider-label { /* Dette er den klikbare baggrund for switchen */
+/* Selve slider-sporet (baggrunden) */
+.slider-label {
     position: absolute;
     cursor: pointer;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #ccc;
-    transition: .4s;
-    border-radius: 24px; /* <<< Mindre radius */
-    /* Fjern flex og padding, da teksten er ude nu */
+    background-color: #ccc; /* Farve for "Off"-tilstand */
+    transition: background-color 0.4s ease;
+    border-radius: 24px; /* Gør sporet afrundet */
 }
 
-.slider-label:before { /* Dette er selve "skyderen" */
+/* Slider-bolden (den runde del, der bevæger sig) */
+.slider-label:before {
     position: absolute;
     content: "";
-    height: 20px;
-    width: 20px;
-    left: 2px;
-    /* bottom: 2px; */ /* FJERN DENNE LINJE */
-    top: 50%; /* TILFØJ DENNE LINJE */
-    transform: translateY(-50%); /* TILFØJ DENNE LINJE - for vertikal centrering */
+    height: 20px; /* Højden på bolden */
+    width: 20px;  /* Bredden på bolden */
+    left: 2px;    /* Startposition fra venstre (lille margin) */
+    top: 50%;     /* Vertikal centrering del 1 */
+    transform: translateY(-50%); /* Vertikal centrering del 2 */
     background-color: white;
-    transition: .4s; /* Du kan evt. adskille transition for transform og background-color hvis nødvendigt */
-    border-radius: 50%;
+    transition: transform 0.4s ease, background-color 0.4s ease; /* Animerer flytning og farve */
+    border-radius: 50%; /* Gør den rund */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2); /* Subtil skygge for dybde */
+}
+
+/* Når checkboxen er :checked (switch er "On") */
+input:checked + .slider-label {
+    background-color: var(--color-primary); /* Sporets farve ændres til primærfarven */
 }
 
 input:checked + .slider-label:before {
-    /* Kombiner translateX med den eksisterende translateY for centrering */
-    transform: translateX(20px) translateY(-50%);
+    /* Flyt bolden til højre OG bevar vertikal centrering */
+    transform: translateX(20px) translateY(-50%); /* 44px (track) - 20px (bold) - 2px (venstre margin) - 2px (højre margin) = 20px flytning */
+    /* Her kan du ændre boldens farve, hvis du ønsker det, når den er "On" */
+    /* background-color: var(--color-primary-hover); */ /* Eksempel: Mørkere end sporet */
 }
 
+/* Fokus-styling (valgfrit, men god UX) */
 input:focus + .slider-label {
-    box-shadow: 0 0 1px var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(77, 182, 172, 0.4); /* Tilpasset din primærfarve */
 }
 
-input:checked + .slider-label:before {
-    transform: translateX(20px); /* <<< Mindre translate værdi (width - height_before - left_before*2) cirka. (44 - 20 - 4 = 20) */
-}
-
-/* Fjern tidligere tekst-styling for .model-label-off/on da de ikke er i slideren mere */
-/* .model-label-off, .model-label-on { ... } -- disse er nu .ai-model-choice-label */
-/* input:not(:checked) + .slider-label .model-label-on { display: none; } -- ikke relevant mere */
-/* input:checked + .slider-label .model-label-off { display: none; } -- ikke relevant mere */
-
-
-/* Styling for disabled state (juster evt. farver på labels også) */
+/* Styling for disabled state */
 input:disabled + .slider-label {
-    background-color: #e0e0e0;
+    background-color: #e0e0e0 !important;
     cursor: not-allowed;
 }
+
 input:disabled + .slider-label:before {
-    background-color: #bdbdbd;
+    background-color: #bdbdbd !important;
+    box-shadow: none;
 }
 
-/* Hvis du vil gråne Off/On labelsne ud når switchen er disabled */
 .ai-model-selector-wrapper input[type="checkbox"]:disabled ~ .ai-model-choice-label {
     color: #aaa;
     cursor: not-allowed;
