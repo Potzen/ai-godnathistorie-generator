@@ -197,8 +197,35 @@ def generate_image_with_vertexai(image_prompt_text):
                 current_app.logger.info("ai_service: Modificerer prompt til andet Imagen-forsøg...")
                 current_prompt_to_imagen += ", impressionistic oil painting"
 
+            # Original prompt
+            original_gemini_prompt_for_this_attempt = current_prompt_to_imagen
+            current_app.logger.info(
+                f"ai_service: Prompt før simpel test (forsøg {attempt + 1}): {original_gemini_prompt_for_this_attempt[:100]}...")
+
+            # TEST A
+            # current_prompt_to_imagen = "A little girl, Alma, with bright eyes and pigtails, holding a glowing pink feather. Style: Child-friendly high-quality 3D digital illustration, fairytale-like and imaginative."
+            # current_app.logger.info(f"ai_service: BRUGER TEST PROMPT A: {current_prompt_to_imagen}")
+
+            # TEST B
+            # current_prompt_to_imagen = "A little girl, Alma, flying on a large pink feather. Style: Child-friendly high-quality 3D digital illustration, fairytale-like and imaginative."
+            # current_app.logger.info(f"ai_service: BRUGER TEST PROMPT B: {current_prompt_to_imagen}")
+
+            # TEST C
+            # current_prompt_to_imagen = "A little girl, Alma, flying on a large pink feather over a sparkling lake. Style: Child-friendly high-quality 3D digital illustration, fairytale-like and imaginative."
+            # current_app.logger.info(f"ai_service: BRUGER TEST PROMPT C: {current_prompt_to_imagen}")
+
+            # KAT
+            # current_prompt_to_imagen = "A photo of a happy red cat sitting on a green chair."
+            # current_app.logger.info(f"ai_service: BRUGER SIMPEL TEST PROMPT: {current_prompt_to_imagen}")
+
+            # BARN
+            # current_prompt_to_imagen = "A photo of a child"
+            # current_app.logger.info(f"ai_service: BRUGER SIMPEL TEST PROMPT: {current_prompt_to_imagen}")
+
             model_identifier = "imagen-3.0-generate-002"
             model = ImageGenerationModel.from_pretrained(model_identifier)
+
+
 
             response_imagen = model.generate_images(
                 prompt=current_prompt_to_imagen,
