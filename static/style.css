@@ -1057,3 +1057,38 @@ input:disabled + .slider-label:before {
     background-color: var(--color-secondary-hover); /* Mørkere version af den dæmpede blå */
     color: #333; /* Bevarer mørk tekst */
 }
+
+/* =========== Styling for Skriftstørrelsesknapper =========== */
+.font-size-controls {
+    display: flex; /* Arrangerer knapperne på en række */
+    align-items: center; /* Justerer knapperne vertikalt i midten */
+    gap: 5px; /* Lidt afstand mellem knapperne i gruppen */
+    /* Da .generator-actions og .narrative-actions allerede bruger flex og gap,
+       behøver .font-size-controls ikke yderligere margin for at passe ind,
+       medmindre du specifikt ønsker mere luft omkring selve gruppen. */
+}
+
+.font-button {
+    padding: 6px 10px; /* Lidt mindre padding end standard utility-button for et mere kompakt look */
+    font-size: 0.85em; /* Lidt mindre skriftstørrelse på selve knappen */
+    min-width: auto; /* Tillad knapperne at være smallere baseret på deres indhold */
+    /* Genbruger farver og grundlæggende udseende fra .utility-button,
+       men du kan overskrive dem her, hvis du vil have et andet look.
+       F.eks.:
+       background-color: #e9ecef;
+       color: #495057;
+    */
+}
+
+/* Specifik styling hvis du vil have A- og A+ til at se lidt anderledes ud, f.eks. mere ikon-agtige */
+#decrease-font-button,
+#increase-font-button,
+#narrative-decrease-font-button,
+#narrative-increase-font-button {
+    font-weight: bold; /* Gør A- og A+ lidt tydeligere */
+}
+
+#reset-font-button,
+#narrative-reset-font-button {
+    /* Eventuel specifik styling for nulstil-knappen */
+}

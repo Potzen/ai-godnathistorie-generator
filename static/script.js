@@ -134,8 +134,196 @@ function trackGAEvent(action, category, label, value) {
     const narrativeDebugBrief = document.getElementById('narrative-debug-brief');
     const narrativeDebugDraftTitle = document.getElementById('narrative-debug-draft-title');
     const narrativeDebugDraftContent = document.getElementById('narrative-debug-draft-content');
+    // === Referencer for Skriftstørrelseskontrol (Standard Historier) ===
+    const decreaseFontButton = document.getElementById('decrease-font-button');
+    const increaseFontButton = document.getElementById('increase-font-button');
+    const resetFontButton = document.getElementById('reset-font-button');
+    // storyDisplay er allerede defineret tidligere i dit script for standardhistorier
 
+    // === Referencer for Skriftstørrelseskontrol (Narrative Historier) ===
+    const narrativeDecreaseFontButton = document.getElementById('narrative-decrease-font-button');
+    const narrativeIncreaseFontButton = document.getElementById('narrative-increase-font-button');
+    const narrativeResetFontButton = document.getElementById('narrative-reset-font-button');
+    // narrativeGeneratedStory er allerede defineret tidligere i dit script for narrative historier
+    // (Den hedder 'narrativeGeneratedStory' i din nuværende JS, svarer til #narrative-generated-story i HTML)
+
+    // === Variabler for Skriftstørrelseskontrol ===
+    const DEFAULT_FONT_SIZE_PX = 16; // Standard skriftstørrelse i pixels
+    const FONT_SIZE_STEP_PX = 1;   // Hvor meget skriftstørrelsen ændres pr. klik
+    const MIN_FONT_SIZE_PX = 10;   // Minimum tilladt skriftstørrelse
+    const MAX_FONT_SIZE_PX = 30;   // Maksimum tilladt skriftstørrelse
+
+    let currentStoryDisplayFontSize = DEFAULT_FONT_SIZE_PX;
+    let currentNarrativeStoryFontSize = DEFAULT_FONT_SIZE_PX;
+    const STORY_DISPLAY_FONT_KEY = 'storyDisplayFontSize';
+    const NARRATIVE_STORY_FONT_KEY = 'narrativeStoryFontSize';
+    const failureInfoDropdownToggle = document.getElementById('failure-info-dropdown-toggle');
+    const failureInfoDropdownContent = document.getElementById('failure-info-dropdown-content');
     console.log("DOM references obtained for all sections.");
+
+    // === Funktioner for Skriftstørrelseskontrol ===
+
+    /**
+     * Anvender en given skriftstørrelse på et HTML-element.
+     * @param {HTMLElement} element - HTML-elementet, hvis skriftstørrelse skal ændres.
+     * @param {number} sizeInPx - Den ønskede skriftstørrelse i pixels.
+     */
+    function applyFontSize(element, sizeInPx) {
+        if (element) {
+            element.style.fontSize = `${sizeInPx}px`;
+            // console.log(`Applied font size ${sizeInPx}px to element:`, element.id || element.tagName);
+        } else {
+            // console.warn("Forsøgte at anvende skriftstørrelse på et ikke-eksisterende element.");
+        }
+    }
+
+    /**
+     * Gemmer en skriftstørrelsespræference i LocalStorage.
+     * @param {string} storageKey - Nøglen der skal bruges i LocalStorage.
+     * @param {number} sizeInPx - Skriftstørrelsen der skal gemmes.
+     */
+    function saveFontSizeToLocalStorage(storageKey, sizeInPx) {
+        try {
+            localStorage.setItem(storageKey, sizeInPx.toString());
+            // console.log(`Saved font size ${sizeInPx}px to LocalStorage with key: ${storageKey}`);
+        } catch (e) {
+            console.error("Fejl ved lagring af skriftstørrelse til LocalStorage:", e);
+        }
+    }
+
+    /**
+     * Indlæser skriftstørrelsespræferencer fra LocalStorage og anvender dem.
+     * Kaldes ved sideindlæsning.
+     */
+    function loadFontSizesFromLocalStorage() {
+        // console.log("Forsøger at indlæse skriftstørrelser fra LocalStorage...");
+        try {
+            const savedStoryDisplaySize = localStorage.getItem(STORY_DISPLAY_FONT_KEY);
+            if (savedStoryDisplaySize) {
+                const newSize = parseInt(savedStoryDisplaySize, 10);
+                if (!isNaN(newSize) && newSize >= MIN_FONT_SIZE_PX && newSize <= MAX_FONT_SIZE_PX) {
+                    currentStoryDisplayFontSize = newSize;
+                    // console.log(`Indlæst gemt skriftstørrelse for storyDisplay: ${newSize}px`);
+                }
+            }
+            applyFontSize(storyDisplay, currentStoryDisplayFontSize);
+
+            const savedNarrativeStorySize = localStorage.getItem(NARRATIVE_STORY_FONT_KEY);
+            if (savedNarrativeStorySize) {
+                const newSize = parseInt(savedNarrativeStorySize, 10);
+                if (!isNaN(newSize) && newSize >= MIN_FONT_SIZE_PX && newSize <= MAX_FONT_SIZE_PX) {
+                    currentNarrativeStoryFontSize = newSize;
+                    // console.log(`Indlæst gemt skriftstørrelse for narrativeGeneratedStory: ${newSize}px`);
+                }
+            }
+            // 'narrativeGeneratedStory' er ID'et fra din HTML for den narrative historie-div
+            // Sørg for, at 'narrativeGeneratedStory' er korrekt defineret globalt eller hentet her
+            if (document.getElementById('narrative-generated-story')) { // Tjek om elementet findes
+                 applyFontSize(document.getElementById('narrative-generated-story'), currentNarrativeStoryFontSize);
+            }
+
+
+        } catch (e) {
+            console.error("Fejl ved indlæsning af skriftstørrelser fra LocalStorage:", e);
+        }
+    }
+
+    /**
+     * Opdaterer skriftstørrelsen for et givet element og gemmer præferencen.
+     * @param {HTMLElement} targetElement - Elementet der skal opdateres.
+     * @param {number} change - Ændringen i pixels (+FONT_SIZE_STEP_PX eller -FONT_SIZE_STEP_PX).
+     * @param {boolean} reset - Sæt til true for at nulstille til DEFAULT_FONT_SIZE_PX.
+     * @param {'storyDisplay' | 'narrativeStory'}elementType - Type af element for korrekt variabel og storage key.
+     */
+    function updateFontSize(targetElement, change, reset = false, elementType) {
+        let currentSize;
+        let storageKey;
+
+        if (elementType === 'storyDisplay') {
+            currentSize = currentStoryDisplayFontSize;
+            storageKey = STORY_DISPLAY_FONT_KEY;
+        } else if (elementType === 'narrativeStory') {
+            currentSize = currentNarrativeStoryFontSize;
+            storageKey = NARRATIVE_STORY_FONT_KEY;
+        } else {
+            console.error("Ukendt element type i updateFontSize:", elementType);
+            return;
+        }
+
+        let newSize;
+        if (reset) {
+            newSize = DEFAULT_FONT_SIZE_PX;
+        } else {
+            newSize = currentSize + change;
+        }
+
+        // Begræns størrelsen indenfor MIN og MAX
+        newSize = Math.max(MIN_FONT_SIZE_PX, Math.min(newSize, MAX_FONT_SIZE_PX));
+
+        if (targetElement) {
+            applyFontSize(targetElement, newSize);
+            if (elementType === 'storyDisplay') {
+                currentStoryDisplayFontSize = newSize;
+            } else {
+                currentNarrativeStoryFontSize = newSize;
+            }
+            saveFontSizeToLocalStorage(storageKey, newSize);
+            // console.log(`Font size for ${elementType} (ID: ${targetElement.id}) updated to: ${newSize}px`);
+        } else {
+            // console.warn(`Target element for font size update (type: ${elementType}) er ikke fundet i DOM.`);
+        }
+    }
+
+    // === Event Listeners for Skriftstørrelseskontrol ===
+
+    // For Standard Historier (#story-display)
+    if (decreaseFontButton && storyDisplay) {
+        decreaseFontButton.addEventListener('click', () => {
+            updateFontSize(storyDisplay, -FONT_SIZE_STEP_PX, false, 'storyDisplay');
+        });
+    }
+    if (increaseFontButton && storyDisplay) {
+        increaseFontButton.addEventListener('click', () => {
+            updateFontSize(storyDisplay, FONT_SIZE_STEP_PX, false, 'storyDisplay');
+        });
+    }
+    if (resetFontButton && storyDisplay) {
+        resetFontButton.addEventListener('click', () => {
+            updateFontSize(storyDisplay, 0, true, 'storyDisplay');
+        });
+    }
+
+    // For Narrative Historier (#narrative-generated-story)
+    // Sørg for, at 'narrativeGeneratedStory' er en gyldig reference til det korrekte HTML element
+    // Vi bruger document.getElementById her for at sikre, vi har det nyeste reference, hvis DOM ændrer sig.
+    const narrativeStoryElement = document.getElementById('narrative-generated-story');
+
+    if (narrativeDecreaseFontButton && narrativeStoryElement) {
+        narrativeDecreaseFontButton.addEventListener('click', () => {
+            updateFontSize(narrativeStoryElement, -FONT_SIZE_STEP_PX, false, 'narrativeStory');
+        });
+    } else if (narrativeDecreaseFontButton && !narrativeStoryElement) {
+        // console.warn("narrativeDecreaseFontButton findes, men #narrative-generated-story ikke. Listener ikke tilføjet.");
+    }
+
+    if (narrativeIncreaseFontButton && narrativeStoryElement) {
+        narrativeIncreaseFontButton.addEventListener('click', () => {
+            updateFontSize(narrativeStoryElement, FONT_SIZE_STEP_PX, false, 'narrativeStory');
+        });
+    } else if (narrativeIncreaseFontButton && !narrativeStoryElement) {
+        // console.warn("narrativeIncreaseFontButton findes, men #narrative-generated-story ikke. Listener ikke tilføjet.");
+    }
+
+    if (narrativeResetFontButton && narrativeStoryElement) {
+        narrativeResetFontButton.addEventListener('click', () => {
+            updateFontSize(narrativeStoryElement, 0, true, 'narrativeStory');
+        });
+    } else if (narrativeResetFontButton && !narrativeStoryElement) {
+        // console.warn("narrativeResetFontButton findes, men #narrative-generated-story ikke. Listener ikke tilføjet.");
+    }
+
+    // Indlæs gemte skriftstørrelser ved sideindlæsning
+    loadFontSizesFromLocalStorage();
 
     // === NYT: Fane Navigation Funktionalitet ===
     const tabButtons = document.querySelectorAll('.tab-button');
@@ -257,6 +445,19 @@ function trackGAEvent(action, category, label, value) {
         console.warn("No dropdown toggles found. Narrative info dropdowns will not work.");
     }
     // === SLUT PÅ NYT: Dropdown Funktionalitet for Narrativ Støtte ===
+    // Event listener for informations-dropdown om fejlårsager (i Godnathistorie-fanen)
+    if (failureInfoDropdownToggle && failureInfoDropdownContent) {
+        failureInfoDropdownToggle.addEventListener('click', () => {
+            failureInfoDropdownContent.classList.toggle('hidden');
+            failureInfoDropdownToggle.classList.toggle('open'); // Bruges til at rotere pilen via CSS
+
+            // Valgfri logging til konsollen for at bekræfte funktionalitet
+            // console.log(`Failure info dropdown toggled. Is hidden: ${failureInfoDropdownContent.classList.contains('hidden')}`);
+        });
+        console.log("Event listener for failure info dropdown initialized.");
+    } else {
+        console.warn("Elementer for 'failure info dropdown' (#failure-info-dropdown-toggle eller #failure-info-dropdown-content) blev ikke fundet i DOM.");
+    }
 
     // === NYT: "Andet..." Funktionalitet for Dynamiske Selects ===
     const dynamicSelects = document.querySelectorAll('.dynamic-select');

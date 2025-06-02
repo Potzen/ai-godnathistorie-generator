@@ -190,6 +190,11 @@
                         class="utility-button image-button"
                         disabled> Generer Billede
                 </button>
+                <div class="font-size-controls">
+                    <button type="button" id="decrease-font-button" class="utility-button font-button" title="Gør teksten mindre">A-</button>
+                    <button type="button" id="increase-font-button" class="utility-button font-button" title="Gør teksten større">A+</button>
+                    <button type="button" id="reset-font-button" class="utility-button font-button" title="Nulstil tekststørrelse">Nulstil</button>
+                </div>
             </div>
             <button id="generate-button">Skab Historie</button>
         </section>
@@ -866,6 +871,18 @@
 
                 <div class="narrative-actions" style="margin-top: 25px; display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
                     <button type="button" id="narrative-generate-story-button" class="primary-action-button" style="background-color: var(--color-primary); color: white; font-size: 1.1em; padding: 12px 20px;">Generer Narrativ Historie</button>
+                <div class="font-size-controls" id="narrative-font-size-controls">
+                    <button type="button" id="narrative-decrease-font-button" class="utility-button font-button" title="Gør teksten mindre">A-</button>
+                    <button type="button" id="narrative-increase-font-button" class="utility-button font-button" title="Gør teksten større">A+</button>
+                    <button type="button" id="narrative-reset-font-button" class="utility-button font-button" title="Nulstil tekststørrelse">Nulstil</button>
+                </div>
+                </div>
+
+                <hr style="margin: 30px 0;">
+
+                <div id="narrative-loading-indicator" class="narrative-loading-spinner hidden" style="margin-top: 20px;">
+                    Genererer narrativ historie, vent venligst... <span class="spinner"></span>
+                </div>
                 </div>
 
                 <hr style="margin: 30px 0;">
@@ -1037,6 +1054,41 @@
                 <button type="button" id="share-story-facebook-button" class="utility-button">Del denne historie på Facebook</button>
                 <button type="button" id="copy-story-button" class="utility-button">Kopier historie til deling</button>
                 <button id="reset-button" class="utility-button" style="display: none;">Prøv Igen</button>
+            </div>
+            <div class="info-dropdown-container" style="margin-top: 20px; text-align: left; max-width: 100%;">
+                <button type="button" class="dropdown-toggle" id="failure-info-dropdown-toggle">
+                    Hvorfor fejler min historie/billede nogle gange? <span class="dropdown-arrow">&#9664;</span>
+                </button>
+                <div id="failure-info-dropdown-content" class="dropdown-content hidden" style="padding: 12px 15px; border-top: 1px solid var(--border-color); background-color: #fcfcfc;">
+                    <p><strong>Mulige årsager til at AI-generering kan fejle:</strong></p>
+                    <ul style="margin-top: 8px; padding-left: 20px;">
+                        <li style="margin-bottom: 8px;">
+                            <strong>For billeder:</strong>
+                            <ul style="list-style-type: circle; margin-top: 4px; padding-left: 20px;">
+                                <li style="margin-bottom: 4px;">AI-modellerne har pt. stramme restriktioner og politikker, der fx forhindrer generering af billeder, som indeholder genkendelige børn. Derfor prøver systemet at undgå at generere billeder med børn i. Det er ikke altid det virker.</li>
+                                <li style="margin-bottom: 4px;">For komplekse eller meget specifikke billedprompts kan være svære for modellen at fortolke korrekt.</li>
+                                <li style="margin-bottom: 4px;">En midlertidig kvotebegrænsning på billedgenereringstjenesten.</li>
+                            </ul>
+                        </li>
+                        <li style="margin-bottom: 8px;">
+                            <strong>For historier (tekst):</strong>
+                            <ul style="list-style-type: circle; margin-top: 4px; padding-left: 20px;">
+                                <li style="margin-bottom: 4px;">AI-modellens (Google Gemini) sikkerhedsfiltre kan til tider blokere en historie, hvis den overskrider deres politikker.</li>
+                                <li style="margin-bottom: 4px;">Dette kan ske, hvis input tolkes som omhandlende følsomme emner, vold, hadtale, eller andet indhold, der er i strid med retningslinjerne for brug af AI-modellen, selvom det ikke var din intention.</li>
+                                <li style="margin-bottom: 4px;">Prøv at omformulere dine input, især hvis historien gentagne gange fejler, bliver blokeret eller returnerer uventet indhold.</li>
+                            </ul>
+                        </li>
+                        <li style="margin-bottom: 8px;">
+                            <strong>Generelt for både historie og billeder:</strong>
+                            <ul style="list-style-type: circle; margin-top: 4px; padding-left: 20px;">
+                                <li style="margin-bottom: 4px;">Midlertidige tekniske problemer eller høj belastning på de underliggende AI-tjenester kan forekomme.</li>
+                                <li style="margin-bottom: 4px;">Meget lange eller ekstremt komplekse input kan nogle gange være sværere for AI'en at håndtere optimalt.</li>
+                                <li style="margin-bottom: 4px;">Gemini 2.5 pro kan tage mellem 1-3 minutter for at generere en historie.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <p style="margin-top:12px; font-size:0.9em;"><em>Hvis problemer fortsætter, overvej at simplificere dine input <br> eller prøv igen lidt senere eller skriv et feedback.</em></p>
+                </div>
             </div>
         </section>
 
