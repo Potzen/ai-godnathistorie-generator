@@ -886,3 +886,174 @@ footer .footer-link:hover {
     overflow-y: auto;
     word-wrap: break-word;
 }
+
+/* Wrapper for AI Model Vælger (NY) */
+.ai-model-selector-wrapper {
+    display: flex;
+    align-items: center; /* Centrerer elementerne vertikalt */
+    gap: 8px;          /* Afstand mellem Off-label, switch, og On-label */
+    margin-top: 4px;   /* Lidt luft under hoved-labelen */
+}
+
+/* Styling for Off/On labels (NY) */
+.ai-model-choice-label {
+    font-size: 0.9em;
+    color: var(--color-text);
+    cursor: default; /* De er ikke direkte klikbare for at ændre state */
+}
+
+/* Gør den aktive label lidt tydeligere (Valgfrit, men god UX) */
+.ai-model-selector-wrapper input[type="checkbox"]:not(:checked) ~ #ai-model-label-off,
+.ai-model-selector-wrapper input[type="checkbox"]:checked ~ #ai-model-label-on {
+    font-weight: bold;
+    /* color: var(--color-primary); /* Kan også give den primærfarven */
+}
+
+/* Justeringer til eksisterende switch-styling */
+.switch-container {
+    position: relative;
+    display: inline-block;
+    width: 44px;  /* <<< Mindre bredde */
+    height: 24px; /* <<< Mindre højde */
+    vertical-align: middle;
+}
+
+.switch-container input[type="checkbox"] {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider-label { /* Dette er den klikbare baggrund for switchen */
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px; /* <<< Mindre radius */
+    /* Fjern flex og padding, da teksten er ude nu */
+}
+
+.slider-label:before { /* Dette er selve "skyderen" */
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    /* bottom: 2px; */ /* FJERN DENNE LINJE */
+    top: 50%; /* TILFØJ DENNE LINJE */
+    transform: translateY(-50%); /* TILFØJ DENNE LINJE - for vertikal centrering */
+    background-color: white;
+    transition: .4s; /* Du kan evt. adskille transition for transform og background-color hvis nødvendigt */
+    border-radius: 50%;
+}
+
+input:checked + .slider-label:before {
+    /* Kombiner translateX med den eksisterende translateY for centrering */
+    transform: translateX(20px) translateY(-50%);
+}
+
+input:focus + .slider-label {
+    box-shadow: 0 0 1px var(--color-primary);
+}
+
+input:checked + .slider-label:before {
+    transform: translateX(20px); /* <<< Mindre translate værdi (width - height_before - left_before*2) cirka. (44 - 20 - 4 = 20) */
+}
+
+/* Fjern tidligere tekst-styling for .model-label-off/on da de ikke er i slideren mere */
+/* .model-label-off, .model-label-on { ... } -- disse er nu .ai-model-choice-label */
+/* input:not(:checked) + .slider-label .model-label-on { display: none; } -- ikke relevant mere */
+/* input:checked + .slider-label .model-label-off { display: none; } -- ikke relevant mere */
+
+
+/* Styling for disabled state (juster evt. farver på labels også) */
+input:disabled + .slider-label {
+    background-color: #e0e0e0;
+    cursor: not-allowed;
+}
+input:disabled + .slider-label:before {
+    background-color: #bdbdbd;
+}
+
+/* Hvis du vil gråne Off/On labelsne ud når switchen er disabled */
+.ai-model-selector-wrapper input[type="checkbox"]:disabled ~ .ai-model-choice-label {
+    color: #aaa;
+    cursor: not-allowed;
+}
+
+/* Sørg for at input-kategorien har plads, hvis den ikke allerede har det */
+.input-category {
+    margin-bottom: 20px; /* Eller hvad der passer */
+}
+
+/* Styling for hængelås-ikon på faneknap */
+.tab-button .icon-lock {
+    font-size: 0.8em; /* Juster efter behov */
+    margin-left: 5px;
+    color: #777; /* Diskret farve */
+    /* Du kan evt. tilføje 'cursor: help;' hvis title-attributten er det primære formål */
+}
+
+/* Styling for notitsboksen (hvis ikke allerede tilfredsstillende) */
+.premium-feature-notice {
+    background-color: var(--color-box-bg, #f9f9f9); /* Bruger din variabel eller en fallback */
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: var(--border-radius, 8px);
+    margin-top: 20px;
+    margin-bottom: 20px;
+    padding: 25px; /* Lidt mere padding for en pæn boks */
+    text-align: center;
+}
+
+.premium-feature-notice h2 {
+    color: var(--color-primary, #007bff); /* Bruger din variabel eller en fallback */
+    margin-bottom: 15px;
+    font-size: 1.5em; /* Lidt større overskrift */
+}
+.premium-feature-notice h2 .icon-lock { /* Hvis du gentager ikonet i overskriften */
+    color: var(--color-primary, #007bff);
+    font-size: 0.9em; /* Relativt til h2 */
+}
+
+.premium-feature-notice p {
+    margin-bottom: 12px;
+    line-height: 1.6;
+    font-size: 1em;
+    color: var(--color-text, #333);
+}
+
+.premium-feature-notice a.utility-button,
+.premium-feature-notice a.button-login {
+    margin-top: 10px;
+    padding: 10px 18px;
+    text-decoration: none;
+    display: inline-block;
+    /* Standard udseende for knapperne i notitsen */
+    background-color: var(--color-primary); /* Blågrøn som standard for 'Login med Google' */
+    color: white;
+    border-radius: var(--border-radius);
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+}
+
+/* Specifik farve for 'Log ind med E-mail' hvis den skal være anderledes */
+.premium-feature-notice a.button-login[href*="email_password_login"] {
+    background-color: var(--color-secondary); /* Eksempel: En anden farve, f.eks. den dæmpede blå */
+    color: #333; /* Mørk tekst for lysere knap */
+}
+
+/* HOVER EFFEKTER - DETTE ER DEN VIGTIGE DEL AT RETTE/TILFØJE */
+.premium-feature-notice a.utility-button:hover,
+.premium-feature-notice a.button-login:hover {
+    background-color: var(--color-primary-hover); /* Mørkere blågrøn for 'Login med Google' hover */
+    color: white; /* Sikrer hvid tekst */
+    transform: translateY(-1px); /* Bevarer den lille bevægelse */
+}
+
+.premium-feature-notice a.button-login[href*="email_password_login"]:hover {
+    background-color: var(--color-secondary-hover); /* Mørkere version af den dæmpede blå */
+    color: #333; /* Bevarer mørk tekst */
+}

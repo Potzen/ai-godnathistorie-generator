@@ -40,6 +40,7 @@ function trackGAEvent(action, category, label, value) {
     const generatorSection = document.getElementById('generator');
     const laengdeSelect = document.getElementById('laengde-select');
     const moodSelect = document.getElementById('mood-select');
+    const aiModelSwitch = document.getElementById('ai-model-switch'); // Reference til den nye switch
 
     // Input field containers/specific inputs for historie
     const listenerContainer = document.getElementById('listener-container');
@@ -883,8 +884,14 @@ function trackGAEvent(action, category, label, value) {
         const isInteractive = interactiveCheckbox ? interactiveCheckbox.checked : false; // Selvom skjult, læs værdien
         const negativePromptText = negativePromptInput ? negativePromptInput.value.trim() : '';
 
+        let selectedModel = 'gemini-1.5-flash-latest'; // Standardmodel
+        if (aiModelSwitch && !aiModelSwitch.disabled && aiModelSwitch.checked) {
+            selectedModel = 'gemini-2.5-pro-preview-05-06'; // Pro-model hvis switch er aktiv og tjekket
+        }
+        console.log("Selected AI Model for story generation:", selectedModel);
+
         saveCurrentListeners(); // Gem lytter-data før API kald
-        const dataToSend = { karakterer, steder, plots, laengde: selectedLaengde, mood: selectedMoodValue, listeners, interactive: isInteractive, negative_prompt: negativePromptText };
+        const dataToSend = { karakterer, steder, plots, laengde: selectedLaengde, mood: selectedMoodValue, listeners, interactive: isInteractive, negative_prompt: negativePromptText, selected_model: selectedModel };
         // console.log("Story Generation: Data prepared for sending to /generate:", dataToSend);
 
         // UI Opdatering: Loading State
