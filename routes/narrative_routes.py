@@ -5,8 +5,10 @@ from services.ai_service import (
     get_ai_suggested_character_traits,
     generate_narrative_brief,
     draft_narrative_story_with_rag,
-    edit_narrative_story  # Sørg for denne import er her
+    edit_narrative_story,
+    generate_reflection_questions_step4
 )
+import traceback
 
 narrative_bp = Blueprint('narrative', __name__, url_prefix='/narrative')
 
@@ -52,7 +54,8 @@ def generate_narrative_story():
 
         # --- TRIN 2: Udarbejd Historieudkast med RAG ---
         current_app.logger.info(f"Bruger {user_id_for_log}: Starter TRIN 2 - Udarbejdelse af historieudkast med RAG...")
-        story_title_from_draft, story_content_from_draft, reflection_questions = draft_narrative_story_with_rag(
+        story_title_from_draft, story_content_from_draft = draft_narrative_story_with_rag(
+            # Fjernet reflection_questions her
             structured_brief=narrative_brief,
             original_user_inputs=original_user_inputs,
             narrative_focus_for_rag=narrative_focus
@@ -63,15 +66,15 @@ def generate_narrative_story():
                 f"Bruger {user_id_for_log} (TRIN 2): Fejl fra draft_narrative_story_with_rag: {story_content_from_draft}")
             return jsonify({"error": story_content_from_draft, "details": "Fejl under Trin 2 (historie udarbejdelse)"}), 500
 
-        if not story_title_from_draft or not story_content_from_draft: # Korrekt tjek
+        if not story_title_from_draft or not story_content_from_draft:  # Korrekt tjek
             current_app.logger.warning(
                 f"Bruger {user_id_for_log} (TRIN 2): draft_narrative_story_with_rag returnerede tom titel eller indhold. Titel: '{story_title_from_draft}', Indhold OK: {bool(story_content_from_draft)}")
             return jsonify(
                 {"error": "Historieudkast fra Trin 2 var ufuldstændigt.", "title_received": story_title_from_draft,
                  "content_received": bool(story_content_from_draft)}), 500
 
-        current_app.logger.info(
-            f"Bruger {user_id_for_log}: TRIN 2 fuldført. Historieudkast '{story_title_from_draft[:50]}...' og {len(reflection_questions)} spørgsmål genereret.")
+        current_app.logger.info(  # <--- OPDATERET LINJE
+            f"Bruger {user_id_for_log}: TRIN 2 fuldført. Historieudkast '{story_title_from_draft[:50]}...' genereret. (Spørgsmål genereres i Trin 4)")
 
         # --- TRIN 3: Rediger Historieudkast ---
         current_app.logger.info(f"Bruger {user_id_for_log}: Starter TRIN 3 - Redigering af historieudkast...")
@@ -89,7 +92,7 @@ def generate_narrative_story():
                 "warning": "Historien nedenfor er et uredigeret udkast, da den endelige redigering mislykkedes.",
                 "title": story_title_from_draft,
                 "story": story_content_from_draft,
-                "reflection_questions": reflection_questions,
+                # "reflection_questions": reflection_questions,
                 "narrative_brief_for_reference": narrative_brief,
                 "error_details_step3": final_story_content
             }), 200
@@ -97,10 +100,10 @@ def generate_narrative_story():
         current_app.logger.info(f"Bruger {user_id_for_log}: TRIN 3 fuldført. Historie redigeret til '{final_story_title[:50]}...'.")
 
         return jsonify({
-            "status": "Alle 3 trin fuldført: Endelig narrativ historie og refleksionsspørgsmål genereret.",
+            "status": "Alle 3 historiegenereringstrin fuldført. Endelig narrativ historie er klar. Refleksionsspørgsmål hentes separat.",
             "title": final_story_title,
             "story": final_story_content,
-            "reflection_questions": reflection_questions,
+            # "reflection_questions": reflection_questions, <-- FJERNET
             "narrative_brief_for_reference": narrative_brief,
             "draft_title_from_step2_for_reference": story_title_from_draft,
             "draft_content_from_step2_for_reference": story_content_from_draft[:200] + "..." if story_content_from_draft else None
@@ -110,6 +113,69 @@ def generate_narrative_story():
         current_app.logger.error(
             f"Bruger {user_id_for_log}: Uventet fejl i /generate_narrative_story endpoint: {e}\n{traceback.format_exc()}")
         return jsonify({"error": "En uventet intern serverfejl opstod under narrativ generering."}), 500
+
+@narrative_bp.route('/get_guiding_questions', methods=['POST'])
+@login_required
+def get_guiding_questions():
+    if current_user.role != 'premium':
+        current_app.logger.warning(
+            f"Uautoriseret forsøg på adgang til '/get_guiding_questions' af bruger: "
+            f"{current_user.email} (Rolle: {current_user.role})"
+        )
+        return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403
+
+    user_id_for_log = current_user.id
+    current_app.logger.info(
+        f"Narrative Route (Bruger: {user_id_for_log}, E-mail: {current_user.email}): Modtaget anmodning til /get_guiding_questions."
+    )
+
+    if not request.is_json:
+        current_app.logger.error(f"Bruger {user_id_for_log}: Anmodning til /get_guiding_questions er ikke JSON.")
+        return jsonify({"error": "Anmodning skal være JSON."}), 415
+
+    data = request.get_json()
+    current_app.logger.debug(f"Bruger {user_id_for_log}: Modtaget data for /get_guiding_questions: {str(data)[:500]}...") # Log kun starten af data
+
+    final_story_title = data.get('final_story_title')
+    final_story_content = data.get('final_story_content')
+    narrative_brief = data.get('narrative_brief')
+    original_user_inputs = data.get('original_user_inputs') # Bruges til barnets alder etc.
+
+    if not all([final_story_title, final_story_content, narrative_brief, original_user_inputs]):
+        missing_fields = [
+            field for field, value in {
+                "final_story_title": final_story_title,
+                "final_story_content": final_story_content,
+                "narrative_brief": narrative_brief,
+                "original_user_inputs": original_user_inputs
+            }.items() if not value
+        ]
+        current_app.logger.error(
+            f"Bruger {user_id_for_log}: Manglende felter i anmodning til /get_guiding_questions: {', '.join(missing_fields)}"
+        )
+        return jsonify({"error": f"Manglende nødvendige felter i anmodningen: {', '.join(missing_fields)}"}), 400
+
+    try:
+        current_app.logger.info(f"Bruger {user_id_for_log}: Kalder ai_service for at generere refleksionsspørgsmål (Trin 4)...")
+        questions = generate_reflection_questions_step4(
+            final_story_title=final_story_title,
+            final_story_content=final_story_content,
+            narrative_brief=narrative_brief,
+            original_user_inputs=original_user_inputs
+        )
+
+        if questions: # Hvis listen ikke er tom
+            current_app.logger.info(f"Bruger {user_id_for_log}: {len(questions)} refleksionsspørgsmål genereret succesfuldt.")
+            return jsonify({"reflection_questions": questions}), 200
+        else:
+            current_app.logger.warning(f"Bruger {user_id_for_log}: Ingen refleksionsspørgsmål genereret af ai_service (Trin 4).")
+            return jsonify({"reflection_questions": [], "message": "Ingen specifikke spørgsmål kunne genereres på baggrund af denne historie, eller AI-kaldet returnerede ingen."}), 200
+
+    except Exception as e:
+        current_app.logger.error(
+            f"Bruger {user_id_for_log}: Uventet fejl i /get_guiding_questions endpoint: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"error": "En uventet intern serverfejl opstod under generering af refleksionsspørgsmål."}), 500
 
 
 @narrative_bp.route('/suggest_character_traits', methods=['POST'])

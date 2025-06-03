@@ -16,6 +16,7 @@ from prompts.narrative_briefing_prompt import build_narrative_briefing_prompt
 from prompts.narrative_drafting_prompt import build_narrative_drafting_prompt
 from prompts.narrative_editing_prompt import build_narrative_editing_prompt
 from services.rag_service import find_relevant_chunks_v2
+from prompts.narrative_question_prompt import build_narrative_question_prompt
 
 
 def generate_story_text_from_gemini(full_prompt_string, generation_config_settings, safety_settings_values, target_model_name='gemini-1.5-flash-latest'):
@@ -497,7 +498,7 @@ def generate_narrative_brief(
             f"AI Service: Narrativ briefing prompt bygget (længde: {len(prompt_string)}). Første 200 tegn:\n{prompt_string[:200]}")
 
         # Konfigurer AI-modellen
-        model = genai.GenerativeModel('gemini-2.5-pro-preview-05-06')  # Opdateret model for Trin 1
+        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20') # NY MODEL FOR TRIN 1 (BRIEF)
 
         # Justerede safety settings for brief-generering for at minimere blokering
         safety_settings = {
@@ -601,7 +602,6 @@ def draft_narrative_story_with_rag(
     current_app.logger.info("AI Service: Påbegynder udarbejdelse af narrativ historie med RAG (Trin 2)...")
     story_title = None
     story_content = "Fejl: Kunne ikke generere historieudkast (Trin 2)."
-    reflection_questions = []
 
     # 1. Hent RAG-kontekst
     rag_chunks = []
@@ -695,34 +695,34 @@ def draft_narrative_story_with_rag(
             current_app.logger.debug(
                 f"AI Service: KOMPLET Rå output fra Trin 2 AI:\n---- START ----\n{raw_response_text}\n---- SLUT ----")
 
+            current_app.logger.info("AI Service: Historieudkast (Trin 2) genereret succesfuldt.")
+            current_app.logger.debug(
+                f"AI Service: KOMPLET Rå output fra Trin 2 AI:\n---- START ----\n{raw_response_text}\n---- SLUT ----")
 
-            # Parsing af titel, historie og refleksionsspørgsmål
-            parts = raw_response_text.split("--- REFLEKSIONSSPØRGSMÅL ---", 1)
-            story_with_title = parts[0].strip()
-
-            title_story_parts = story_with_title.split('\n', 1)
-            if title_story_parts:
+            # Forenklet parsing for kun titel og historie
+            # Vi forventer nu, at AI'en IKKE inkluderer "--- REFLEKSIONSSPØRGSMÅL ---"
+            title_story_parts = raw_response_text.split('\n', 1)
+            if title_story_parts and title_story_parts[0].strip():
                 story_title = title_story_parts[0].strip()
-                story_content = title_story_parts[1].strip() if len(title_story_parts) > 1 else ""
-            else:  # Skulle ikke ske hvis AI følger format
-                story_title = "Uden Titel (Parse Fejl)"
-                story_content = story_with_title  # Hele outputtet som historie
+                story_content = title_story_parts[1].strip() if len(title_story_parts) > 1 and title_story_parts[
+                    1].strip() else ""
+                if not story_content:
+                    current_app.logger.warning(
+                        f"AI Service (Trin 2): Modtog titel '{story_title}', men ingen efterfølgende historietekst.")
+                    # story_content = "Historien mangler indhold efter titlen." # Eller lad den være tom
+            elif raw_response_text:  # Hvis der ikke er linjeskift, men der er tekst
+                story_title = "Uden Titel (Trin 2)"
+                story_content = raw_response_text
+                current_app.logger.warning(
+                    "AI Service (Trin 2): Kunne ikke splitte titel og historie, bruger råtekst som historie.")
+            else:  # Tom respons
+                story_title = "Uden Titel (Trin 2 - Tom Respons)"
+                story_content = "AI returnerede et tomt svar for historieudkastet."
+                current_app.logger.warning("AI Service (Trin 2): Modtog helt tom respons fra AI.")
 
-            if len(parts) > 1 and parts[1].strip():
-                questions_raw = parts[1].strip()
-                # Split spørgsmål baseret på nummerering (f.eks. "1. ...", "2. ...")
-                # Dette er en simpel parser; kan gøres mere robust.
-                qs = questions_raw.split('\n')
-                for q_line in qs:
-                    q_line_stripped = q_line.strip()
-                    # Fjern "1. ", "2. " osv.
-                    if q_line_stripped and (q_line_stripped.startswith(tuple(f"{i}." for i in range(1, 10)))):
-                        reflection_questions.append(q_line_stripped[q_line_stripped.find('.') + 1:].strip())
-                    elif q_line_stripped:  # Hvis det ikke er nummereret, men der er tekst
-                        reflection_questions.append(q_line_stripped)
-                current_app.logger.info(f"AI Service: Parsede {len(reflection_questions)} refleksionsspørgsmål.")
-            else:
-                current_app.logger.warning("AI Service: Ingen refleksionsspørgsmål fundet efter separatoren.")
+            if not story_content:  # Denne linje bevares og er vigtig
+                current_app.logger.warning("AI Service: Selve historieteksten er tom efter parsing.")
+                story_content = "Historien mangler indhold."
 
             if not story_content:
                 current_app.logger.warning("AI Service: Selve historieteksten er tom efter parsing.")
@@ -748,7 +748,127 @@ def draft_narrative_story_with_rag(
         story_content = f"Fejl: Teknisk fejl i AI-tjenesten under udarbejdelse af historieudkast (Trin 2)."
         # story_title forbliver None
 
-    return story_title, story_content, reflection_questions
+    return story_title, story_content
+
+def generate_reflection_questions_step4(
+        final_story_title: str,
+        final_story_content: str,
+        narrative_brief: str,
+        original_user_inputs: dict  # For evt. kontekst som barnets alder, etc.
+):
+    """
+    Genererer refleksionsspørgsmål baseret på den endelige historie og det narrative brief (Trin 4).
+
+    Args:
+        final_story_title (str): Titlen på den færdigredigerede historie.
+        final_story_content (str): Indholdet af den færdigredigerede historie.
+        narrative_brief (str): Det oprindelige narrative brief fra Trin 1.
+        original_user_inputs (dict): De oprindelige brugerinput.
+
+    Returns:
+        list: En liste af streng-spørgsmål, eller en tom liste ved fejl.
+    """
+    current_app.logger.info("AI Service: Påbegynder Trin 4 - Generering af refleksionsspørgsmål...")
+    reflection_questions = []
+
+    try:
+        # Vi skal oprette en ny prompt-funktion til dette trin.
+        # For nu antager vi, at den hedder build_narrative_question_prompt
+        # og den skal importeres øverst i filen senere.
+
+        prompt_string = build_narrative_question_prompt(
+            final_story_title=final_story_title,
+            final_story_content=final_story_content,
+            narrative_brief=narrative_brief,
+            original_user_inputs=original_user_inputs
+        )
+        current_app.logger.debug(
+            f"AI Service (Trin 4): Spørgsmålsprompt bygget (længde: {len(prompt_string)}). Første 200 tegn:\n{prompt_string[:200]}"
+        )
+
+        # Model: Gemini 1.5 Pro
+        ai_model_name = 'gemini-1.5-pro-latest'
+        model = genai.GenerativeModel(ai_model_name)
+        current_app.logger.info(f"AI Service (Trin 4): Anvender AI-model '{ai_model_name}' for spørgsmålsgenerering.")
+
+        # Safety settings - kan være lidt mere restriktive her, hvis ønsket,
+        # men for konsistens med Pro-modellen i Trin 2, kan vi starte med BLOCK_NONE eller MEDIUM.
+        # Lempede safety settings for at undgå blokering af spørgsmålsgenerering
+        safety_settings = {
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+        }
+
+        generation_config_settings = {
+            "max_output_tokens": 2048,
+            "temperature": 0.7,       # God balance for kreativitet og relevans i spørgsmål
+        }
+        gen_config = genai.types.GenerationConfig(**generation_config_settings)
+
+        current_app.logger.info(
+            f"AI Service (Trin 4): Kalder Gemini for refleksionsspørgsmål (Max Tokens: {gen_config.max_output_tokens}, Temp: {gen_config.temperature})."
+        )
+
+        response = model.generate_content(
+            prompt_string,
+            generation_config=gen_config,
+            safety_settings=safety_settings
+        )
+
+        raw_questions_text = ""
+        try:
+            raw_questions_text = response.text.strip()
+            if not raw_questions_text:
+                current_app.logger.warning("AI Service (Trin 4): AI returnerede tom tekst for spørgsmål.")
+                return [] # Returner tom liste, hvis intet genereres
+
+            current_app.logger.info("AI Service (Trin 4): Råtekst for spørgsmål modtaget.")
+            current_app.logger.debug(f"AI Service (Trin 4): Rå output for spørgsmål:\n{raw_questions_text}")
+
+            # Simpel parsing: antager spørgsmål er på separate linjer, evt. nummererede
+            potential_questions = raw_questions_text.split('\n')
+            for q_line in potential_questions:
+                q_line_stripped = q_line.strip()
+                # Fjern typisk nummerering som "1. ", "2. " eller "- "
+                if q_line_stripped.startswith(tuple(f"{i}." for i in range(1, 10))):
+                    q_to_add = q_line_stripped[q_line_stripped.find('.') + 1:].strip()
+                elif q_line_stripped.startswith('-'):
+                    q_to_add = q_line_stripped[1:].strip()
+                else:
+                    q_to_add = q_line_stripped
+
+                if q_to_add: # Tilføj kun hvis der er reelt indhold
+                    reflection_questions.append(q_to_add)
+
+            if not reflection_questions:
+                current_app.logger.warning("AI Service (Trin 4): Kunne ikke parse nogen spørgsmål fra AI'ens output, selvom tekst var til stede.")
+            else:
+                current_app.logger.info(f"AI Service (Trin 4): Parsede {len(reflection_questions)} refleksionsspørgsmål.")
+
+        except ValueError as e_safety:
+            current_app.logger.error(
+                f"AI Service (Trin 4): Svar til spørgsmål blokeret af sikkerhedsfilter: {e_safety}"
+            )
+            current_app.logger.error(
+                f"AI Service (Trin 4): Prompt Feedback: {response.prompt_feedback if hasattr(response, 'prompt_feedback') else 'Ingen prompt feedback.'}"
+            )
+            # Returner tom liste, frontend må håndtere at vise en fejl/ingen spørgsmål
+            return []
+        except Exception as e_parse:
+            current_app.logger.error(
+                f"AI Service (Trin 4): Fejl ved parsing af AI-svar for spørgsmål: {e_parse}\n{traceback.format_exc()}"
+            )
+            return [] # Returner tom liste ved parsefejl
+
+    except Exception as e_general:
+        current_app.logger.error(
+            f"AI Service (Trin 4): Generel fejl under generering af refleksionsspørgsmål: {e_general}\n{traceback.format_exc()}"
+        )
+        return [] # Returner tom liste ved generel fejl
+
+    return reflection_questions
 
 def edit_narrative_story(
         story_draft_title: str,
@@ -783,7 +903,7 @@ def edit_narrative_story(
 
         # 2. Konfigurer og kald AI-modellen (Gemini 1.5 Flash er et godt valg her [cite: 149, 150])
         # Modulbeskrivelsen nævner Gemini 2.0 Flash, men vi bruger 'gemini-1.5-flash-latest' som er tilgængelig.
-        ai_model_name = 'gemini-2.5-pro-preview-05-06'
+        ai_model_name = 'gemini-2.5-flash-preview-05-20'
         model = genai.GenerativeModel(ai_model_name)
         current_app.logger.info(f"AI Service: Anvender AI-model '{ai_model_name}' for Trin 3 (Redaktør).")
 

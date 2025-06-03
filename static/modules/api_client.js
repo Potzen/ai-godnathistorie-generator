@@ -138,5 +138,39 @@ export async function generateNarrativeStoryApi(narrativeData) {
     return result;
 }
 
+/**
+ * Henter vejledende refleksionsspørgsmål fra backend.
+ * @param {object} contextData - Objekt indeholdende final_story_title, final_story_content, narrative_brief, og original_user_inputs.
+ * @returns {Promise<object>} Et promise der resolver med JSON-svar fra serveren (forventer reflection_questions eller error).
+ * @throws {Error} Kaster en fejl hvis netværksrespons ikke er ok, eller ved andre fejl.
+ */
+export async function getGuidingQuestionsApi(contextData) {
+    console.log("api_client.js: getGuidingQuestionsApi called with context data:", contextData);
+    const response = await fetch('/narrative/get_guiding_questions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(contextData)
+    });
+
+    if (!response.ok) {
+        let errorMsg = `Serverfejl under hentning af refleksionsspørgsmål (${response.status})`;
+        try {
+            const errorData = await response.json();
+            errorMsg = errorData.error || `${errorMsg} ${response.statusText || ''}`;
+        } catch (e) {
+            const textError = await response.text();
+            errorMsg += ` ${response.statusText || textError || '(ukendt serverfejl)'}`;
+        }
+        console.error("api_client.js: Server error in getGuidingQuestionsApi:", errorMsg);
+        throw new Error(errorMsg);
+    }
+
+    const result = await response.json();
+    console.log("api_client.js: Guiding questions received from server:", result);
+    return result;
+}
+
 // Flere API-funktioner vil blive tilføjet her senere (f.eks. for billeder, lyd, narrativ støtte)
 

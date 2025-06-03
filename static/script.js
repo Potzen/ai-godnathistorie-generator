@@ -1,6 +1,5 @@
 // Fil: static/script.js
-// Fil: static/script.js
-import { generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generateNarrativeStoryApi } from './modules/api_client.js';
+import { generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generateNarrativeStoryApi, getGuidingQuestionsApi } from './modules/api_client.js'; // TILFØJET getGuidingQuestionsApi
 
 // Kør først koden, når hele HTML dokumentet er færdigindlæst og klar
 document.addEventListener('DOMContentLoaded', () => {
@@ -1612,6 +1611,7 @@ async function handleNarrativeGenerateClick() {
 
     try {
         const result = await generateNarrativeStoryApi(dataToSend);
+        console.log("DEBUG: Værdi af result efter API kald:", JSON.stringify(result, null, 2));
         console.log("Narrative Story Generation: Server Result RAW (Full Function):", JSON.stringify(result, null, 2));
 
         // Opdater DEBUG sektion først, da den altid skal vises hvis der er et resultat (også ved fejl i Trin 3)
@@ -1659,25 +1659,65 @@ async function handleNarrativeGenerateClick() {
                     narrativeErrorDisplay.classList.remove('hidden');
                 }
             }
-        } else if (result.title && typeof result.title === 'string' && result.story && typeof result.story === 'string') { // Succes
+} else if (result.title && typeof result.title === 'string' && result.story && typeof result.story === 'string') {
+            // SUCCES MED AT HENTE HISTORIEN (TRIN 1-3 FULDFØRT I BACKEND)
             if(narrativeGeneratedTitle) narrativeGeneratedTitle.textContent = result.title;
             if(narrativeGeneratedStory) narrativeGeneratedStory.innerHTML = result.story.replace(/\n/g, '<br>');
             if(narrativeGeneratedStorySection) narrativeGeneratedStorySection.classList.remove('hidden');
 
-            if(narrativeReflectionQuestionsList) narrativeReflectionQuestionsList.innerHTML = '';
-            if (result.reflection_questions && Array.isArray(result.reflection_questions) && result.reflection_questions.length > 0) {
-                result.reflection_questions.forEach(question => {
-                    const li = document.createElement('li');
-                    li.textContent = question;
-                    if(narrativeReflectionQuestionsList) narrativeReflectionQuestionsList.appendChild(li);
-                });
-            } else {
-                const li = document.createElement('li');
-                li.textContent = "Ingen refleksionsspørgsmål genereret.";
-                if(narrativeReflectionQuestionsList) narrativeReflectionQuestionsList.appendChild(li);
+            // Nulstil og forbered sektion for refleksionsspørgsmål
+            if(narrativeReflectionQuestionsList) {
+                narrativeReflectionQuestionsList.innerHTML = '<li>Henter refleksionsspørgsmål... <span class="spinner"></span></li>';
             }
-            if(narrativeReflectionSection) narrativeReflectionSection.classList.remove('hidden');
-        } else { // Uventet, men ikke-fejlende, svarstruktur
+            if(narrativeReflectionSection) narrativeReflectionSection.classList.remove('hidden'); // Sørg for sektionen er synlig
+
+            // Forbered data til at hente spørgsmål
+            // VIGTIGT: Sørg for at 'dataToSend' er tilgængelig i dette scope.
+            // 'dataToSend' blev defineret tidligere i handleNarrativeGenerateClick funktionen.
+            const contextForQuestions = {
+                final_story_title: result.title,
+                final_story_content: result.story, // Send den rå historie, ikke innerHTML-versionen
+                narrative_brief: result.narrative_brief_for_reference,
+                original_user_inputs: dataToSend // Hele det oprindelige input-objekt
+            };
+
+            // Start asynkront kald for at hente spørgsmål
+            console.log("Narrative Story Generation: Initiating call to getGuidingQuestionsApi with context:", contextForQuestions);
+            getGuidingQuestionsApi(contextForQuestions)
+                .then(questionsResult => {
+                    if(narrativeReflectionQuestionsList) narrativeReflectionQuestionsList.innerHTML = ''; // Ryd "Henter..."
+                    if (questionsResult.error) {
+                        const li = document.createElement('li');
+                        li.textContent = `Fejl under hentning af spørgsmål: ${questionsResult.error}`;
+                        li.style.color = 'red';
+                        if(narrativeReflectionQuestionsList) narrativeReflectionQuestionsList.appendChild(li);
+                        console.error("Fejl fra getGuidingQuestionsApi:", questionsResult.error);
+                    } else if (questionsResult.reflection_questions && Array.isArray(questionsResult.reflection_questions) && questionsResult.reflection_questions.length > 0) {
+                        questionsResult.reflection_questions.forEach(question => {
+                            const li = document.createElement('li');
+                            li.textContent = question;
+                            if(narrativeReflectionQuestionsList) narrativeReflectionQuestionsList.appendChild(li);
+                        });
+                        console.log("Refleksionsspørgsmål hentet og vist.");
+                    } else {
+                        const li = document.createElement('li');
+                        li.textContent = questionsResult.message || "Ingen refleksionsspørgsmål blev returneret.";
+                        if(narrativeReflectionQuestionsList) narrativeReflectionQuestionsList.appendChild(li);
+                        console.log("Ingen refleksionsspørgsmål modtaget eller tom liste.");
+                    }
+                })
+                .catch(error => {
+                    console.error('Fejl ved kald til getGuidingQuestionsApi (catch):', error);
+                    if(narrativeReflectionQuestionsList) {
+                        narrativeReflectionQuestionsList.innerHTML = ''; // Ryd "Henter..."
+                        const li = document.createElement('li');
+                        li.textContent = `Klientfejl under hentning af spørgsmål: ${error.message}`;
+                        li.style.color = 'red';
+                        narrativeReflectionQuestionsList.appendChild(li);
+                    }
+                });
+
+        } else { // Uventet, men ikke-fejlende, svarstruktur fra generateNarrativeStoryApi
             if(narrativeErrorDisplay) {
                 narrativeErrorDisplay.textContent = "Modtog et uventet eller ufuldstændigt svar fra serveren. Tjek debug-info.";
                 narrativeErrorDisplay.classList.remove('hidden');
@@ -1713,7 +1753,6 @@ async function handleNarrativeGenerateClick() {
     loadAndDisplaySavedListeners();
 
     // Funktion til at forudfylde felter med AI-forslag
-   // Funktion til at forudfylde felter med AI-forslag
     function populateCharacterTraitFields(suggestions) {
         console.log("populateCharacterTraitFields kaldt med forslag:", suggestions);
         const aiSuggestionClass = 'ai-suggested-input';

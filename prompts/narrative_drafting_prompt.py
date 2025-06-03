@@ -7,13 +7,13 @@ def build_narrative_drafting_prompt(
 ):
     """
     Bygger prompten for Trin 2 AI (Narrativ Udkast AI / Terapi-AI),
-    der skal generere det første, komplette, narrativt rige historieudkast
-    samt refleksionsspørgsmål.
+    der KUN skal generere det første, komplette, narrativt rige historieudkast (titel og indhold).
+    Refleksionsspørgsmål genereres nu i et separat Trin 4.
     """
 
     prompt_parts = [
-        "SYSTEM INSTRUKTION: Du er en yderst kreativ og empatisk AI-assistent med speciale i at skrive engagerende børnehistorier. Du har dyb viden om narrativ terapi og pædagogik og forstår, hvordan man bruger historiefortælling til at støtte børns følelsesmæssige udvikling. Din opgave er at skrive et komplet, narrativt rigt historieudkast samt 1-2 åbne refleksionsspørgsmål baseret på nedenstående information.",
-        "Outputtet skal starte med historiens TITEL på den allerførste linje. Efter titlen, indsæt ET ENKELT LINJESKIFT, og start derefter selve historieteksten. Efter historieteksten, indsæt en linje med '--- REFLEKSIONSSPØRGSMÅL ---', efterfulgt af 1-2 nummererede refleksionsspørgsmål på separate linjer.",
+        "SYSTEM INSTRUKTION: Du er en yderst kreativ og empatisk AI-assistent med speciale i at skrive engagerende børnehistorier. Du har dyb viden om narrativ terapi og pædagogik og forstår, hvordan man bruger historiefortælling til at støtte børns følelsesmæssige udvikling. Din opgave er at skrive et komplet, narrativt rigt historieudkast baseret på nedenstående information.",
+        "Outputtet skal starte med historiens TITEL på den allerførste linje. Efter titlen, indsæt ET ENKELT LINJESKIFT, og start derefter selve historieteksten. Returner KUN titel og historietekst.", # ÆNDRET
         "---"
     ]
 
@@ -30,19 +30,18 @@ def build_narrative_drafting_prompt(
             "Brug følgende principper og eksempler fra narrativ terapi til at informere din historie. Integrer dem naturligt og kreativt, hvor det passer med informationen fra DEL 1:")
         for i, chunk in enumerate(rag_context):
             prompt_parts.append(f"   - RAG Kontekst Uddrag #{i + 1}: \"{chunk}\"")
-        prompt_parts.append("---")
     else:
         prompt_parts.append("DEL 2: RELEVANT VIDEN FRA NARRATIV TERAPI (RAG KONTEKST):")
         prompt_parts.append(
             "(Ingen specifik RAG-kontekst blev fundet for denne forespørgsel. Baser din historie på generel viden om narrativ terapi og brugerens input fra DEL 1 og DEL 3.)")
-        prompt_parts.append("---")
+    prompt_parts.append("---")
 
     if original_user_inputs and original_user_inputs.get('narrative_focus'):
         prompt_parts.append(
             "DEL 3: DET CENTRALE NARRATIVE FOKUS (FRA BRUGERENS OPRINDELIGE INPUT - UDDYBER PUNKT 1 I BRIEFET):")
         prompt_parts.append(
             f"Husk, det absolut centrale tema, som historien skal kredse om og belyse, er: \"{original_user_inputs.get('narrative_focus')}\". Problem-karakteren (beskrevet i DEL 1) er en manifestation af dette fokus.")
-        prompt_parts.append("---")
+    prompt_parts.append("---")
 
     prompt_parts.append("DEL 4: DIN OPGAVE SOM HISTORIEFORFATTER:")
 
@@ -58,7 +57,7 @@ def build_narrative_drafting_prompt(
         target_paragraph_count_text = "Generer en historie på PRÆCIS 10 til 14 sammenhængende afsnit."
     elif story_length_preference == 'lang':
         length_instruction_text = "Historien skal være LANG OG DETALJERET."
-        target_paragraph_count_text = "Generer en historie på PRÆCIS 15 til 18 fyldige afsnit. Undgå at skrive væsentligt mere end 18 afsnit."  # Justeret for at være mere restriktiv for "lang"
+        target_paragraph_count_text = "Generer en historie på PRÆCIS 15 til 18 fyldige afsnit. Undgå at skrive væsentligt mere end 18 afsnit."
     else:
         length_instruction_text = "Historien skal have en passende mellemlængde."
         target_paragraph_count_text = "Generer en historie på cirka 10-14 afsnit."
@@ -69,10 +68,9 @@ def build_narrative_drafting_prompt(
     prompt_parts.append(
         "YDERLIGERE OPGAVER (udfør disse inden for den specificerede længderamme og baseret på informationen i DEL 1, 2 og 3):")
 
-    # Skærpet Punkt A endnu mere
     prompt_parts.append(
         "   A.  **Skriv en Komplet Historie:** Skab en fængslende og alderssvarende børnehistorie (titel + brødtekst). "
-        "**DIN VIGTIGSTE OPGAVE ER AT OVERHOLDE FØLGENDE UFRAVIGELIGE REGLER FOR BRUGERDEFINEREDE ELEMENTER. DETTE TRUMFER DIN EGEN KREATIVE FORTOLKNING AF, HVAD DER 'PASSER BEDST':**"  # Ny overordnet skærpelse
+        "**DIN VIGTIGSTE OPGAVE ER AT OVERHOLDE FØLGENDE UFRAVIGELIGE REGLER FOR BRUGERDEFINEREDE ELEMENTER. DETTE TRUMFER DIN EGEN KREATIVE FORTOLKNING AF, HVAD DER 'PASSER BEDST':**"
         "\n       1.  **Problem-Karakterens Navn/Identitet:** Hvis et specifikt navn/identitet er angivet for problem-karakteren i briefets sektion 4 (f.eks. 'LarmeFrans'), **SKAL DU BRUGE PRÆCIS DETTE NAVN/DENNE IDENTITET, OG INTET ANDET, HVER GANG PROBLEM-KARAKTEREN NÆVNES ELLER REFERERES TIL.** Dette gælder, selvom du internt mener, at et andet navn ville passe bedre teoretisk eller narrativt. Brugerens valg af navn for problem-karakteren er ABSOLUT og må IKKE ændres, omskrives eller erstattes."
         "\n       2.  **Andre Hovedkarakterers Navne:** Hvis navne er angivet for andre hovedkarakterer i briefets sektion 5 (f.eks. 'Ræven Mikkel'), SKAL disse navne bruges PRÆCIST som angivet."
         "\n       3.  **Sted(er):** Hvis specifikke steder er angivet i briefets sektion 5 (f.eks. 'Rumskib'), SKAL historien primært foregå på disse steder, eller de skal spille en central og genkendelig rolle, der bruger det/de angivne navne for stederne."
@@ -83,11 +81,8 @@ def build_narrative_drafting_prompt(
         "       - **Eksternaliser Problemet:** Baseret på brugerens 'Narrative Fokus' (fra DEL 3) OG de **specifikke detaljer for PROBLEM-KARAKTEREN angivet i briefet (DEL 1)**, giv problemet en ydre, håndterbar form. "
         "**Husk REGEL A.1: BRUG DET SPECIFIKKE NAVN/IDENTITET for problem-karakteren, som er angivet i briefets sektion 4, som den primære og ENESTE betegnelse for det eksternaliserede problem gennem HELE historien.** "
         "Gør denne korrekt navngivne problem-karakter til en aktiv og central del af historien, og brug dens angivne rolle, formål, adfærd og indflydelse som beskrevet i briefet.")
-
     prompt_parts.append(
         "       - **Fremhæv Barnets Styrker:** Væv barnets (protagonistens) angivne styrker og ressourcer (fra briefet i DEL 1) aktivt ind i plottet som løsningsstrategier. Vis, hvordan disse styrker hjælper med at håndtere den (korrekt navngivne) eksternaliserede problem-karakter.")
-    prompt_parts.append(
-        "       - **Fremhæv Barnets Styrker:** Væv barnets (protagonistens) angivne styrker og ressourcer (fra briefet i DEL 1) aktivt ind i plottet som løsningsstrategier. Vis, hvordan disse styrker hjælper med at håndtere den eksternaliserede problem-karakter.")
     prompt_parts.append(
         "       - **Udforsk Unikke Udfald:** Inkorporer øjeblikke, hvor problemet *ikke* har fuld magt, eller hvor protagonisten viser modstand, mestring eller en alternativ positiv respons (baseret på information i briefet i DEL 1, f.eks. 'Typisk Reaktion på Udfordring' og hvordan dette kan ændres). Forstør disse små sejre.")
     prompt_parts.append(
@@ -100,8 +95,7 @@ def build_narrative_drafting_prompt(
         "   D.  **Undgå Negativer:** Respekter eventuelle 'Elementer der IKKE skal med i historien' fra briefet (DEL 1).")
     prompt_parts.append(
         "   E.  **Afslutning:** Sørg for en positiv og tryg afslutning, der er passende for en godnathistorie. Følg eventuelle specifikke instruktioner for afslutningen fra briefet (DEL 1).")
-    prompt_parts.append(
-        "   F.  **Generer Refleksionsspørgsmål:** EFTER historien, skriv 1-2 åbne, ikke-ledende refleksionsspørgsmål. Spørgsmålene skal relatere sig til historiens tema og protagonistens oplevelser og opfordre barnet til at reflektere over egne følelser og handlemuligheder. Start hvert spørgsmål på en ny linje og nummerer dem (f.eks. '1. Hvad tror du...?', '2. Hvordan ville du...?').")
+    # Punkt F er fjernet
 
     prompt_parts.append("\nSTRUKTUR FOR DIT OUTPUT (VIGTIGT AT FØLGE PRÆCIST):")
     prompt_parts.append("TITEL PÅ HISTORIEN")
@@ -109,9 +103,7 @@ def build_narrative_drafting_prompt(
     prompt_parts.append("Selve historieteksten her...")
     prompt_parts.append("...historien fortsætter...")
     prompt_parts.append("...historien slutter her.")
-    prompt_parts.append("--- REFLEKSIONSSPØRGSMÅL ---")
-    prompt_parts.append("1. Dit første refleksionsspørgsmål her.")
-    prompt_parts.append("2. Dit andet refleksionsspørgsmål her (hvis relevant).")
+    # Linjer for REFLEKSIONSSPØRGSMÅL er fjernet
 
     return "\n".join(prompt_parts)
 
@@ -153,12 +145,11 @@ STRUKTURERET OPSUMMERING AF BRUGERINPUT:
     ]
     example_original_inputs = {
         'narrative_focus': "Min datter på 6 år er bange for mørke og monstre under sengen.",
-        'child_name': "Lily",  # Eksempel
+        'child_name': "Lily",
         'child_age': "6",
         'length': "kort",
-        'mood': "håbefuld",  # Eksempel
-        # ... andre felter fra original_user_inputs ...
-        'narrative_problem_identity_name': "Skygge-Snik"  # Eksempel
+        'mood': "håbefuld",
+        'narrative_problem_identity_name': "Skygge-Monstret"
     }
 
     drafting_prompt = build_narrative_drafting_prompt(
