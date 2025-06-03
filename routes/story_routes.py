@@ -1,5 +1,5 @@
 # Fil: routes/story_routes.py
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, Response # Tilføjet Response
 import google.generativeai as genai
 import traceback
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
@@ -8,11 +8,12 @@ import time
 from vertexai.preview.vision_models import ImageGenerationModel
 from prompts.story_generation_prompt import build_story_prompt
 
-from flask_login import current_user
+from flask_login import login_required, current_user # Tilføjet login_required
 from services.ai_service import (
     generate_story_text_from_gemini,
     generate_image_prompt_from_gemini,
-    generate_image_with_vertexai
+    generate_image_with_vertexai,
+    generate_gemini_tts_audio # NY IMPORT
 )
 
 story_bp = Blueprint('story', __name__, template_folder='../templates', static_folder='../static')
@@ -268,8 +269,38 @@ def generate_image_from_story():
         return jsonify({"error": "Billedgeneratoren kunne ikke skabe et billede efter flere forsøg. Prøv igen.",
                         "image_prompt_used": image_prompt}), 500
 
-# Her ville generate_audio senere blive tilføjet, hvis vi arbejdede på den:
-# @story_bp.route('/generate_audio', methods=['POST'])
-# def generate_audio():
-#     # Logik for lydgenerering, der kalder en funktion i ai_service.py
-#     pass
+@story_bp.route('/generate_audio', methods=['POST'])
+@login_required  # Kræver login
+def generate_audio():
+    # Adgangskontrol: Kun 'basic' og 'premium' brugere har adgang
+    if current_user.role not in ['basic', 'premium']:
+        current_app.logger.warning(
+            f"Uautoriseret forsøg på adgang til '/generate_audio' af bruger: "
+            f"{current_user.email} (Rolle: {current_user.role})"
+        )
+        return jsonify({
+                           "error": "Adgang nægtet. Læse højt funktionen kræver et Basic eller Premium abonnement."}), 403  # Forbidden
+
+    data = request.get_json()
+    story_text = data.get('text')
+    selected_voice = data.get('voice_name', 'Zephyr')  # Standard til 'Zephyr' hvis ikke angivet
+
+    if not story_text:
+        current_app.logger.error(f"Bruger {current_user.id}: Ingen tekst modtaget for lydgenerering.")
+        return jsonify({"error": "Ingen tekst modtaget."}), 400
+
+    current_app.logger.info(
+        f"Bruger {current_user.id}: Modtaget anmodning om at generere lyd for tekst (første 50 tegn): '{story_text[:50]}...' med stemme: {selected_voice}")
+
+    try:
+        # Kald generate_gemini_tts_audio, som nu yielder chunks
+        audio_stream = generate_gemini_tts_audio(story_text, selected_voice)
+
+        # Returner en streamable respons. Flask vil automatisk håndtere chunking fra generatoren.
+        return Response(audio_stream, mimetype='audio/mpeg')
+
+    except Exception as e:
+        current_app.logger.error(
+            f"Bruger {current_user.id}: Fejl ved kald til generate_gemini_tts_audio: {e}\n{traceback.format_exc()}"
+        )
+        return jsonify({"error": f"Fejl ved generering af lyd: {str(e)}"}), 500

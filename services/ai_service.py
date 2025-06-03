@@ -1,7 +1,12 @@
 # Fil: services/ai_service.py
-from flask import current_app # For at tilgå logger og config
+from flask import current_app # For at tilgå config, men ikke logger i generatoren
 from flask_login import current_user
 import google.generativeai as genai
+import logging # NY IMPORT
+
+# Få en logger instans, der er uafhængig af Flask's current_app
+logger = logging.getLogger(__name__)
+
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from vertexai.preview.vision_models import ImageGenerationModel
 import base64
@@ -17,7 +22,16 @@ from prompts.narrative_drafting_prompt import build_narrative_drafting_prompt
 from prompts.narrative_editing_prompt import build_narrative_editing_prompt
 from services.rag_service import find_relevant_chunks_v2
 from prompts.narrative_question_prompt import build_narrative_question_prompt
+from google.cloud import texttospeech_v1beta1 as texttospeech # SØRG FOR DENNE ER HER
 
+# Definerede stemmer til Google Text-to-Speech (Engelske Gemini TTS-modeller)
+# Zephyr virker. Gacrux, Sadachbia, Zubenelgenubi forventes IKKE at virke med denne klient/model.
+TTS_VOICES = {
+    "Zephyr": {"language_code": "en-US", "name": "Zephyr", "gender": "FEMALE"},
+    "Gacrux": {"language_code": "en-US", "name": "Gacrux", "gender": "FEMALE"},
+    "Sadachbia": {"language_code": "en-US", "name": "Sadachbia", "gender": "MALE"},
+    "Zubenelgenubi": {"language_code": "en-US", "name": "Zubenelgenubi", "gender": "MALE"}
+}
 
 def generate_story_text_from_gemini(full_prompt_string, generation_config_settings, safety_settings_values, target_model_name='gemini-1.5-flash-latest'):
     """
@@ -285,6 +299,66 @@ def generate_image_with_vertexai(image_prompt_text):
 
     return image_data_url
 
+def generate_gemini_tts_audio(text_content: str, voice_name: str = "Zephyr (Engelsk Kvinde)"):
+    """
+    Genererer lyd fra tekst ved hjælp af Google Text-to-Speech med
+    standard Wavenet/Neural2 stemmer for streaming.
+
+    Args:
+        text_content (str): Teksten der skal konverteres til tale.
+        voice_name (str): Navnet på den ønskede stemme fra TTS_VOICES.
+
+    Yields:
+        bytes: Chunks af lyddata.
+    """
+    logger.info(f"TTS Service: Starter lydgenerering for tekst (første 50 tegn): '{text_content[:50]}...' med stemme: {voice_name} via Text-to-Speech klient.")
+
+    if not text_content or not text_content.strip():
+        logger.warning("TTS Service: generate_gemini_tts_audio kaldt med tom tekst.")
+        return
+
+    # Initialiserer klienten her
+    # Bemærk: Dette er texttospeech_v1beta1 klienten
+    client = texttospeech.TextToSpeechClient()
+
+    # Vælg den ønskede stemme konfiguration
+    voice_config = TTS_VOICES.get(voice_name)
+    if not voice_config:
+        logger.error(f"TTS Service: Ugyldigt stemmenavn '{voice_name}' valgt. Bruger standard stemme (Zephyr).")
+        voice_config = TTS_VOICES["Zephyr (Engelsk Kvinde)"] # Brug det fulde navn her, som er en nøgle i TTS_VOICES
+
+    synthesis_input = texttospeech.SynthesisInput(text=text_content)
+
+    # Vælg stemmekonfiguration
+    voice_selection_params = texttospeech.VoiceSelectionParams(
+        language_code=voice_config["language_code"],
+        name=voice_config["name"],
+        ssml_gender=texttospeech.SsmlVoiceGender[voice_config["gender"]]
+    )
+
+    # Vælg audio output format og inkluder pitch/speaking_rate for at justere stemmen
+    audio_config = texttospeech.AudioConfig(
+        audio_encoding=texttospeech.AudioEncoding.MP3,
+        pitch=0.0,         # Standard: 0.0. Kan justeres, f.eks. 2.0 for højere, -2.0 for lavere
+        speaking_rate=1.0  # Standard: 1.0. Kan justeres, f.eks. 0.9 for langsommere, 1.1 for hurtigere
+    )
+
+    try:
+        response = client.synthesize_speech(
+            input=synthesis_input,
+            voice=voice_selection_params,
+            audio_config=audio_config
+        )
+
+        logger.info(f"TTS Service: Modtog fuld lydrespons ({len(response.audio_content)} bytes).")
+
+        chunk_size = 4096
+        for i in range(0, len(response.audio_content), chunk_size):
+            yield response.audio_content[i:i + chunk_size]
+
+    except Exception as e:
+        logger.error(f"TTS Service: Fejl under lydgenerering: {e}\n{traceback.format_exc()}")
+        raise # Kaster exception, som Flask ruten kan fange og håndtere.
 
 def generate_narrative_story_step1_generator_ai(
         narrative_focus,

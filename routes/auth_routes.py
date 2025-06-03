@@ -4,11 +4,11 @@ import traceback
 from flask_login import login_user, logout_user, login_required, current_user
 from extensions import db
 from models import User
+from werkzeug.security import generate_password_hash, check_password_hash # Tilføjet denne import
 
 auth_bp = Blueprint('auth', __name__, template_folder='../templates', static_folder='../static')
 
-
-@auth_bp.route('/login')
+@auth_bp.route('/google-login') # Ny, dedikeret rute til at initiere Google login
 def google_login():
     authlib_flask_client = current_app.extensions.get('authlib.integrations.flask_client')
     google_oauth_client = None
@@ -169,7 +169,7 @@ def google_authorize():
                 if user.name != user_name:
                     user.name = user_name
                     needs_commit = True
-                    current_app.logger.info(f"  Navn for {user.email} opdateret til '{user_name}'.")
+                    current_app.logger.info(f"  Navn for {user.email} opdateret til '{user.name}'.")
 
                 # 3. Bestem og opdater rolle baseret på config.py lister
                 original_role_from_db = user.role
@@ -245,39 +245,104 @@ def google_authorize():
         return redirect(url_for('main.index'))
 
 
-@auth_bp.route('/login-email', methods=['GET', 'POST'])
-def email_password_login():
+@auth_bp.route('/login', methods=['GET', 'POST']) # Sørg for at den har methods=['GET', 'POST']
+def auth_login():
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
 
-    if request.method == 'POST':
+    if request.method == 'POST': # Dette er for når formularen POSTes
         email = request.form.get('email')
         password = request.form.get('password')
 
         if not email or not password:
             flash('E-mail og kodeord skal udfyldes.', 'warning')
-            return redirect(url_for('auth.email_password_login'))
+            return render_template('auth_login.html')
 
         user = User.query.filter(User.email.ilike(email.lower())).first()
 
         if user and user.password_hash and user.check_password(password):
-            login_user(user,
-                       remember=request.form.get('remember_me', type=bool))  # Antager du har en 'remember_me' checkbox
+            login_user(user, remember=request.form.get('remember_me', type=bool))
             current_app.logger.info(
-                f"Bruger {user.email} (Rolle: {user.role}) logget ind succesfuldt med e-mail/kodeord.")
+                f"Bruger {user.email} (Rolle: {user.role}) logget ind succesfuldt med e-mail/kodeord."
+            )
             flash(f'Velkommen tilbage, {user.name or user.email}!', 'success')
 
             next_page = request.args.get('next')
-            if next_page and next_page.startswith('/'):  # Sikkerhedsforanstaltning mod open redirect
+            if next_page and next_page.startswith('/'):
                 return redirect(next_page)
             return redirect(url_for('main.index'))
         else:
             current_app.logger.warning(f"Mislykket e-mail/kodeord login forsøg for e-mail: {email}.")
             flash('Ugyldig e-mail eller kodeord. Prøv igen.', 'danger')
-            return redirect(url_for('auth.email_password_login'))
+            return render_template('auth_login.html')
 
-    return render_template('login_email.html')
+    return render_template('auth_login.html') # Dette er for GET-kaldet, der viser login-formularen
 
+@auth_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        flash('Du er allerede logget ind.', 'info')
+        return redirect(url_for('main.index'))
+
+    if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+
+        if not email or not password or not confirm_password:
+            flash('Alle obligatoriske felter (E-mail, Kodeord, Bekræft Kodeord) skal udfyldes.', 'warning')
+            return render_template('signup_email.html', name=name, email=email)
+
+        if password != confirm_password:
+            flash('Kodeordene stemmer ikke overens. Prøv igen.', 'warning')
+            return render_template('signup_email.html', name=name, email=email)
+
+        if len(password) < 6: # Minimum længde for adgangskode
+            flash('Kodeordet skal være på mindst 6 tegn.', 'warning')
+            return render_template('signup_email.html', name=name, email=email)
+
+        # Tjek om e-mail allerede eksisterer
+        # Bruger ilike for case-insensitive tjek for at undgå at "Test@example.com" og "test@example.com" betragtes som forskellige
+        existing_user_by_email = User.query.filter(User.email.ilike(email.lower())).first()
+        if existing_user_by_email:
+            flash('En bruger med denne e-mailadresse eksisterer allerede.', 'danger')
+            return render_template('signup_email.html', name=name, email=email)
+
+        # Generer et unikt placeholder for google_id
+        # Dette er nødvendigt, da google_id er nullable=False i modellen, men vi skal give den en værdi
+        # for brugere, der opretter sig med e-mail.
+        # Vi sikrer, at placeholderen er unik ved at tilføje et løbenummer.
+        i = 1
+        base_placeholder_google_id = f"manual_reg_{email.split('@')[0]}"
+        placeholder_google_id = f"{base_placeholder_google_id}_{i}"
+        while User.query.filter_by(google_id=placeholder_google_id).first():
+            i += 1
+            placeholder_google_id = f"{base_placeholder_google_id}_{i}"
+        current_app.logger.info(f"Generated unique placeholder google_id: {placeholder_google_id}")
+
+        new_user = User(
+            name=name if name else email.split('@')[0], # Brug navn hvis angivet, ellers del af email før @
+            email=email.lower(), # Gem email i lowercase for konsistens
+            google_id=placeholder_google_id, # Placeholder for e-mail-brugere
+            role='basic' # Standardrolle for nye registreringer
+        )
+        new_user.set_password(password) # Hasher kodeordet
+
+        db.session.add(new_user)
+        try:
+            db.session.commit()
+            current_app.logger.info(f"New user registered: {new_user.email} with role {new_user.role}")
+            login_user(new_user) # Log ind den nye bruger
+            flash('Din konto er nu oprettet og du er logget ind!', 'success')
+            return redirect(url_for('main.index'))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error during new user registration commit: {e}\n{traceback.format_exc()}")
+            flash('Der opstod en fejl under oprettelse af kontoen. Prøv igen.', 'danger')
+            return render_template('signup_email.html', name=name, email=email)
+
+    return render_template('signup_email.html')
 
 @auth_bp.route('/logout')
 @login_required

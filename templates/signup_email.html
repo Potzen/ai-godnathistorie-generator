@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <title>Opret Konto - Read Me A Story</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .signup-container {
+            background-color: var(--color-box-bg);
+            padding: 25px 30px;
+            margin-top: 20px;
+            margin-bottom: 30px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            max-width: 450px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .signup-container h1 {
+            color: var(--color-primary);
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.8em;
+        }
+        .signup-container .form-group {
+            margin-bottom: 20px;
+        }
+        .signup-container label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        .signup-container input[type="email"],
+        .signup-container input[type="password"],
+        .signup-container input[type="text"] { /* Tilføjet text for navn */
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-family: var(--font-body);
+            font-size: 1em;
+        }
+        .signup-container .signup-button {
+            display: block;
+            width: 100%;
+            padding: 12px 18px;
+            background-color: var(--color-primary);
+            color: white;
+            font-size: 1.1em;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .signup-container .signup-button:hover {
+            background-color: var(--color-primary-hover);
+        }
+        .signup-container .extra-links {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+        .signup-container .extra-links a {
+            color: var(--color-primary);
+            text-decoration: underline;
+        }
+        .flash-messages-container {
+            padding: 0;
+            margin-bottom: 20px;
+            list-style: none;
+        }
+        .flash-message {
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            border-radius: var(--border-radius);
+            border: 1px solid transparent;
+            font-weight: 500;
+            text-align: center;
+        }
+        .flash-danger {
+            color: var(--color-error-text, #721c24);
+            background-color: var(--color-error-bg, #f8d7da);
+            border-color: var(--color-error-border, #f5c6cb);
+        }
+        .flash-warning {
+            color: #856404;
+            background-color: #fff3cd;
+            border-color: #ffeeba;
+        }
+        .flash-success {
+            color: var(--color-success-text);
+            background-color: var(--color-success-bg);
+            border-color: var(--color-success-border);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="user-status">
+            {# Viser ikke login/logout status her, da det er en registreringsside #}
+        </div>
+        <div class="logo-container" style="text-align: center; margin-bottom: 10px;">
+            <a href="{{ url_for('main.index') }}"><img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Read Me A Story Logo" id="app-logo" style="max-width: 200px;"></a>
+        </div>
+        <nav style="text-align: center; margin-top:10px;">
+            <a href="{{ url_for('main.index') }}" class="utility-button" style="background-color: var(--color-secondary); color: #333;">Tilbage til Forsiden</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="signup-container">
+            <h1>Opret Ny Konto</h1>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages-container">
+                        {% for category, message in messages %}
+                            <div class="flash-message flash-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('auth.register') }}">
+                <div class="form-group">
+                    <label for="name">Dit Navn (valgfrit)</label>
+                    <input type="text" id="name" name="name" placeholder="F.eks. Anna" value="{{ name if name is not none else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="email">E-mailadresse</label>
+                    <input type="email" id="email" name="email" required value="{{ email if email is not none else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="password">Kodeord</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirm_password">Bekræft Kodeord</label>
+                    <input type="password" id="confirm_password" name="confirm_password" required>
+                </div>
+                <button type="submit" class="signup-button">Opret Konto</button>
+            </form>
+
+            <div class="extra-links">
+                <p>Har du allerede en konto?</p>
+                <a href="{{ url_for('auth.auth_login') }}">Log ind her</a>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+       <hr>
+        <div class="footer-content">
+            <div class="footer-info">
+                <p>© Read Me A Story 2025 - Historier skabt med AI.</p>
+                <p><i>Forældreopsyn anbefales altid under læsning. ;)</i></p>
+                <p><a href="{{ url_for('main.privacy_policy') }}" class="footer-link">Privatlivs- og Cookiepolitik</a></p>
+            </div>
+            <div class="footer-social">
+                <p>Følg & Del Appen:</p>
+                <a href="https://www.facebook.com/profile.php?id=61576301092618" target="_blank" rel="noopener noreferrer" class="social-link">Find os på Facebook</a>
+                <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ request.url_root.strip('/') | urlencode }}" target="_blank" rel="noopener noreferrer" class="social-link">Del på LinkedIn</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

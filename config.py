@@ -35,7 +35,7 @@ class Config:
 
     # ElevenLabs API Nøgle (til Tekst-til-Tale)
     # Hentes fra miljøvariabel ELEVENLABS_API_KEY.
-    ELEVENLABS_API_KEY = os.environ.get('ELEVENLABS_API_KEY')
+    # ELEVENLABS_API_KEY = os.environ.get('ELEVENLABS_API_KEY')
 
     # Vertex AI Konfiguration (til Billedgenerering)
     # Hentes fra miljøvariabler.

@@ -172,5 +172,36 @@ export async function getGuidingQuestionsApi(contextData) {
     return result;
 }
 
-// Flere API-funktioner vil blive tilføjet her senere (f.eks. for billeder, lyd, narrativ støtte)
+/**
+ * Sender historietekst og stemmevalg til backend for at generere lyd.
+ * @param {string} storyText - Den historie, der skal læses højt.
+ * @param {string} voiceName - Navnet på den valgte stemme.
+ * @returns {Promise<Response>} Et promise der resolver med den streamede lydrespons.
+ * @throws {Error} Kaster en fejl hvis netværksrespons ikke er ok, eller ved andre fejl (f.eks. 403 Forbidden).
+ */
+export async function generateAudioApi(storyText, voiceName) {
+    console.log(`api_client.js: generateAudioApi called for text (first 50 chars): '${storyText.substring(0, 50)}...' with voice: ${voiceName}`);
+    const response = await fetch('/story/generate_audio', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ text: storyText, voice_name: voiceName })
+    });
 
+    if (!response.ok) {
+        let errorMsg = `Serverfejl under lydgenerering (${response.status})`;
+        try {
+            const errorData = await response.json();
+            errorMsg = errorData.error || `${errorMsg} ${response.statusText || ''}`;
+        } catch (e) {
+            const textError = await response.text();
+            errorMsg += ` ${response.statusText || textError || '(ukendt serverfejl)'}`;
+        }
+        console.error("api_client.js: Server error in generateAudioApi:", errorMsg);
+        throw new Error(errorMsg);
+    }
+
+    console.log("api_client.js: Audio stream response received.");
+    return response; // Returnerer hele respons-objektet for streaming
+}

@@ -29,8 +29,7 @@ from google.cloud import aiplatform
 import vertexai
 # Sørg for at denne import er den korrekte for den Vertex AI model du anvender for billedgenerering
 from vertexai.preview.vision_models import ImageGenerationModel
-from elevenlabs.client import ElevenLabs
-from elevenlabs import Voice
+
 
 # Din inspektionsblok kan forblive her, da den kører uafhængigt ved modul-load
 try:
@@ -47,7 +46,7 @@ except Exception as e_inspect:
 # db = SQLAlchemy()
 # login_manager = LoginManager()
 # oauth = OAuth()
-elevenlabs_client = None  # Initialiseres i create_app
+
 
 
 # -----------------------------------------------------------------------------
@@ -87,16 +86,16 @@ def create_app(config_class=Config):  # <--- HER DEFINERES create_app FUNKTIONEN
     else:
         app.logger.warning("ADVARSEL: GOOGLE_API_KEY mangler i app.config! Gemini vil ikke virke.")
 
-    # ElevenLabs Client
-    global elevenlabs_client
-    if app.config.get('ELEVENLABS_API_KEY'):
-        try:
-            elevenlabs_client = ElevenLabs(api_key=app.config['ELEVENLABS_API_KEY'])
-            app.logger.info("ElevenLabs Client initialiseret succesfuldt via app.config.")
-        except Exception as e:
-            app.logger.error(f"FEJL ved initialisering af ElevenLabs client: {e}\n{traceback.format_exc()}")
-    else:
-        app.logger.warning("ADVARSEL: ELEVENLABS_API_KEY mangler i app.config! Oplæsning vil ikke virke.")
+    # ElevenLabs Client (IKKE I BRUG LÆNGERE)
+    # global elevenlabs_client
+    # if app.config.get('ELEVENLABS_API_KEY'):
+    #     try:
+    #         elevenlabs_client = ElevenLabs(api_key=app.config['ELEVENLABS_API_KEY'])
+    #         app.logger.info("ElevenLabs Client initialiseret succesfuldt via app.config.")
+    #     except Exception as e:
+    #         app.logger.error(f"FEJL ved initialisering af ElevenLabs client: {e}\n{traceback.format_exc()}")
+    # else:
+    #     app.logger.warning("ADVARSEL: ELEVENLABS_API_KEY mangler i app.config! Oplæsning vil ikke virke.")
 
     # Vertex AI
     if app.config.get('GOOGLE_CLOUD_PROJECT_ID'):
@@ -359,30 +358,6 @@ def logout_original_logic():
     current_app.logger.info(f"Bruger {user_id_before} logget ud (original_logic).")
     flash("Du er nu logget ud.", "info")
     return redirect(url_for('main.index'))
-
-
-def generate_audio_original_logic():
-    # Sørg for at hente elevenlabs_client korrekt, da den nu er global
-    global elevenlabs_client
-    if not elevenlabs_client:
-        current_app.logger.error("FEJL: ElevenLabs client ikke initialiseret i generate_audio_original_logic.")
-        return jsonify({"error": "ElevenLabs client ikke initialiseret."}), 500
-    data = request.get_json()
-    story_text = data.get('text')
-    if not story_text:
-        current_app.logger.error("FEJL: Ingen tekst modtaget for lydgenerering.")
-        return jsonify({"error": "Ingen tekst modtaget."}), 400
-    current_app.logger.info(f"Modtaget anmodning om at generere lyd for tekst: {story_text[:50]}...")
-    try:
-        voice_id = "gpf7HQVro4L2OVR54kr8"
-        current_app.logger.info(f"Anmoder om lyd fra ElevenLabs med stemme: {voice_id}")
-        audio_stream = elevenlabs_client.generate(text=story_text, voice=Voice(voice_id=voice_id),
-                                                  model='eleven_multilingual_v2')
-        current_app.logger.info("Lyd-stream modtaget fra ElevenLabs.")
-        return Response(audio_stream, mimetype='audio/mpeg')
-    except Exception as e:
-        current_app.logger.error(f"Fejl ved kald til ElevenLabs API: {e}\n{traceback.format_exc()}")
-        return jsonify({"error": f"Fejl ved generering af lyd: {str(e)}"}), 500
 
 # === Opret Database Tabeller ===
 def create_tables(target_app):  # Modtager app instans

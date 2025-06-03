@@ -1,5 +1,5 @@
 // Fil: static/script.js
-import { generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generateNarrativeStoryApi, getGuidingQuestionsApi } from './modules/api_client.js'; // TILFØJET getGuidingQuestionsApi
+import { generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generateNarrativeStoryApi, getGuidingQuestionsApi, generateAudioApi } from './modules/api_client.js'; // TILFØJET generateAudioApi
 
 // Kør først koden, når hele HTML dokumentet er færdigindlæst og klar
 document.addEventListener('DOMContentLoaded', () => {
@@ -64,6 +64,10 @@ function trackGAEvent(action, category, label, value) {
     const audioErrorDiv = document.getElementById('audio-error');
     const audioPlayer = document.getElementById('audio-player');
     const loginPromptAudio = document.getElementById('login-prompt-audio'); // For at vise/skjule login prompt for lyd
+    const ttsVoiceSelect = document.getElementById('tts-voice-select'); // Reference til stemmevalgsdropdown
+    const ttsVoiceSelectionDiv = document.getElementById('tts-voice-selection'); // Reference til containeren for stemmevalg
+
+    // Billed-elementer (hvis de bruges - pt. ikke aktivt)
 
     // Billed-elementer (hvis de bruges - pt. ikke aktivt)
     // const imageControlsDiv = document.getElementById('image-controls');
@@ -322,7 +326,50 @@ function trackGAEvent(action, category, label, value) {
     }
 
     // Indlæs gemte skriftstørrelser ved sideindlæsning
-    loadFontSizesFromLocalStorage();
+loadFontSizesFromLocalStorage();
+
+    // === NYT: Kontrol af TTS stemmevalgsdropdown synlighed baseret på brugerrolle ===
+    // Denne logik forudsætter, at du har en måde at vide, om brugeren er 'basic' eller 'premium'.
+    // Typisk hentes dette fra en server-side variable sat af Flask (f.eks. current_user.role).
+    // Da Flask kan injicere JS-variabler via Jinja2, kan vi antage, at 'userRole' er tilgængelig.
+    // Hvis userRole ikke er defineret via Jinja2, skal denne del justeres for at hente det.
+    // For nu antager vi, at Flask (som du har opsat i index.html for knapper) vil styre den indledende 'display: none;'
+    // og vi kan lytte efter, når brugeren logger ind/ud (som ville kræve en sidegenindlæsning).
+    // Vi kan tilføje en simpel tjek ved DOMContentLoaded:
+    function updateTtsVoiceSelectionVisibility() {
+        const currentUserRoleElement = document.getElementById('current-user-role-data'); // En skjult div/input i HTML med brugerens rolle
+        let userRole = 'free'; // Standard til 'free' hvis element ikke findes
+        if (currentUserRoleElement) {
+            userRole = currentUserRoleElement.dataset.role;
+        } else {
+             // Hvis du ikke har en skjult element med user-role, kan vi udlede det fra om 'read-aloud-button' er disabled
+             // Dette er en workaround, bedre er at have en server-side JS variable
+            if (readAloudButton && !readAloudButton.classList.contains('disabled-button')) {
+                // Hvis knappen ikke er disabled, antager vi Basic/Premium
+                userRole = 'basic'; // Eller 'premium', det er nok at vide at de har adgang
+            }
+        }
+
+
+        if (ttsVoiceSelectionDiv) {
+            if (userRole === 'basic' || userRole === 'premium') {
+                ttsVoiceSelectionDiv.style.display = 'block'; // Eller 'flex' afhængig af din CSS
+                console.log("TTS Voice Selection Dropdown: Synlig (Basic/Premium user).");
+            } else {
+                ttsVoiceSelectionDiv.style.display = 'none';
+                console.log("TTS Voice Selection Dropdown: Skjult (Free user/Guest).");
+            }
+        } else {
+            console.warn("TTS Voice Selection Div (#tts-voice-selection) not found.");
+        }
+    }
+
+    // Kald funktionen ved indlæsning for at sætte korrekt synlighed
+    updateTtsVoiceSelectionVisibility();
+
+    // Lyt efter ændringer i login-status (dette kræver en sidegenindlæsning i en rigtig app)
+    // For nu er det primært DOMContentLoaded, der styrer dette.
+    // === SLUT: Kontrol af TTS stemmevalgsdropdown synlighed ===
 
     // === NYT: Fane Navigation Funktionalitet ===
     const tabButtons = document.querySelectorAll('.tab-button');
@@ -1144,81 +1191,110 @@ function trackGAEvent(action, category, label, value) {
 
     // === Lyd Generering (TTS) ===
     async function handleReadAloudClick() {
-        console.log("Read Aloud: Started");
+    console.log("Read Aloud: Started");
 
-        if (!readAloudButton.classList.contains('disabled-button')) { // Tjek om knappen er aktiv (bruger logget ind)
-            if (!storyDisplay || !storyDisplay.textContent || storyDisplay.textContent.trim() === '' || storyDisplay.textContent.includes('Historien genereres...') || storyDisplay.textContent.includes('Ups!')) {
-                console.warn("Read Aloud: No valid story text found.");
-                if(audioErrorDiv) {
-                    audioErrorDiv.textContent = "Ingen historie at læse højt.";
-                    audioErrorDiv.classList.remove('hidden');
-                    setTimeout(() => audioErrorDiv.classList.add('hidden'), 3000);
-                }
-                return;
-            }
-
-            if (!audioLoadingDiv || !audioErrorDiv || !audioPlayer) {
-                 console.error("Read Aloud: Critical audio elements missing from DOM.");
-                 if(audioErrorDiv) { audioErrorDiv.textContent = "Fejl: Lyd-elementer mangler (kontakt support)."; audioErrorDiv.classList.remove('hidden'); }
-                 return;
-            }
-
-            const storyText = storyDisplay.textContent;
-
-            // UI Opdatering: Loading State for lyd
-            if(audioLoadingDiv) audioLoadingDiv.classList.remove('hidden');
-            if(audioErrorDiv) { audioErrorDiv.textContent = ''; audioErrorDiv.classList.add('hidden');}
-            if(audioPlayer) { audioPlayer.pause(); audioPlayer.src = ''; audioPlayer.classList.add('hidden');}
-            if(readAloudButton) { readAloudButton.disabled = true; readAloudButton.textContent = 'Genererer Lyd...'; }
-
-            try {
-                // console.log("Read Aloud: Initiating fetch call to /generate_audio...");
-                const response = await fetch('/generate_audio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: storyText }) });
-                // console.log("Read Aloud: Fetch response received for audio. Status:", response.status);
-
-                if (!response.ok) {
-                    let errorMsg = `Serverfejl (${response.status})`;
-                    try { const errorData = await response.json(); errorMsg = errorData.error || `${errorMsg} ${response.statusText}`; } catch (e) { errorMsg += ` ${response.statusText}`; }
-                    throw new Error(errorMsg);
-                }
-                const contentType = response.headers.get("content-type");
-                if (!contentType || !contentType.includes("audio/mpeg")) {
-                     throw new Error(`Uventet svar fra server (type: ${contentType}). Forventede lydfil.`);
-                }
-                // console.log("Read Aloud: Audio data received. Creating Blob URL...");
-                const audioBlob = await response.blob();
-                const audioUrl = URL.createObjectURL(audioBlob);
-                if(audioPlayer) {
-                    audioPlayer.src = audioUrl;
-                    audioPlayer.classList.remove('hidden');
-                    // console.log("Read Aloud: Audio player ready with new audio.");
-                } else {
-                     console.error("Read Aloud: Audio player element not found when trying to set source!");
-                     throw new Error("Intern fejl: Lyd-afspiller element ikke fundet.");
-                }
-            } catch (error) {
-                console.error("Read Aloud: Error during audio generation:", error);
-                if(audioErrorDiv) {
-                    audioErrorDiv.textContent = `Lydfejl: ${error.message}`;
-                    audioErrorDiv.classList.remove('hidden');
-                }
-                if(audioPlayer) audioPlayer.classList.add('hidden');
-            } finally {
-                if(audioLoadingDiv) audioLoadingDiv.classList.add('hidden');
-                if(readAloudButton) {
-                    readAloudButton.disabled = false;
-                    readAloudButton.textContent = 'Læs Historien Højt';
-                }
-                // console.log("Read Aloud: Finished processing.");
-            }
-        } else {
-            console.log("Read Aloud: Button is disabled (user likely not logged in).");
-            if (loginPromptAudio) { // Vis prompt hvis knappen er deaktiveret
-                loginPromptAudio.classList.remove('hidden');
-                setTimeout(() => loginPromptAudio.classList.add('hidden'), 5000); // Skjul efter 5 sek
-            }
+    // Først, tjek om knappen er deaktiveret via HTML (pga. brugerrolle)
+    if (readAloudButton.classList.contains('disabled-button')) {
+        console.log("Read Aloud: Button is disabled (user not Basic/Premium).");
+        if (loginPromptAudio) {
+            loginPromptAudio.classList.remove('hidden');
+            setTimeout(() => loginPromptAudio.classList.add('hidden'), 5000);
         }
+        return;
     }
+
+    // Tjek om der er en gyldig historie at læse højt
+    if (!storyDisplay || !storyDisplay.textContent || storyDisplay.textContent.trim() === '' ||
+        storyDisplay.textContent.includes('Historien genereres...') || storyDisplay.textContent.includes('Ups!')) {
+        console.warn("Read Aloud: No valid story text found.");
+        if (audioErrorDiv) {
+            audioErrorDiv.textContent = "Ingen historie at læse højt.";
+            audioErrorDiv.classList.remove('hidden');
+            setTimeout(() => audioErrorDiv.classList.add('hidden'), 3000);
+        }
+        return;
+    }
+
+    // Tjek for kritiske UI-elementer
+    if (!audioLoadingDiv || !audioErrorDiv || !audioPlayer || !ttsVoiceSelect) {
+        console.error("Read Aloud: Critical audio or voice selection elements missing from DOM.");
+        if (audioErrorDiv) {
+            audioErrorDiv.textContent = "Fejl: Nødvendige elementer mangler (kontakt support).";
+            audioErrorDiv.classList.remove('hidden');
+        }
+        return;
+    }
+
+    const storyText = storyDisplay.textContent;
+    const selectedVoice = ttsVoiceSelect.value; // Hent den valgte stemme fra dropdown
+    console.log(`Read Aloud: Generating audio for voice: ${selectedVoice}`);
+
+    // UI Opdatering: Loading State
+    if (audioLoadingDiv) audioLoadingDiv.classList.remove('hidden');
+    if (audioErrorDiv) { audioErrorDiv.textContent = ''; audioErrorDiv.classList.add('hidden'); }
+    if (audioPlayer) { audioPlayer.pause(); audioPlayer.src = ''; audioPlayer.classList.add('hidden'); }
+    if (readAloudButton) { readAloudButton.disabled = true; readAloudButton.textContent = 'Genererer Lyd...'; }
+
+    try {
+        // Kald generateAudioApi fra api_client.js
+        // Denne gang forventer vi et Response-objekt, der indeholder den streamede Blob
+        const response = await generateAudioApi(storyText, selectedVoice);
+
+        // Opret en MediaSource for streaming
+        const mediaSource = new MediaSource();
+        audioPlayer.src = URL.createObjectURL(mediaSource);
+        audioPlayer.classList.remove('hidden');
+
+        mediaSource.addEventListener('sourceopen', async () => {
+            const sourceBuffer = mediaSource.addSourceBuffer('audio/mpeg'); // MP3 format
+            const reader = response.body.getReader(); // Læs body som en stream
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    console.log("Read Aloud: Stream complete.");
+                    if (mediaSource.readyState === 'open') {
+                        mediaSource.endOfStream();
+                    }
+                    break;
+                }
+                if (value) {
+                    // Hvis sourceBuffer er fuld, vent et øjeblik
+                    if (sourceBuffer.updating) {
+                        await new Promise(resolve => sourceBuffer.addEventListener('updateend', resolve, { once: true }));
+                    }
+                    sourceBuffer.appendBuffer(value);
+                }
+            }
+        });
+
+        // Håndter fejl under MediaSource streaming
+        mediaSource.addEventListener('sourceended', () => console.log('MediaSource ended'));
+        mediaSource.addEventListener('error', (event) => {
+            console.error('MediaSource error:', event);
+            if (audioErrorDiv) {
+                audioErrorDiv.textContent = 'Fejl under afspilning af lydstream.';
+                audioErrorDiv.classList.remove('hidden');
+            }
+            if (audioPlayer) audioPlayer.classList.add('hidden');
+        });
+
+    } catch (error) {
+        console.error("Read Aloud: Error during audio generation or streaming:", error);
+        if (audioErrorDiv) {
+            audioErrorDiv.textContent = `Lydfejl: ${error.message}`;
+            audioErrorDiv.classList.remove('hidden');
+        }
+        if (audioPlayer) audioPlayer.classList.add('hidden');
+    } finally {
+        if (audioLoadingDiv) audioLoadingDiv.classList.add('hidden');
+        if (readAloudButton) {
+            readAloudButton.disabled = false;
+            readAloudButton.textContent = 'Læs Historien Højt';
+        }
+        console.log("Read Aloud: Finished processing.");
+    }
+}
 
 async function handleGenerateImageFromStoryClick() { // Bemærk navnet
     console.log("--> handleGenerateImageFromStoryClick startet");

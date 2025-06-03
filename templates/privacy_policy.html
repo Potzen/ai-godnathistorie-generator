@@ -63,9 +63,9 @@
     <header>
         <div class="user-status">
             {% if current_user.is_authenticated %}
-                <a href="{{ url_for('logout') }}" class="button-logout utility-button">Log ud</a>
+                <a href="{{ url_for('auth.logout') }}" class="button-logout utility-button">Log ud</a>
             {% else %}
-                <a href="{{ url_for('google_login') }}" class="button-login utility-button">Login med Google</a>
+                <a href="{{ url_for('auth.google_login') }}" class="button-login utility-button">Login med Google</a>
             {% endif %}
         </div>
         <div class="logo-container">
@@ -73,7 +73,7 @@
         </div>
         <h1>Read Me A Story (BETA)</h1>
         <nav style="text-align: center; margin-top:10px;">
-            <a href="{{ url_for('index') }}" class="utility-button" style="background-color: var(--color-secondary); color: #333;">Tilbage til Forsiden</a>
+            <a href="{{ url_for('main.index') }}" class="utility-button" style="background-color: var(--color-secondary); color: #333;">Tilbage til Forsiden</a>
         </nav>
     </header>
 
@@ -232,7 +232,7 @@
             <div class="footer-info">
                 <p>© Read Me A Story 2025 - Historier skabt med AI.</p>
                 <p><i>Forældreopsyn anbefales altid under læsning. ;)</i></p>
-                <p><a href="{{ url_for('privacy_policy') }}" class="footer-link">Privatlivs- og Cookiepolitik</a></p>
+                <p><a href="{{ url_for('main.privacy_policy') }}" class="footer-link">Privatlivs- og Cookiepolitik</a></p>
             </div>
             <div class="footer-social">
                 <p>Følg & Del Appen:</p>

@@ -134,7 +134,7 @@
                 {% endif %}
             {% endwith %}
 
-            <form method="POST" action="{{ url_for('auth.email_password_login') }}">
+            <form method="POST" action="{{ url_for('auth.auth_login') }}">
                 <div class="form-group">
                     <label for="email">E-mailadresse</label>
                     <input type="email" id="email" name="email" required>
@@ -151,8 +151,13 @@
             </form>
 
             <div class="alternative-login">
-                <p>Eller</p>
-                <a href="{{ url_for('auth.google_login') }}">Log ind med Google</a>
+                <p>Eller log ind med Google:</p>
+                <a href="{{ url_for('auth.google_login') }}" class="button-login">Log ind med Google</a>
+            </div>
+
+            <div class="extra-links" style="margin-top: 30px;">
+                <p>Har du ikke en konto?</p>
+                <a href="{{ url_for('auth.register') }}">Opret ny konto her</a>
             </div>
 
             {# <div class="extra-links"> #}
