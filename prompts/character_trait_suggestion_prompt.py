@@ -16,10 +16,11 @@ def build_character_trait_suggestion_prompt(narrative_focus):
     prompt_parts.append("SYSTEM INSTRUKTION: Du er en AI-assistent med ekspertise i narrativ pædagogik og karakterdesign for børnehistorier. Din opgave er at foreslå karaktertræk for to typer karakterer baseret på et givent narrativt fokus. Dit output SKAL være en valid JSON-formateret streng.")
     prompt_parts.append("---")
 
-    prompt_parts.append(f"NARRATIVT FOKUS (Tema/Udfordring): \"{narrative_focus}\"")
+    prompt_parts.append(f"NARRATIVT FOKUS (Tema/Begivenhed/Fokus/Udfordring): \"{narrative_focus}\"")
     prompt_parts.append("---")
 
     prompt_parts.append("OPGAVE: Baseret på ovenstående narrative fokus, generer forslag til karaktertræk for følgende to karaktertyper:")
+    prompt_parts.append("VIGTIGT VEDRØRENDE NAVNEFORSLAG TIL PROBLEM-KARAKTEREN: Forslagene til 'Identitet/Navn' for problem-karakteren skal være kreative og rammende. Undgå dog at opfinde ord, der lyder meget konstruerede, er sammensat på en ikke-naturlig dansk måde, eller som bruger uheldige stavelser (f.eks. undgå navne som 'Skygge-Sniksnakkeren', 'Mørke-Mumleren' eller lignende, der indeholder 'snik', 'snak', 'mumle' på en negativ måde). Streb i stedet efter navne eller beskrivende betegnelser, der er mere i tråd med dansk sprogbrug og børns sprogforståelse (eksempler på bedre stil: 'Skyggeuhyret', 'Mørkets Hvisken', 'Natteskrækken', 'Angsttrolden', 'Drilleånden', 'Frygt-Spøgelset'). Forslagene skal stadig tydeligt eksternalisere det problem, der er beskrevet i det narrative fokus, og være egnede for en børnehistorie.")
 
     prompt_parts.append("\n1. PROBLEM-KARAKTER (En eksternalisering af problemet/udfordringen):")
     prompt_parts.append("   - Forslag til Identitet/Navn (f.eks. 'Bekymringsmonsteret', 'Tvivls-skyggen')")

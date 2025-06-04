@@ -18,16 +18,16 @@ def build_narrative_drafting_prompt(
     ]
 
     prompt_parts.append(
-        "DEL 1: BRUGERENS ØNSKER OG BARNETS PROFIL (FRA TRIN 1 BRIEF - DETTE ER DIN PRIMÆRE GUIDE FOR HISTORIENS INDHOLD):")
+        "DEL 1: BRUGERENS ØNSKER OG BARNETS PROFIL (FRA TRIN 1 BRIEF - DETTE ER DIN PRIMÆRE OG ULTIMATIVE GUIDE FOR HISTORIENS INDHOLD, INPUT SKAL ANVENDES I HISTORIEN):")
     prompt_parts.append(
-        "Dette er en detaljeret opsummering af, hvad brugeren har angivet, og som din historie SKAL baseres nøje på:")
+        "Dette er en detaljeret opsummering af, hvad brugeren har angivet, og som din historie SKAL baseres nøje på, alle navne og input skal indgå i din historie. Dette er ufravigeligt:")
     prompt_parts.append(structured_brief)
     prompt_parts.append("---")
 
     if rag_context:
         prompt_parts.append("DEL 2: RELEVANT VIDEN FRA NARRATIV TERAPI (RAG KONTEKST):")
         prompt_parts.append(
-            "Brug følgende principper og eksempler fra narrativ terapi til at informere din historie. Integrer dem naturligt og kreativt, hvor det passer med informationen fra DEL 1:")
+            "Brug følgende principper og eksempler fra narrativ terapi til at informere din historie. Integrer dem naturligt og kreativt, hvor det passer med informationen fra DEL 1 - HUSK at som udgangspunkt skal input givet af brugeren indgå i historien, særligt eksternalisering herunder navn på problemet:")
         for i, chunk in enumerate(rag_context):
             prompt_parts.append(f"   - RAG Kontekst Uddrag #{i + 1}: \"{chunk}\"")
     else:
@@ -74,6 +74,7 @@ def build_narrative_drafting_prompt(
         "\n       1.  **Problem-Karakterens Navn/Identitet:** Hvis et specifikt navn/identitet er angivet for problem-karakteren i briefets sektion 4 (f.eks. 'LarmeFrans'), **SKAL DU BRUGE PRÆCIS DETTE NAVN/DENNE IDENTITET, OG INTET ANDET, HVER GANG PROBLEM-KARAKTEREN NÆVNES ELLER REFERERES TIL.** Dette gælder, selvom du internt mener, at et andet navn ville passe bedre teoretisk eller narrativt. Brugerens valg af navn for problem-karakteren er ABSOLUT og må IKKE ændres, omskrives eller erstattes."
         "\n       2.  **Andre Hovedkarakterers Navne:** Hvis navne er angivet for andre hovedkarakterer i briefets sektion 5 (f.eks. 'Ræven Mikkel'), SKAL disse navne bruges PRÆCIST som angivet."
         "\n       3.  **Sted(er):** Hvis specifikke steder er angivet i briefets sektion 5 (f.eks. 'Rumskib'), SKAL historien primært foregå på disse steder, eller de skal spille en central og genkendelig rolle, der bruger det/de angivne navne for stederne."
+        "\n       **VIGTIGT ORDVALG (Problem-Karakter og Generelt):** Undgå at opfinde og bruge ikke-dansk-klingende eller mærkelige ord som f.eks. 'Sniken' til at navngive karakterer (specielt problem-karakteren) eller fænomener, MEDMINDRE et sådant specifikt eller usædvanligt navn eksplicit er leveret af brugeren i briefets sektion 4 (Problem-Karakterens Navn/Identitet) eller sektion 5 (Andre Hovedkarakterer). Din prioritet er ALTID at bruge de navne, brugeren har angivet. Hvis intet brugernavn er givet for problem-karakteren, og du skal beskrive den, brug da almindeligt dansk ordforråd i børne højde eller en neutral, beskrivende betegnelse (f.eks. 'Mørket', 'Angsten', 'Drilleånden' eller det der passer bedste til historien) fremfor at opfinde nye, potentielt uheldige navne."
         "\n       **Generelt for alle bruger-definerede elementer fra briefet (DEL 1): Betragt dem som faste, ikke-forhandlingsbare instruktioner. Din kreative opgave er at væve en god, narrativt funderet historie *omkring* disse faste elementer, ikke at ændre dem.**")
 
     prompt_parts.append("   B.  **Integrer Narrativ Teori (meget vigtigt):**")

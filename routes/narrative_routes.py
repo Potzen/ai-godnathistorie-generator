@@ -189,11 +189,13 @@ def suggest_character_traits():
         )
         return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403  # Forbidden
 
+    user_id_for_log = current_user.id # <--- DENNE LINJE ER TILFØJET/FLYTET KORREKT
+
     current_app.logger.info(
-        f"Narrative route /suggest_character_traits kaldt af bruger: {current_user.email} (ID: {current_user.id})")
+        f"Narrative route /suggest_character_traits kaldt af bruger: {current_user.email} (ID: {user_id_for_log})") # Nu kan user_id_for_log bruges her
 
     if not request.is_json:
-        current_app.logger.warning(f"Bruger {current_user.email}: Kald til /suggest_character_traits uden JSON data.")
+        current_app.logger.warning(f"Bruger {current_user.email}: Kald til /suggest_character_traits uden JSON data.") # Overvej også at bruge user_id_for_log her for konsistens
         return jsonify({"error": "Anmodning skal være JSON."}), 415
 
     data = request.get_json()

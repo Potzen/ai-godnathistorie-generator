@@ -1022,6 +1022,20 @@ def edit_narrative_story(
         # 3. Parse svaret fra AI'en (forventer titel på første linje, så historien)
         raw_edited_text = ""
         try:
+            # Log finish_reason and safety_ratings FØR .text tilgås, i tilfælde af at .text fejler pga. blokering
+            if hasattr(response, 'candidates') and response.candidates:
+                candidate = response.candidates[0]
+                # Log finish_reason med .name attributten hvis den findes, for mere læsbart output
+                finish_reason_output = candidate.finish_reason.name if hasattr(candidate.finish_reason,
+                                                                               'name') else candidate.finish_reason
+                current_app.logger.info(f"AI Service (Redaktør Trin 3): Finish Reason: {finish_reason_output}")
+                current_app.logger.info(f"AI Service (Redaktør Trin 3): Safety Ratings: {candidate.safety_ratings}")
+            else:
+                current_app.logger.warning(
+                    "AI Service (Redaktør Trin 3): Ingen 'candidates' fundet i responsen. Kan ikke logge Finish Reason/Safety Ratings.")
+            # Log også prompt_feedback, hvis det findes, da det kan give info om blokeringer
+            if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                current_app.logger.info(f"AI Service (Redaktør Trin 3): Prompt Feedback: {response.prompt_feedback}")
             raw_edited_text = response.text.strip()
             if not raw_edited_text:
                 current_app.logger.warning("AI Service: Redigeret historie (Trin 3) fra Gemini var tomt. Returnerer originalt udkast.")

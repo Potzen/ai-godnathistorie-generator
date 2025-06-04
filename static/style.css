@@ -1092,3 +1092,79 @@ input:disabled + .slider-label:before {
 #narrative-reset-font-button {
     /* Eventuel specifik styling for nulstil-knappen */
 }
+
+/* =========== Styling for Info Tooltip Boks (Opdateret V3 - Mere luft) =========== */
+.info-tooltip-box {
+    display: none;
+    position: absolute;
+    background-color: #e9ecef; /* Den aftalte mørkere grå */
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    padding: 18px; /* Mere ensartet padding. Kan justeres yderligere (f.eks. til 20px eller 22px). */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); /* Lidt blødere skygge */
+    max-width: 300px; /* Lidt smallere igen for et mere kompakt look, kan øges hvis teksten er lang */
+    z-index: 1050;
+    font-size: 0.9em;   /* Lidt mindre tekst kan nogle gange føles mindre klemt hvis pladsen er trang */
+    line-height: 1.6;   /* God standard linjehøjde for læsbarhed */
+    color: #212529;     /* Mørk tekst for kontrast */
+}
+
+.info-tooltip-box.visible {
+    display: block;
+}
+
+.info-tooltip-box .tooltip-text-content { /* <p> tagget med selve hjælpeteksten */
+    margin: 0; /* Nulstil browser default margin for <p> */
+    padding-right: 25px; /* VIGTIGT: Giver plads til højre for teksten, så den ikke løber ind under X-knappen */
+}
+
+.info-tooltip-box .tooltip-close-button {
+    background: transparent;
+    border: none;
+    font-family: Arial, sans-serif;
+    font-size: 24px;      /* Større X for nemmere at se og ramme */
+    font-weight: normal;  /* Et lidt lettere X end 'bold' */
+    color: #6c757d;
+    position: absolute;
+    top: 8px;            /* Justeret for god afstand fra toppen af boksen */
+    right: 8px;           /* Justeret for god afstand fra højre kant af boksen */
+    cursor: pointer;
+    padding: 5px;         /* Gør selve klikområdet lidt større omkring X'et */
+    line-height: 1;       /* For at X'et opfører sig pænt ift. padding */
+    width: 30px;          /* Defineret bredde for knappen */
+    height: 30px;         /* Defineret højde for knappen */
+    display: flex;        /* Bruges til at centrere X'et i knap-området */
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+}
+
+.info-tooltip-box .tooltip-close-button:hover {
+    color: #343a40;
+}
+
+/* Styling for selve informationsikonet (Nyeste justering for centrering - nudge ned) */
+.info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 5px;
+    color: var(--color-primary);
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;   /* Beholder denne størrelse for symbolet */
+    border: 1px solid var(--color-primary);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    user-select: none;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    box-sizing: border-box;
+    vertical-align: middle;
+    padding-top: 1px; /* NYT: Tilføjet for at skubbe 'i'-symbolet en smule ned. Juster evt. til 2px. */
+}
+
+.info-icon:hover {
+    background-color: var(--color-primary);
+    color: white;
+}

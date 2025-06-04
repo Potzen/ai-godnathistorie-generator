@@ -54,6 +54,11 @@
             {% endif %}
         {% endwith %}
 
+        <div id="info-tooltip" class="info-tooltip-box hidden" role="tooltip" aria-live="polite">
+            <p id="info-tooltip-text" class="tooltip-text-content"></p>
+            <button type="button" id="info-tooltip-close" class="tooltip-close-button" aria-label="Luk">&times;</button>
+        </div>
+
         <section id="generator" class="content-section">
             <h2>Byg jeres historie</h2>
             <p>(Det er ikke nødvendigt at udfylde alle felterne.)</p>
@@ -151,13 +156,13 @@
                 <div class="ai-model-selector-wrapper">
                     <span class="ai-model-choice-label" id="ai-model-label-off">Off</span>
                     <div class="switch-container">
-                        <input type="checkbox" id="ai-model-switch" name="ai_model_switch"
-                               {% if not current_user.is_authenticated or current_user.role == 'free' %}
-                               disabled
-                               title="Denne funktion er kun tilgængelig for Basic og Premium brugere."
-                               {% elif current_user.role in ['basic', 'premium'] %}
-                               title="Slå til for at bruge Pro-modellen (højere kvalitet). 'Off' er standard."
-                               {% endif %}>
+                    <input type="checkbox" id="ai-model-switch" name="ai_model_switch"
+                              {% if not current_user.is_authenticated or current_user.role == 'free' %}
+                              disabled
+                              title="Denne funktion er kun tilgængelig for Basic og Premium brugere."
+                              {% elif current_user.role in ['basic', 'premium'] %}
+                              title="Slå til for at bruge Pro-modellen (højere kvalitet). 'Off' er standard."
+                              {% endif %} />
                         <label for="ai-model-switch" class="slider-label"></label> {# Teksten er fjernet herfra #}
                     </div>
                     <span class="ai-model-choice-label" id="ai-model-label-on">On</span>
@@ -184,12 +189,9 @@
                 <label for="tts-voice-select">Vælg Stemme til Oplæsning:</label>
                 <select name="tts_voice" id="tts-voice-select">
                     <option value="Zephyr" selected>Zephyr (Kvinde)</option>
-                    <option value="Gacrux">Gacrux (Kvinde)</option>
-                    <option value="Sadachbia">Sadachbia (Mand)</option>
-                    <option value="Zubenelgenubi">Zubenelgenubi (Mand)</option>
                 </select>
                 <small class="form-text text-muted" style="display: block; margin-top: 5px;">
-                    Disse stemmer bruger avanceret Google AI TTS.
+                    Denne stemme er trænet til engelsk, hvorfor der er tung accent.
                 </small>
             </div>
 
@@ -225,24 +227,66 @@
                 <div class="narrative-info-dropdown">
                     <button type="button" class="dropdown-toggle">Hvad er Narrativ Terapi? <span class="dropdown-arrow">&#9664;</span></button>
                     <div class="dropdown-content hidden">
-                        <p><em>(Detaljeret beskrivelse af narrativ terapi... (Dette indhold tilføjes senere via "Modulbeskrivelse: Narrativ Støtte"))</em></p>
+                       <h4>Hvad er narrativ støtte?</h4>
+                        <p>Dette modul er inspireret af narrativ terapi. Grundtanken er, at vi mennesker forstår vores liv gennem historier. Disse historier er ikke bare passive genfortællinger, men aktive medskabere af vores identitet og hvordan vi ser verden. Ved at ændre historien, kan vi ændre oplevelsen.</p>
+
+                        <h4>Centrale idéer i modulet</h4>
+                        <p><strong>Gør problemet til en figur (Externalisering):</strong> Hjælper med at adskille et problem (f.eks. vrede) fra barnets identitet. Forestil dig 'vrede' som en 'vred trold', i stedet for at tænke 'barnet ER vredt'. Når problemet får en ydre form (som 'bekymringsdragen'), kan barnet bedre tale om det og arbejde med det. Det mindsker skam og øger følelsen af kontrol.</p>
+                        <p><strong>Find barnets superkræfter (Ressourcer og Styrker):</strong> Modulet fremhæver barnets egne styrker – unikke 'superkræfter' som mod, venlighed eller kreativitet. Historierne vil vise, hvordan disse styrker kan bruges til at møde udfordringer.</p>
+                        <p><strong>Fremhæver de små sejre (Unikke Udfald):</strong> Vi leder efter øjeblikke, hvor problemet <em>ikke</em> havde magten, eller hvor barnet klarede sig på en god måde. Disse 'små sejre' fremhæves i historien for at vise barnet, at det kan modstå problemer.</p>
+                        <p><strong>Skab en ny, styrkende historie (Re-fortælling):</strong> Ved at flette problemer (som ydre figurer), barnets styrker og de små sejre sammen, skabes en ny, mere positiv og styrkende historie. Målet er at give barnet en følelse af kontrol og håb, og at skifte fokus fra problemer til løsninger og styrker.</p>
+
+                        <h4>Modulets formål</h4>
+                        <p>'Narrativ Støtte' er et værktøj til at skabe historier med et pædagogisk eller følelsesmæssigt sigte. Det hjælper med at:</p>
+                        <ul>
+                            <li>Berøre svære temaer på en blid måde.</li>
+                            <li>Inspirere til samtaler via refleksionsspørgsmål.</li>
+                            <li>Styrke barnets positive tanker om svære oplevelser.</li>
+                            <li>Give forældre indsigt i narrative principper.</li>
+                        </ul>
+
+                        <h4>Vigtigt!</h4>
+                        <p><strong>Husk, 'Narrativ Støtte' er et inspirationsværktøj og IKKE en erstatning for professionel terapi eller rådgivning. Søg altid professionel hjælp ved bekymringer om dit barns trivsel.</strong></p>
                     </div>
                 </div>
 
                 <div class="narrative-info-dropdown">
                     <button type="button" class="dropdown-toggle">Vejledning til Narrativ Historiefortælling <span class="dropdown-arrow">&#9664;</span></button>
                     <div class="dropdown-content hidden">
-                        <p><em>(Vejledning til forældre om effektiv udfyldning... (Dette indhold tilføjes senere via "Modulbeskrivelse: Narrativ Støtte"))</em></p>
+                        <h4>Sådan får du mest ud af "Narrativ Støtte"</h4>
+                        <p>Denne guide hjælper dig med at udfylde felterne, så AI'en kan skabe den bedst mulige historie for dit barn:</p>
+                        <ul>
+                            <li>
+                                <strong>Begivenhed, Udfordring eller Fokus for Historien (Obligatorisk):</strong>
+                                <p>Dette er kernen i historien. Hvad skal den handle om? Det kan være en følelse (f.eks. "at være genert", "jalousi på en kammerat"), en konkret udfordring (f.eks. "svært ved at falde i søvn alene", "konflikter om legetøj") eller en kommende begivenhed, der fylder (f.eks. "skolestart", "at skulle vaccineres", "en forælder skal ud at rejse"). Jo mere specifik du er, jo bedre kan historien tilpasses.</p>
+                            </li>
+                            <li>
+                                <strong>Problem-karakter (Hvad er Eksternalisering?):</strong>
+                                <p>I narrativ terapi taler man om "eksternalisering". Det betyder, at man adskiller problemet fra barnet og i stedet ser det som en ydre "figur". I stedet for "Ida ER bange", kan historien handle om, hvordan Ida møder "Frygt-Spøgelset". Dette hjælper barnet med at tale om problemet uden at føle skyld eller skam. Historierne vil automatisk bruge dette princip ved at give udfordringen en ekstern karakter. <br><em>(Bemærk: Selvom du kan foreslå et navn til problem-karakteren, er det ikke sikkert det kommer med grundet AI'ens logik på tværs af alle inputs.)</em></p>
+                            </li>
+                            <li>
+                                <strong>Barnets Styrker og Ressourcer (Anbefalet):</strong>
+                                <p>Ved at fremhæve hvilke positive egenskaber dit barn har (f.eks. modig, fantasifuld, omsorgsfuld, nysgerrig) kan disse aktivt inddrage i historien og vise barnet, hvordan dets egne "superkræfter" kan bruges til at håndtere udfordringen.</p>
+                            </li>
+                            <li>
+                                <strong>Ønsket Mål for Historien (Anbefalet):</strong>
+                                <p>Ved at give et mål ud fra problemstillingen, kan hjælpe historien i den retning, hvor der er størst virkning og dermed give barnet retning mod en bestemt situation. Det skal vise en ny måde at tænke om et problem på og give en fortøstning om at der en vej gennem alle svære tider. Eksempler: "At Peter føler sig mere tryg ved at sove selv", "At Maja forstår, at det er okay at være vred", "At give håb og vise, at ting kan blive bedre" "At nogen ting kan ændres, men vi godt kan leve med det".</p>
+                            </li>
+                            <li><strong>Efter Historien: Samtale og Nysgerrighed</strong>
+                                <p>Brug de genererede refleksionsspørgsmål (eller dine egne) til at starte en samtale. Spørg åbent: "Hvad tænkte du om...", "Hvordan tror du [hovedpersonen] havde det?", "Er der noget i historien, du kender fra dig selv?". Målet er ikke at finde "rigtige" svar, men at åbne for barnets perspektiv og få dem til spejle sig i fortællingen.</p>
+                            </li>
+                        </ul>
+                        <p>Husk, det vigtigste er at skabe et rum for tryghed, forståelse og fælles opdagelse gennem historiernes magi.</p>
                     </div>
                 </div>
 
                 <div class="input-category">
-                    <label for="narrative-focus-input">Tema, Udfordring eller Fokus for Historien (Obligatorisk):</label>
-                    <textarea id="narrative-focus-input" name="narrative_focus" rows="3" placeholder="Eks: Min datter er bange for monstre under sengen, At lære at sige undskyld, Følelsen af at være genert..."></textarea>
+                    <label for="narrative-focus-input">Begivenhed, Udfordring eller Fokus for Historien (Obligatorisk): <span class="info-icon" title="Klik for hjælp" data-tooltip-id="tooltip-narrative-focus">ⓘ</span></label>
+                    <textarea id="narrative-focus-input" name="narrative_focus" rows="3" placeholder="Eks: Min datter er mørkerad, Skal starte i skole, Har følelsen af at være genert og alene..."></textarea>
                 </div>
                 <div class="input-category">
-                    <label for="narrative-goal-input">Ønsket Udgang/Mål for Historien (Anbefalet):</label>
-                    <textarea id="narrative-goal-input" name="narrative_goal" rows="2" placeholder="Eks: At barnet føler sig mere modigt, At barnet lærer at bede om hjælp..."></textarea>
+                    <label for="narrative-goal-input">Ønsket Mål for Historien (Anbefalet): <span class="info-icon" title="Klik for hjælp" data-tooltip-id="tooltip-narrative-goal">ⓘ</span></label>
+                    <textarea id="narrative-goal-input" name="narrative_goal" rows="2" placeholder="Eks: At barnet føler sig accepteret, At barnet kan sove ude, Lære at leve med en ulykkelig omstændighed..."></textarea>
                 </div>
                 <div class="input-category">
                     <label>Information om Barnet (Hovedperson):</label>
@@ -259,7 +303,7 @@
                     </div>
                 </div>
                 <div class="input-category">
-                    <label for="narrative-child-strengths-select">Barnets Karakteristika/Styrker (vælg eller beskriv):</label>
+                    <label for="narrative-child-strengths-select">Barnets Karakteristika/Styrker (vælg eller beskriv): <span class="info-icon" title="Klik for hjælp" data-tooltip-id="tooltip-child-strengths">ⓘ</span></label>
                     <select name="narrative_child_strengths_select" id="narrative-child-strengths-select" class="dynamic-select" data-other-input-id="narrative-child-strengths-other">
                         <option value="">-- Vælg en styrke --</option><option value="Modig">Modig</option><option value="Klog">Klog</option><option value="Venlig">Venlig</option><option value="Kreativ">Kreativ</option><option value="Tålmodig">Tålmodig</option><option value="Nysgerrig">Nysgerrig</option><option value="Omsorgsfuld">Omsorgsfuld</option><option value="Sjov">Sjov</option><option value="Stærk">Stærk</option><option value="Fantasifuld">Fantasifuld</option><option value="Hjælpsom">Hjælpsom</option><option value="Vedholdende">Vedholdende</option><option value="other">Andet (beskriv nedenfor)...</option>
                     </select>
@@ -278,7 +322,7 @@
                 </div>
                 <div class="input-category">
                     <label for="narrative-child-reaction">Barnets Typiske Adfærd/Reaktion på Udfordringen (valgfri):</label>
-                    <textarea id="narrative-child-reaction" name="narrative_child_reaction" rows="2" placeholder="Eks: Trækker sig typisk tilbage, men vil gerne lære at sige fra..."></textarea>
+                    <textarea id="narrative-child-reaction" name="narrative_child_reaction" rows="2" placeholder="Eks: Trækker sig typisk tilbage, Er udadreagerende..."></textarea>
                 </div>
                 <div class="input-category">
                     <label>Vigtige Relationer for Barnet (valgfri):</label>

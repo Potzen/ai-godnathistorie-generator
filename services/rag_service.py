@@ -36,6 +36,46 @@ INITIAL_KNOWLEDGE_CHUNKS = [
         "text": "Unikke Udfald (Unique Outcomes): Narrativ terapi søger aktivt efter 'unikke udfald' – de øjeblikke, hvor problemet ikke havde fuld magt, eller hvor barnet udviste modstand, mestring eller en alternativ, mere ønskværdig respons. Disse små sejre forstørres og væves ind i historien for at vise barnet, at problemet ikke altid vinder, og at de har evnen til at modstå det.",
         # [cite: 46, 47]
         "embedding": None  # Pladsholder for embedding
+    },
+    {
+        "id": "ext002_techniques",
+        "text": "Teknikker til externalisering involverer at give problemet et navn (f.eks. 'Vredestrolden', 'Bekymrings-Skyggen', 'Generthedsskyggen') og beskrive dets karakteristika, adfærd og indflydelse. Dette hjælper barnet med at tale om problemet som en adskilt enhed, som man kan forholde sig til, forhandle med, eller endda 'bekæmpe'. Processen reducerer skam og skyld og fremmer barnets handlekraft.", # [cite: 247, 249, 322]
+        "embedding": None
+    },
+    {
+        "id": "uniq002_identification",
+        "text": "For at identificere 'unikke udfald', spørg ind til tidspunkter, hvor problemet ikke dominerede, eller hvor barnet viste uventet modstand, styrke eller alternative handlinger. Forstærk disse 'små sejre' i fortællingen for at vise barnet, at problemet ikke er almægtigt, og at barnet besidder evnen til at modstå og handle anderledes.", # [cite: 253, 254, 322]
+        "embedding": None
+    },
+    {
+        "id": "reauth001_goal",
+        "text": "Re-fortælling (re-authoring) handler om at skabe en ny, foretrukken livshistorie. Ved at væve externaliserede problemer, barnets ressourcer, og unikke udfald sammen, skabes en fortælling, der er mere positiv, styrkende og håbefuld. Målet er at skifte fokus fra en 'problem-mættet' til en 'løsnings- og styrke-mættet' narrativ, der øger barnets følelse af mestring og handlekraft (agency).", # [cite: 255, 256, 257]
+        "embedding": None
+    },
+    {
+        "id": "agency001_definition",
+        "text": "Agency, eller handlekraft, er centralt i narrativ terapi. Det refererer til barnets evne til at påvirke sit eget liv og sine omgivelser. Historier bør fremhæve protagonistens (barnets spejling) evne til at træffe valg, handle aktivt og påvirke historiens gang, især i mødet med udfordringer.", # [cite: 256, 319]
+        "embedding": None
+    },
+    {
+        "id": "devpsy001_metaphors",
+        "text": "For yngre børn (ca. 3-7 år) er metaforer og konkretisering effektive redskaber. Komplekse følelser eller problemer kan gøres mere håndgribelige ved at blive repræsenteret som f.eks. dyr, fantasivæsener eller objekter. Dette hjælper barnet med at forstå og bearbejde oplevelser på en alderssvarende måde.", # [cite: 320]
+        "embedding": None
+    },
+    {
+        "id": "ped001_showdonttell",
+        "text": "Når historier bruges pædagogisk, er princippet om 'show, don't tell' vigtigt. I stedet for direkte at belære eller moralisere, bør historien illustrere pointer og værdier gennem karakterernes handlinger, oplevelser og de konsekvenser, disse medfører. Moral og budskaber bør vokse organisk ud af fortællingen.", # [cite: 321, 322]
+        "embedding": None
+    },
+    {
+        "id": "char001_problem_character",
+        "text": "Ved design af en problem-karakter (eksternalisering), overvej dens Navn/Identitet (gør den distinkt), Rolle/Funktion (hvordan optræder den?), Formål/Intention (hvad 'vil' den?), Adfærd/Handling (hvordan agerer den konkret?), og Indflydelse (hvordan påvirker den hovedpersonen?). Disse træk hjælper med at gøre problemet håndterbart og mindre overvældende for barnet.", # [cite: 323, 324]
+        "embedding": None
+    },
+    {
+        "id": "char002_protagonist_strengths",
+        "text": "Fremhæv protagonistens (barnets spejling) Styrker, Værdier, Motivation/Ønsker, og Relationer. Disse positive egenskaber er ikke bare pynt, men aktive ressourcer, der kan mobiliseres i mødet med udfordringer, og som driver fortællingen mod positive unikke udfald og en styrket re-fortælling.", # [cite: 250, 251, 252, 324]
+        "embedding": None
     }
 ]
 

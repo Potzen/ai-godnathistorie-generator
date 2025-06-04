@@ -5,6 +5,140 @@ import { generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generate
 document.addEventListener('DOMContentLoaded', () => {
     console.log("DOMContentLoaded event fired. Initializing Read Me A Story script.");
 
+// === START: Tekster og Logik for Informationsikoner (Tooltips) ===
+const tooltipElement = document.getElementById('info-tooltip');
+const tooltipTextElement = document.getElementById('info-tooltip-text');
+const tooltipCloseButton = document.getElementById('info-tooltip-close');
+let currentVisibleTooltipIcon = null;
+let clickOpensTooltip = false; // Nyt flag for at håndtere den første klik-interaktion
+
+const tooltipTexts = { // Dine tooltip tekster forbliver uændrede her...
+    "tooltip-narrative-focus": "Tip: Angiv her den centrale begivenhed, udfordring eller det fokus, historien skal omhandle. Det kan være en følelse (f.eks. generthed), en konkret situation (f.eks. 'svært ved at dele') eller en kommende begivenhed (f.eks. 'skolestart', 'en flytning'). En præcis beskrivelse hjælper AI'en med at skabe en målrettet historie.",
+    "tooltip-narrative-goal": "Tip: Formulér her det ønskede mål med historien. Sigtepunktet kan være en positiv forandring, en ny forståelse eller en specifik indsigt, som historien skal understøtte hos barnet i relation til den centrale begivenhed/udfordring. Dette hjælper AI'en med at skabe et meningsfuldt og styrkende budskab i fortællingen.",
+    "tooltip-child-strengths": "Tip: Beskriv dit barns positive egenskaber, eller hvad barnet holder af at gøre. Disse styrker kan flettes ind i historien som 'superkræfter', der hjælper hovedpersonen med at overvinde udfordringer. Dette kan bidrage til at styrke barnets selvværd og oplevelse af handlekraft."
+};
+
+function showTooltip(iconElement, text) {
+    if (!tooltipElement || !tooltipTextElement) {
+        console.error("FEJL: Tooltip HTML elementerne blev ikke fundet!");
+        return;
+    }
+    console.log("showTooltip FORSØGER for:", iconElement.dataset.tooltipId);
+
+    tooltipTextElement.textContent = text;
+
+    // Forcer synlighed for måling (men hold den usynlig for brugeren og ude af flow)
+    tooltipElement.classList.remove('hidden'); // Fjern .hidden hvis den styrer display:none
+    tooltipElement.style.display = 'block';    // Sæt display: block direkte
+    tooltipElement.style.visibility = 'hidden';// Gør den usynlig, men dimensionerbar
+    tooltipElement.style.position = 'absolute';// Sørg for den er ude af normalt flow
+    tooltipElement.style.left = '-9999px';     // Flyt langt væk
+    tooltipElement.style.top = '-9999px';
+
+    // Mål dimensioner
+    const tooltipWidth = tooltipElement.offsetWidth;
+    const tooltipHeight = tooltipElement.offsetHeight;
+    console.log("Tooltip dimensioner målt: Bredde =", tooltipWidth, "Højde =", tooltipHeight);
+
+    if (tooltipWidth === 0 && tooltipHeight === 0 && text.length > 0) {
+        console.warn("ADVARSEL: Tooltip har stadig 0x0 dimensioner, selvom display='block' og visibility='hidden' blev sat. Tjek CSS for #info-tooltip for konflikter (f.eks. !important). Tekstlængde:", text.length);
+        // Vi fortsætter med positionering, men den vil være forkert hvis dimensionerne er 0.
+    }
+
+    const iconRect = iconElement.getBoundingClientRect();
+    let top = iconRect.bottom + window.scrollY + 8;
+    let left = iconRect.left + window.scrollX + (iconRect.width / 2) - (tooltipWidth / 2);
+
+    if (left < 10) left = 10;
+    if (left + tooltipWidth > window.innerWidth - 10) left = window.innerWidth - tooltipWidth - 10;
+    if (top + tooltipHeight > window.innerHeight + window.scrollY - 10) top = iconRect.top + window.scrollY - tooltipHeight - 8;
+    if (top < window.scrollY + 10) top = window.scrollY + 10;
+
+    tooltipElement.style.top = `${top}px`;
+    tooltipElement.style.left = `${left}px`;
+    tooltipElement.style.visibility = 'visible'; // Gør den synlig på den korrekte position
+    tooltipElement.classList.add('visible');     // Sørg for .visible klassen er der for CSS styling
+
+    console.log("Tooltip SKULLE NU VÆRE SYNLIG OG POSITIONERET ved: top=", Math.round(top), "left=", Math.round(left));
+    currentVisibleTooltipIcon = iconElement;
+}
+
+function hideTooltip() {
+    if (tooltipElement) {
+        tooltipElement.classList.remove('visible');
+        tooltipElement.classList.add('hidden');
+        // Nulstil inline styles der blev brugt til måling/visning
+        tooltipElement.style.visibility = '';
+        tooltipElement.style.display = ''; // Lader CSS klasserne styre display
+        tooltipElement.style.left = '';
+        tooltipElement.style.top = '';
+        currentVisibleTooltipIcon = null;
+        console.log("Tooltip skjult.");
+    }
+}
+
+function initializeInfoIcons() {
+    const infoIcons = document.querySelectorAll('.info-icon');
+    console.log(`Fandt ${infoIcons.length} .info-icon elementer.`);
+
+    if (!tooltipElement) {
+        console.error("FEJL: Det primære tooltip-element (#info-tooltip) blev ikke fundet.");
+        return;
+    }
+
+    infoIcons.forEach(icon => {
+        icon.addEventListener('click', (event) => {
+            event.stopPropagation(); // Meget vigtig!
+
+            const tooltipId = icon.dataset.tooltipId;
+            const textToShow = tooltipTexts[tooltipId];
+            console.log("Info-ikon klikket. ID:", tooltipId);
+
+            if (currentVisibleTooltipIcon === icon) {
+                console.log("Samme ikon klikket, skjuler aktiv tooltip.");
+                hideTooltip();
+            } else if (textToShow) {
+                console.log("Viser ny tooltip for:", tooltipId);
+                showTooltip(icon, textToShow);
+                clickOpensTooltip = true; // Sæt flag NÅR vi aktivt viser en ny tooltip
+            } else {
+                console.warn(`Ingen hjælpetekst fundet for ID: ${tooltipId}`);
+                hideTooltip();
+            }
+        });
+    });
+
+    if (tooltipCloseButton) {
+        tooltipCloseButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            console.log("Tooltip luk-knap klikket.");
+            hideTooltip();
+        });
+    }
+
+    document.addEventListener('click', (event) => {
+        // Hvis et klik lige har åbnet tooltip'en, ignorer dette document click event
+        if (clickOpensTooltip) {
+            clickOpensTooltip = false; // Nulstil flaget for næste klik
+            return;
+        }
+
+        if (tooltipElement && tooltipElement.classList.contains('visible')) {
+            // Tjek om klikket var på selve tooltip-boksen eller et info-ikon
+            // (klik på info-ikon håndteres allerede af dens egen listener pga. stopPropagation ovenfor)
+            if (!tooltipElement.contains(event.target)) {
+                console.log("Klik udenfor aktiv tooltip. Skjuler tooltip.");
+                hideTooltip();
+            }
+        }
+    });
+
+    if (infoIcons.length > 0) {
+        console.log("Info ikon event listeners initialiseret (version 3).");
+    }
+}
+// === SLUT: Tekster og Logik for Informationsikoner (Tooltips) ===
+
 // HJÆLPEFUNKTION TIL AT SPORE GOOGLE ANALYTICS HÆNDELSER
 function trackGAEvent(action, category, label, value) {
     const consentStatus = localStorage.getItem('cookieConsent');
@@ -2038,6 +2172,7 @@ async function handleNarrativeGenerateClick() {
 
     console.log("Script loaded and all initial event listeners attached, including for Narrative Support.");
 
+    initializeInfoIcons(); // Kald funktionen for at aktivere infoknapperne
 });
 
 
