@@ -30,7 +30,7 @@
     </header>
 
     <div class="tab-navigation">
-        <button type="button" class="tab-button active" data-tab-target="#generator">Godnathistorier</button>
+        <button type="button" class="tab-button active" data-tab-target="#generator">Højtlæsning</button>
         <button type="button" class="tab-button" data-tab-target="#narrative-support-module">
                 Narrativ Støtte
                 {% if not current_user.is_authenticated or current_user.role != 'premium' %}
@@ -151,50 +151,87 @@
                 </select>
             </div>
 
-            <div class="input-category">
-                <label for="ai-model-switch" id="ai-model-main-label">Opgrader AI-Model (Bedre kvalitet, lidt langsommere):</label>
-                <div class="ai-model-selector-wrapper">
-                    <span class="ai-model-choice-label" id="ai-model-label-off">Off</span>
-                    <div class="switch-container">
-                    <input type="checkbox" id="ai-model-switch" name="ai_model_switch"
-                              {% if not current_user.is_authenticated or current_user.role == 'free' %}
-                              disabled
-                              title="Denne funktion er kun tilgængelig for Basic og Premium brugere."
-                              {% elif current_user.role in ['basic', 'premium'] %}
-                              title="Slå til for at bruge Pro-modellen (højere kvalitet). 'Off' er standard."
-                              {% endif %} />
-                        <label for="ai-model-switch" class="slider-label"></label> {# Teksten er fjernet herfra #}
+            <div class="input-category" style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; margin-bottom: 0;">
+
+                <div class="switch-option-group" style="flex: 1; min-width: 220px;">
+                    <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 6px;">
+                        <label for="ai-model-switch" style="font-weight: bold;">Pro AI-Model:</label>
+                        <span class="info-icon" data-tooltip-id="pro-model-info" title="Klik for mere info">ⓘ</span>
                     </div>
-                    <span class="ai-model-choice-label" id="ai-model-label-on">On</span>
+                    <div class="ai-model-selector-wrapper">
+                        <span class="ai-model-choice-label">Standard</span>
+                        <div class="switch-container">
+                            <input type="checkbox" id="ai-model-switch" name="ai_model_switch"
+                                   {% if not current_user.is_authenticated or current_user.role == 'free' %}
+                                   disabled
+                                   title="Kun for Basic/Premium brugere. Giver adgang til den bedste AI-model."
+                                   {% elif current_user.role in ['basic', 'premium'] %}
+                                   title="Standard: Hurtig model. Pro: Bedste kvalitet (langsommere)."
+                                   {% endif %}>
+                            <label for="ai-model-switch" class="slider-label"></label>
+                        </div>
+                        <span class="ai-model-choice-label">Pro</span>
+                    </div>
                 </div>
-                <small class="form-text text-muted" style="display: block; margin-top: 5px;">
-                    {% if current_user.is_authenticated and current_user.role in ['basic', 'premium'] %}
-                        'Off' bruger standard AI-modellen (hurtig), 'On' bruger Pro-modellen (højere kvalitet, kan være langsommere).
-                    {% else %}
-                        Premium og basic brugere kan vælge en mere avanceret AI-model her ('On').
-                        <br>(Ønskes adgang skriv til Philip, da dette alene er en mekanisme for at beskytte systemet mod uventet meget brug)
-                    {% endif %}
+
+                <div class="switch-option-group" style="flex: 1; min-width: 220px;">
+                    <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 6px;">
+                        <label for="interactive-story-switch" style="font-weight: bold;">Interaktiv Historie:</label>
+                        <span class="info-icon" data-tooltip-id="interactive-info" title="Klik for mere info">ⓘ</span>
+                    </div>
+                    <div class="ai-model-selector-wrapper">
+                        <span class="ai-model-choice-label">Fra</span>
+                        <div class="switch-container">
+                            <input type="checkbox" id="interactive-story-switch" name="interactive_story_switch"
+                                   {% if not current_user.is_authenticated or current_user.role == 'free' %}
+                                   disabled
+                                   title="Kræver Pro AI-Model. Vælg 'Pro' under 'Pro AI-Model'."
+                                   {% else %}
+                                   disabled
+                                   title="Vælg 'Pro' under 'Pro AI-Model' for at aktivere."
+                                   {% endif %}
+                            >
+                            <label for="interactive-story-switch" class="slider-label"></label>
+                        </div>
+                        <span class="ai-model-choice-label">Til</span>
+                    </div>
+                    <small class="form-text text-muted" style="display: block; margin-top: 5px; font-size: 0.85em;">
+
+                    </small>
+                </div>
+
+                <div class="switch-option-group" style="flex: 1; min-width: 220px;">
+                    <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 6px;">
+                        <label for="bedtime-story-switch" style="font-weight: bold;">Godnatlæsning:</label>
+                        <span class="info-icon" data-tooltip-id="bedtime-info" title="Klik for mere info">ⓘ</span>
+                    </div>
+                    <div class="ai-model-selector-wrapper">
+                        <span class="ai-model-choice-label">Fra</span>
+                        <div class="switch-container">
+                            <input type="checkbox" id="bedtime-story-switch" name="bedtime_story_switch">
+                            <label for="bedtime-story-switch" class="slider-label"></label>
+                        </div>
+                        <span class="ai-model-choice-label">Til</span>
+                    </div>
+                    <small class="form-text text-muted" style="display: block; margin-top: 5px; font-size: 0.85em; visibility: hidden;">&nbsp;</small>
+                </div>
+            </div>
+
+            <div class="input-category" style="padding-top: 5px; margin-top: -15px; text-align: left;">
+                <small class="form-text text-muted" style="display: block; font-size: 0.85em;">
+                    (Ønskes adgang til Basic/Premium, skriv til Philip, da dette pt. er en mekanisme for at beskytte systemet mod uventet meget brug af de dyreste modeller).
                 </small>
             </div>
 
-            <div class="input-category checkbox-group hidden">
-                <input type="checkbox" id="interactive-checkbox" name="interactive">
-                <label for="interactive-checkbox">Gør historien til et inddragende eventyr (med valgmuligheder)?</label>
-            </div>
-
-            <div class="input-category" id="tts-voice-selection"
-                 {% if not current_user.is_authenticated or (current_user.role != 'basic' and current_user.role != 'premium') %}
-                 style="display: none;"
-                 {% endif %}>
+            <div class="input-category" id="tts-voice-selection">
                 <label for="tts-voice-select">Vælg Stemme til Oplæsning:</label>
                 <select name="tts_voice" id="tts-voice-select">
                     <option value="Zephyr" selected>Zephyr (Kvinde)</option>
                 </select>
                 <small class="form-text text-muted" style="display: block; margin-top: 5px;">
-                    Denne stemme er trænet til engelsk, hvorfor der er tung accent.
+                    Denne stemme er trænet på engelsk, hvorfor den kan opføre sig underligt på dansk.
                 </small>
             </div>
-
 
             <div class="generator-actions">
                  <button type="button" id="autofill-button" class="utility-button">Autoudfyld</button>
@@ -205,8 +242,7 @@
                         data-default-voice="Zephyr"> Læs Historien Højt
                 </button>
                 <button type="button"
-                        id="generate-image-button"
-                        class="utility-button image-button"
+                        class="utility-button image-button js-generate-image"
                         disabled> Generer Billede
                 </button>
                 <div class="font-size-controls">
@@ -567,7 +603,7 @@
         </section>
         <section id="historie-output">
             <div class="historie-header-controls">
-                <h2 id="story-section-heading">Jeres historie</h2>
+                <h2 id="story-section-heading">Her kommer Historien</h2>
                 <div class="audio-controls-container">
                     <div id="audio-loading" class="hidden">Genererer lyd, vent venligst... <span class="spinner"></span></div>
                     <div id="audio-error" class="feedback-status error"></div>
@@ -581,9 +617,10 @@
             </div>
             <div id="story-display"></div>
             <div id="story-share-buttons" class="hidden">
-                <button type="button" id="share-story-facebook-button" class="utility-button">Del denne historie på Facebook</button>
-                <button type="button" id="copy-story-button" class="utility-button">Kopier historie til deling</button>
-                <button id="reset-button" class="utility-button" style="display: none;">Prøv Igen</button>
+                <button type="button" id="share-story-facebook-button" class="utility-button">Del på Facebook</button>
+                <button type="button" id="copy-story-button" class="utility-button">Kopier Historie</button>
+                <button type="button" class="utility-button image-button js-generate-image" disabled>Skab billede</button>
+                <button id="reset-button" class="utility-button" style="display: none;">Prøv igen</button>
             </div>
             <div class="info-dropdown-container" style="margin-top: 20px; text-align: left; max-width: 100%;">
                 <button type="button" class="dropdown-toggle" id="failure-info-dropdown-toggle">

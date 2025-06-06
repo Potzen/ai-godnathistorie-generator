@@ -7,7 +7,7 @@ import logging # NY IMPORT
 # Få en logger instans, der er uafhængig af Flask's current_app
 logger = logging.getLogger(__name__)
 
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from google.generativeai.types import HarmCategory, HarmBlockThreshold, HarmProbability
 from vertexai.preview.vision_models import ImageGenerationModel
 import base64
 import time
@@ -54,33 +54,83 @@ def generate_story_text_from_gemini(full_prompt_string, generation_config_settin
     story_title = "Uden Titel (AI Service Fejl)"
     actual_story_content = "Der opstod en fejl under historiegenerering i AI-tjenesten."
 
+    # story_title og actual_story_content er initialiseret tidligere i funktionen
+    # f.eks.:
+    # story_title = "Uden Titel (AI Service Fejl)"
+    # actual_story_content = "Der opstod en fejl under historiegenerering i AI-tjenesten."
+
     try:
-        # Brug det tilsendte modelnavn, med en fallback hvis det er None eller tomt
+        # Denne del er din eksisterende kode til at sætte model, gen_config etc. op
+        # Sørg for, at actual_model_to_use, model, gen_config, og safety_settings_values er korrekt defineret her
+        # baseret på funktionens parametre (target_model_name, generation_config_settings, safety_settings_values)
+
+        # Eksempel (baseret på din tidligere kode, sørg for det matcher din faktiske opsætning):
         actual_model_to_use = target_model_name if target_model_name and target_model_name.strip() else 'gemini-1.5-flash-latest'
         current_app.logger.info(f"ai_service: Anvender model '{actual_model_to_use}' for historiegenerering.")
         model = genai.GenerativeModel(actual_model_to_use)
-
-        # Omdan dicts til de korrekte typer for API'et, hvis nødvændigt
-
-        # Omdan dicts til de korrekte typer for API'et, hvis nødvendigt
-        # For genai.types.GenerationConfig og safety_settings, hvis de ikke allerede er det.
-        # Her antager vi, at generation_config_settings er en dict, der kan pakkes ud.
         gen_config = genai.types.GenerationConfig(**generation_config_settings)
+        # safety_settings_values skal være defineret korrekt baseret på funktionens input
 
-        # Safety_settings_values forventes at være en dict som {HarmCategory.XYZ: HarmBlockThreshold.ABC}
-        # Hvis det kommer som en liste af dicts, skal det måske transformeres.
-        # Baseret på din nuværende kode i story_routes, er det en dict.
-
+        # ENKELT API KALD
         response = model.generate_content(
             full_prompt_string,
             generation_config=gen_config,
             safety_settings=safety_settings_values
         )
-        current_app.logger.info("ai_service: Svar modtaget fra Google Gemini.")
+        current_app.logger.info("ai_service: Svar modtaget fra Google Gemini for historiegenerering.")
+
+        # Udvidet logging af AI-respons detaljer
+        finish_reason_output = "IKKE TILGÆNGELIG"
+        safety_ratings_output = "IKKE TILGÆNGELIGE"
+        prompt_feedback_output = "IKKE TILGÆNGELIGT"
+        was_blocked_by_safety = False
+
+        if hasattr(response, 'candidates') and response.candidates:
+            candidate = response.candidates[0]
+            finish_reason_output = candidate.finish_reason.name if hasattr(candidate.finish_reason,
+                                                                           'name') else candidate.finish_reason
+            safety_ratings_output = candidate.safety_ratings
+            # Tjek specifikt for blokering baseret på safety_ratings
+            # Sørg for at HarmProbability er importeret eller korrekt defineret: from google.generativeai.types import HarmProbability
+            if any(hasattr(rating, 'category') and rating.category != HarmCategory.HARM_CATEGORY_UNSPECIFIED and
+                   hasattr(rating, 'probability') and rating.probability not in [HarmProbability.NEGLIGIBLE,
+                                                                                 HarmProbability.LOW]
+                   for rating in safety_ratings_output):
+                # Yderligere tjek for finish_reason, da safety_ratings kan være sat selvom den ikke blokerer totalt.
+                if hasattr(candidate.finish_reason, 'name') and candidate.finish_reason.name == 'SAFETY':
+                    was_blocked_by_safety = True
+                elif isinstance(candidate.finish_reason,
+                                int) and candidate.finish_reason == 2:  # Numerisk værdi for SAFETY
+                    was_blocked_by_safety = True
+
+        else:
+            current_app.logger.warning("ai_service (historie): Ingen 'candidates' fundet i AI-respons.")
+
+        if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+            prompt_feedback_output = response.prompt_feedback
+            if response.prompt_feedback.block_reason:
+                current_app.logger.warning(
+                    f"ai_service (historie): Prompt blev blokeret. Årsag: {response.prompt_feedback.block_reason_message or response.prompt_feedback.block_reason}")
+                was_blocked_by_safety = True  # Prompten selv blev blokeret
+
+        current_app.logger.info(f"ai_service (historie): Finish Reason: {finish_reason_output}")
+        current_app.logger.info(f"ai_service (historie): Safety Ratings: {safety_ratings_output}")
+        current_app.logger.info(f"ai_service (historie): Prompt Feedback: {prompt_feedback_output}")
 
         raw_text_from_gemini = ""
+        # Forsøg kun at læse .text, hvis det ikke er klart blokeret
+        if was_blocked_by_safety:
+            current_app.logger.error(
+                "ai_service (historie): Generering blokeret af sikkerhedsfiltre (enten prompt eller respons). Kan ikke parse .text.")
+            story_title = "Blokeret Indhold (Sikkerhedsfilter)"
+            actual_story_content = "Beklager, den ønskede historie kunne ikke genereres, da indholdet blev blokeret af sikkerhedsfiltre. Overvej at justere dine input (især karakterbeskrivelser, plot eller negativ prompt) for at undgå potentielt følsomme emner."
+            # Returner her, da .text vil give fejl
+            return story_title, actual_story_content
+
+        # Nedenstående try-except er for at håndtere parsing af .text og andre fejl EFTER et ikke-blokeret API kald
         try:
-            raw_text_from_gemini = response.text
+            raw_text_from_gemini = response.text  # Denne kan stadig fejle, hvis .text ikke er tilgængelig af andre årsager
+
             parts = raw_text_from_gemini.split('\n', 1)
             if len(parts) >= 1 and parts[0].strip():
                 story_title = parts[0].strip()
@@ -104,40 +154,50 @@ def generate_story_text_from_gemini(full_prompt_string, generation_config_settin
                 current_app.logger.warning(
                     f"ai_service: Ingen linjeskift fundet til at adskille titel. Råtekst: {raw_text_from_gemini[:200]}")
 
-        except ValueError as e_safety:  # Safety filter
+            # Hvis historien blev afkortet pga. MAX_TOKENS
+            # Tjekker både streng-navn og numerisk værdi for finish_reason
+            finish_reason_name_or_val = getattr(candidate.finish_reason, 'name',
+                                                candidate.finish_reason) if 'candidate' in locals() else finish_reason_output
+
+            if finish_reason_name_or_val in ["MAX_TOKENS", 3]:
+                current_app.logger.warning(
+                    "ai_service (historie): AI stoppede pga. MAX_TOKENS. Historien kan være afkortet.")
+                actual_story_content += "\n\n[Historien kan være afkortet, da den maksimale længde blev nået.]"
+
+        except ValueError as e_safety_text_access:
             current_app.logger.error(
-                f"ai_service: Svar blokeret af sikkerhedsfilter eller problem med response.text: {e_safety}")
+                f"ai_service: Fejl ved forsøg på at læse .text (muligvis blokeret, selv efter check): {e_safety_text_access}")
             current_app.logger.error(
-                f"ai_service: Prompt Feedback: {response.prompt_feedback if hasattr(response, 'prompt_feedback') else 'Ingen prompt feedback.'}")
-            if hasattr(response, 'candidates') and response.candidates:
-                current_app.logger.error(f"ai_service: Blocked Candidates: {response.candidates}")
-            story_title = "Blokeret Indhold"
-            actual_story_content = "Beklager, historien kunne ikke laves, da den blev blokeret. Prøv at justere dine input."
-        except Exception as e_parse:
+                f"ai_service: Detaljer: Finish Reason='{finish_reason_output}', Safety Ratings='{safety_ratings_output}', Prompt Feedback='{prompt_feedback_output}'")
+            story_title = "Blokeret Indhold (Tekst Utilgængelig)"
+            actual_story_content = "Historien blev blokeret, og indholdet kunne ikke hentes. Tjek loggen for detaljer om sikkerhedsfiltre."
+        except Exception as e_parse:  # Generel fejl under parsing af .text
             current_app.logger.error(
                 f"ai_service: Fejl under adgang til response.text eller parsing: {e_parse}\n{traceback.format_exc()}")
             story_title = "Parse Fejl (AI Service)"
             actual_story_content = "Der opstod en fejl under behandling af svaret fra AI i AI-tjenesten."
-            # Fallback til response.candidates hvis response.text fejler fundamentalt
-            if response and response.candidates:
+            if response and hasattr(response, 'candidates') and response.candidates:  # Fallback til candidates
                 try:
-                    candidate_text = response.candidates[0].content.parts[0].text
-                    parts = candidate_text.split('\n', 1)
-                    if len(parts) >= 1 and parts[0].strip():
-                        story_title = parts[0].strip()
-                        actual_story_content = parts[1].strip() if len(parts) > 1 and parts[
+                    candidate_text_fb = response.candidates[0].content.parts[0].text
+                    parts_fb = candidate_text_fb.split('\n', 1)
+                    if len(parts_fb) >= 1 and parts_fb[0].strip():
+                        story_title = parts_fb[0].strip()
+                        actual_story_content = parts_fb[1].strip() if len(parts_fb) > 1 and parts_fb[
                             1].strip() else "Historien mangler efter titlen (fallback)."
                     current_app.logger.info(
                         "ai_service: Fallback til parsing fra response.candidates succesfuld (delvist).")
-                except Exception as e_candidate:
+                except Exception as e_candidate_fb:
                     current_app.logger.error(
-                        f"ai_service: Kunne heller ikke hente indhold fra response.candidates: {e_candidate}")
+                        f"ai_service: Kunne heller ikke hente indhold fra response.candidates (fallback): {e_candidate_fb}")
 
-    except Exception as e_api:
-        current_app.logger.error(f"ai_service: Fejl ved kald til Google Gemini API: {e_api}\n{traceback.format_exc()}")
-        story_title = "API Fejl (AI Service)"
+    except Exception as e_api:  # Denne fanger fejl i selve API-kaldet eller opsætningen før
+        current_app.logger.error(
+            f"ai_service: Fejl ved kald til Google Gemini API eller i opsætningen før kald: {e_api}\n{traceback.format_exc()}")
+        # story_title og actual_story_content vil beholde deres default fejlbeskeder fra toppen af funktionen
+        story_title = "API Fejl (AI Service)"  # Sørg for at sætte dem eksplicit her
         actual_story_content = f"Beklager, teknisk fejl med AI-tjenesten (Gemini). Prøv igen senere."
 
+    # Sikrer at vi altid returnerer strenge (god praksis)
     if not isinstance(story_title, str): story_title = "Uden Titel (Intern Fejl i AI Service)"
     if not isinstance(actual_story_content, str): actual_story_content = "Indhold mangler (Intern Fejl i AI Service)"
 

@@ -420,7 +420,6 @@ button:disabled, .disabled-button {
 }
 
 #story-share-buttons .utility-button {
-    min-width: 200px;
     margin: 0;
 }
 
@@ -730,7 +729,7 @@ footer .footer-link:hover {
 }
 
 .dropdown-toggle.open .dropdown-arrow {
-    transform: rotate(90deg); /* Med HTML-pil ◀, roterer 90 grader for at pege ned ▼ */
+    transform: rotate(-90deg); /* Med HTML-pil ◀, roterer 90 grader for at pege ned ▼ */
 }
 
 .dropdown-content {

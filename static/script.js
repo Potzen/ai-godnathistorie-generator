@@ -12,10 +12,13 @@ const tooltipCloseButton = document.getElementById('info-tooltip-close');
 let currentVisibleTooltipIcon = null;
 let clickOpensTooltip = false; // Nyt flag for at håndtere den første klik-interaktion
 
-const tooltipTexts = { // Dine tooltip tekster forbliver uændrede her...
-    "tooltip-narrative-focus": "Tip: Angiv her den centrale begivenhed, udfordring eller det fokus, historien skal omhandle. Det kan være en følelse (f.eks. generthed), en konkret situation (f.eks. 'svært ved at dele') eller en kommende begivenhed (f.eks. 'skolestart', 'en flytning'). En præcis beskrivelse hjælper AI'en med at skabe en målrettet historie.",
-    "tooltip-narrative-goal": "Tip: Formulér her det ønskede mål med historien. Sigtepunktet kan være en positiv forandring, en ny forståelse eller en specifik indsigt, som historien skal understøtte hos barnet i relation til den centrale begivenhed/udfordring. Dette hjælper AI'en med at skabe et meningsfuldt og styrkende budskab i fortællingen.",
-    "tooltip-child-strengths": "Tip: Beskriv dit barns positive egenskaber, eller hvad barnet holder af at gøre. Disse styrker kan flettes ind i historien som 'superkræfter', der hjælper hovedpersonen med at overvinde udfordringer. Dette kan bidrage til at styrke barnets selvværd og oplevelse af handlekraft."
+const tooltipTexts = {
+    'tooltip-narrative-focus': "Tip: Angiv her den centrale begivenhed, udfordring eller det fokus, historien skal omhandle. Det kan være en følelse (f.eks. generthed), en konkret situation (f.eks. 'svært ved at dele') eller en kommende begivenhed (f.eks. 'skolestart', 'en flytning'). En præcis beskrivelse hjælper AI'en med at skabe en målrettet historie.",
+    'tooltip-narrative-goal': "Tip: Formulér her det ønskede mål med historien. Sigtepunktet kan være en positiv forandring, en ny forståelse eller en specifik indsigt, som historien skal understøtte hos barnet i relation til den centrale begivenhed/udfordring. Dette hjælper AI'en med at skabe et meningsfuldt og styrkende budskab i fortællingen.",
+    'tooltip-child-strengths': "Tip: Beskriv dit barns positive egenskaber, eller hvad barnet holder af at gøre. Disse styrker kan flettes ind i historien som 'superkræfter', der hjælper hovedpersonen med at overvinde udfordringer. Dette kan bidrage til at styrke barnets selvværd og oplevelse af handlekraft.", // <-- KOMMA TILFØJET HER
+    'pro-model-info': "'Standard'-modellen er hurtig. 'Pro'-modellen er giver højere kvalitet, mere kreativitet og bedre sammenhæng i historierne. Den er dog langsommere.",
+    'interactive-info': "Når denne er slået til, vil AI'en forsøge at skrive historien med 1-2 indbyggede valgmuligheder for at engagere barnet. Funktionen virker bedst, når 'Lang' historielængde er valgt.",
+    'bedtime-info': "Når denne er slået til, får AI'en en specifik instruktion om at gøre historien ekstra rolig, tryg og afdæmpet. Dette overtrumfer det generelle 'Stemning'-valg og er ideelt til at hjælpe et barn med at falde til ro ved sengetid."
 };
 
 function showTooltip(iconElement, text) {
@@ -163,7 +166,7 @@ function trackGAEvent(action, category, label, value) {
     const generateButton = document.getElementById('generate-button');
     const resetButton = document.getElementById('reset-button'); // Bemærk: Denne er nu inde i story-share-buttons
 
-    const generateImageButton = document.getElementById('generate-image-button');
+    const generateImageButtons = document.querySelectorAll('.js-generate-image');
     const imageSection = document.getElementById('billede-til-historien-sektion');
     const imageLoadingIndicator = document.getElementById('image-loading-indicator');
     const storyImageDisplay = document.getElementById('story-image-display');
@@ -174,6 +177,8 @@ function trackGAEvent(action, category, label, value) {
     const laengdeSelect = document.getElementById('laengde-select');
     const moodSelect = document.getElementById('mood-select');
     const aiModelSwitch = document.getElementById('ai-model-switch'); // Reference til den nye switch
+    const interactiveStorySwitch = document.getElementById('interactive-story-switch');
+    const bedtimeStorySwitch = document.getElementById('bedtime-story-switch');
 
     // Input field containers/specific inputs for historie
     const listenerContainer = document.getElementById('listener-container');
@@ -297,6 +302,50 @@ function trackGAEvent(action, category, label, value) {
     const failureInfoDropdownToggle = document.getElementById('failure-info-dropdown-toggle');
     const failureInfoDropdownContent = document.getElementById('failure-info-dropdown-content');
     console.log("DOM references obtained for all sections.");
+
+    // --- START: Logik for Interaktiv Historie Switch afhængighed af Pro AI-Model Switch ---
+    function updateInteractiveStorySwitchAvailability() {
+        console.log("--- updateInteractiveStorySwitchAvailability KØRER ---"); // DEBUG
+        if (aiModelSwitch && interactiveStorySwitch) {
+            console.log(`aiModelSwitch.disabled: ${aiModelSwitch.disabled}, aiModelSwitch.checked: ${aiModelSwitch.checked}`); // DEBUG
+
+            if (aiModelSwitch.disabled) {
+                console.log("aiModelSwitch er disabled. Sætter interaktiv til disabled og unchecked."); // DEBUG
+                interactiveStorySwitch.checked = false;
+                interactiveStorySwitch.disabled = true;
+                return;
+            }
+
+            if (aiModelSwitch.checked) { // Pro AI-Model er TIL
+                console.log("aiModelSwitch er TIL. Aktiverer interaktiv switch."); // DEBUG
+                interactiveStorySwitch.disabled = false;
+                interactiveStorySwitch.title = "Slå til for at få interaktive valg i historien.";
+            } else { // Pro AI-Model er FRA
+                console.log("aiModelSwitch er FRA. Deaktiverer interaktiv switch."); // DEBUG
+                interactiveStorySwitch.disabled = true;
+                interactiveStorySwitch.checked = false; // Slå den interaktive fra
+                interactiveStorySwitch.title = "Vælg 'Pro' under 'Pro AI-Model' for at aktivere interaktiv funktion.";
+            }
+            console.log(`EFTER opdatering: interactiveStorySwitch.disabled: ${interactiveStorySwitch.disabled}, interactiveStorySwitch.checked: ${interactiveStorySwitch.checked}`); // DEBUG
+        } else {
+            if (!aiModelSwitch) console.warn("aiModelSwitch (Pro AI) blev ikke fundet. Interaktiv switch kan ikke styres korrekt.");
+            if (!interactiveStorySwitch) console.warn("interactiveStorySwitch (Interaktiv Historie) blev ikke fundet.");
+        }
+        console.log("--- updateInteractiveStorySwitchAvailability FÆRDIG ---"); // DEBUG
+    }
+
+    // Tilføj event listener til Pro AI-Model switchen
+if (aiModelSwitch) {
+        aiModelSwitch.addEventListener('change', function() { // Gør det til en anonym funktion for at logge først
+            console.log("Pro AI-Model (aiModelSwitch) 'change' event registreret."); // DEBUG
+            updateInteractiveStorySwitchAvailability();
+        });
+    }
+
+    // Kald funktionen én gang ved sideindlæsning for at sætte den korrekte initiale tilstand
+    // for interactiveStorySwitch baseret på aiModelSwitch's starttilstand.
+    updateInteractiveStorySwitchAvailability();
+    // --- SLUT: Logik for Interaktiv Historie Switch ---
 
     // === Funktioner for Skriftstørrelseskontrol ===
 
@@ -1251,6 +1300,7 @@ loadFontSizesFromLocalStorage();
     async function handleGenerateClick(event) {
         event.preventDefault();
         console.log("Story Generation: Started");
+        console.log(`DEBUG: Før isInteractive: interactiveStorySwitch.checked = ${interactiveStorySwitch ? interactiveStorySwitch.checked : 'NOT FOUND'}, interactiveStorySwitch.disabled = ${interactiveStorySwitch ? interactiveStorySwitch.disabled : 'NOT FOUND'}`);
 
         // Indsaml data fra inputfelter
         const karakterer = [];
@@ -1262,7 +1312,7 @@ loadFontSizesFromLocalStorage();
 
         const selectedLaengde = laengdeSelect ? laengdeSelect.value : 'kort';
         const selectedMoodValue = moodSelect ? moodSelect.value : 'neutral';
-        const isInteractive = interactiveCheckbox ? interactiveCheckbox.checked : false; // Selvom skjult, læs værdien
+        const isInteractive = interactiveStorySwitch ? interactiveStorySwitch.checked : false;
         const negativePromptText = negativePromptInput ? negativePromptInput.value.trim() : '';
 
         let selectedModel = 'gemini-1.5-flash-latest'; // Standardmodel
@@ -1272,8 +1322,11 @@ loadFontSizesFromLocalStorage();
         console.log("Selected AI Model for story generation:", selectedModel);
 
         saveCurrentListeners(); // Gem lytter-data før API kald
-        const dataToSend = { karakterer, steder, plots, laengde: selectedLaengde, mood: selectedMoodValue, listeners, interactive: isInteractive, negative_prompt: negativePromptText, selected_model: selectedModel };
+        const isBedtimeStory = bedtimeStorySwitch ? bedtimeStorySwitch.checked : false;
+        const dataToSend = { karakterer, steder, plots, laengde: selectedLaengde, mood: selectedMoodValue, listeners, interactive: isInteractive, is_bedtime_story: isBedtimeStory, negative_prompt: negativePromptText, selected_model: selectedModel };
         // console.log("Story Generation: Data prepared for sending to /generate:", dataToSend);
+        console.log("DEBUG: handleGenerateClick - dataToSend LIGE FØR API KALD:", JSON.stringify(dataToSend, null, 2));
+
 
         // UI Opdatering: Loading State
         if(generateButton) { generateButton.disabled = true; generateButton.textContent = 'Laver historie...'; }
@@ -1302,13 +1355,17 @@ loadFontSizesFromLocalStorage();
             }
 
             // NY KODE (uden login tjek for billedknap)
-            if (result.story && result.story.trim() !== "" && generateImageButton) {
-                generateImageButton.disabled = false; // Aktiver altid knappen hvis der er en historie
-                generateImageButton.removeAttribute('title'); // Fjern evt. gammel title-attribut
-                console.log("Generer Billede knap aktiveret.");
-            } else if (generateImageButton) {
-                generateImageButton.disabled = true;
+        if (generateImageButtons.length > 0) {
+            if (result.story && result.story.trim() !== "") {
+                generateImageButtons.forEach(button => {
+                    button.disabled = false;
+                    button.removeAttribute('title');
+                });
+                console.log("Alle 'Skab billede'-knapper er aktiveret.");
+            } else {
+                generateImageButtons.forEach(button => button.disabled = true);
             }
+        }
 
         } catch (error) {
              console.error('Story Generation: Error during generation (catch block):', error);
@@ -1466,7 +1523,7 @@ async function handleGenerateImageFromStoryClick() { // Bemærk navnet
         imageGenerationError.textContent = ''; // Ryd gamle fejl
         imageGenerationError.classList.add('hidden'); // Skjul fejlbesked initialt
     }
-    if (generateImageButton) generateImageButton.disabled = true; // Deaktiver knap under kørsel
+    if (generateImageButtons.length > 0) generateImageButtons.forEach(button => button.disabled = true); // Deaktiver knapper under kørsel
 
     try {
     // Kald den nye API funktion og vent på resultatet
@@ -1499,7 +1556,7 @@ async function handleGenerateImageFromStoryClick() { // Bemærk navnet
         if (storyImageDisplay) storyImageDisplay.classList.add('hidden');
     } finally {
         if (imageLoadingIndicator) imageLoadingIndicator.classList.add('hidden');
-        if (generateImageButton) generateImageButton.disabled = false;
+        if (generateImageButtons.length > 0) generateImageButtons.forEach(button => button.disabled = false);
         console.log("--> handleGenerateImageFromStoryClick færdig");
     }
 }
@@ -2088,10 +2145,12 @@ async function handleNarrativeGenerateClick() {
     if (addKarakterButton) { addKarakterButton.addEventListener('click', addCharacterGroup); } else { console.error("Add character button (#add-karakter-button) not found!"); }
     if (readAloudButton) { readAloudButton.addEventListener('click', handleReadAloudClick); } else { console.info("Read Aloud button (#read-aloud-button) not found or user not authenticated."); }
     if (toggleFeedbackButton) { toggleFeedbackButton.addEventListener('click', toggleFeedbackEmbed); } else { console.error("Toggle feedback button (#toggle-feedback-button) not found!"); }
-    if (generateImageButton) {
-        generateImageButton.addEventListener('click', handleGenerateImageFromStoryClick); // Sørg for det er det korrekte nye funktionsnavn
+    if (generateImageButtons.length > 0) {
+        generateImageButtons.forEach(button => {
+            button.addEventListener('click', handleGenerateImageFromStoryClick);
+        });
     } else {
-        console.warn("Knappen 'generate-image-button' blev ikke fundet for event listener.");
+        console.warn("Ingen knapper med klassen '.js-generate-image' blev fundet for event listeners.");
     }
 
     // Generiske "Tilføj felt" knapper for historie (sted, plot)

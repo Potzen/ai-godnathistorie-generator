@@ -7,6 +7,7 @@
  * @throws {Error} Kaster en fejl hvis netværksrespons ikke er ok, eller ved andre fejl.
  */
 export async function generateStoryApi(storyData) {
+    console.log("DEBUG: api_client.js - generateStoryApi modtog storyData:", JSON.stringify(storyData, null, 2));
     console.log("api_client.js: generateStoryApi called with:", storyData);
     const response = await fetch('/story/generate', {
         method: 'POST',
