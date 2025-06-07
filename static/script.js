@@ -1300,74 +1300,100 @@ loadFontSizesFromLocalStorage();
     }
 
     async function handleGenerateClick(event) {
-        event.preventDefault();
+    event.preventDefault();
 
-        // --- Dataindsamling (denne del er uændret) ---
-        const karakterer = [];
-        if(karakterContainer) { karakterContainer.querySelectorAll('.character-group').forEach(group => { const descInput = group.querySelector('input[name="karakter_desc"]'); const nameInput = group.querySelector('input[name="karakter_navn"]'); const description = descInput ? descInput.value.trim() : ''; const name = nameInput ? nameInput.value.trim() : ''; if (description) { karakterer.push({ description: description, name: name }); } }); }
-        const steder = []; document.querySelectorAll('#sted-container .input-group input[name="sted"]').forEach(input => { const v = input.value.trim(); if(v) steder.push(v); });
-        const plots = []; document.querySelectorAll('#plot-container .input-group input[name="plot"]').forEach(input => { const v = input.value.trim(); if(v) plots.push(v); });
-        const listeners = [];
-        if(listenerContainer) { listenerContainer.querySelectorAll('.listener-group').forEach(group => { const nameInput = group.querySelector('input[name="listener_name_single"]'); const ageInput = group.querySelector('input[name="listener_age_single"]'); const name = nameInput ? nameInput.value.trim() : ''; const age = ageInput ? ageInput.value.trim() : ''; if (name || age) { listeners.push({ name: name, age: age }); } }); }
-        const selectedLaengde = laengdeSelect ? laengdeSelect.value : 'kort';
-        const selectedMoodValue = moodSelect ? moodSelect.value : 'neutral';
-        const isInteractive = interactiveStorySwitch ? interactiveStorySwitch.checked : false;
-        const isBedtimeStory = bedtimeStorySwitch ? bedtimeStorySwitch.checked : false;
-        const negativePromptText = negativePromptInput ? negativePromptInput.value.trim() : '';
-        let selectedModel = 'gemini-1.5-flash-latest';
-        if (aiModelSwitch && !aiModelSwitch.disabled && aiModelSwitch.checked) {
-            selectedModel = 'gemini-2.5-pro-preview-05-06';
-        }
-
-        saveCurrentListeners();
-        const dataToSend = { karakterer, steder, plots, laengde: selectedLaengde, mood: selectedMoodValue, listeners, interactive: isInteractive, is_bedtime_story: isBedtimeStory, negative_prompt: negativePromptText, selected_model: selectedModel };
-
-        // --- UI Opdatering: Loading State (KORREKT LOGIK NU) ---
-        if(generateButton) { generateButton.disabled = true; generateButton.textContent = 'Laver historie...'; }
-        if(storyTextContent) storyTextContent.textContent = ''; // Ryd kun den indre tekst-container
-        if(storyLoadingIndicator) storyLoadingIndicator.classList.remove('hidden'); // Vis spinneren
-        if(storySectionHeading) storySectionHeading.textContent = 'Jeres historie'; // Nulstil overskrift
-        if (storyShareButtonsContainer) {
-            storyShareButtonsContainer.classList.add('hidden');
-        }
-        if(audioPlayer) { audioPlayer.classList.add('hidden'); audioPlayer.pause(); audioPlayer.src = ''; }
-        if (generateImageButtons.length > 0) generateImageButtons.forEach(button => button.disabled = true);
-
-        try {
-            const result = await generateStoryApi(dataToSend);
-
-            const storyText = (result.story || "Modtog en tom historie fra serveren.").trim();
-            if(storyTextContent) storyTextContent.textContent = storyText;
-            if(storySectionHeading) storySectionHeading.textContent = result.title || "Jeres historie";
-
-            if (storyShareButtonsContainer && storyText) {
-                storyShareButtonsContainer.classList.remove('hidden');
-                const resetButton = storyShareButtonsContainer.querySelector('#reset-button');
-                if(resetButton) resetButton.style.display = 'inline-block';
-            }
-            if (generateImageButtons.length > 0 && storyText) {
-                generateImageButtons.forEach(button => { button.disabled = false; button.removeAttribute('title'); });
-            }
-
-        } catch (error) {
-             if(storyTextContent) storyTextContent.textContent = `Ups! Noget gik galt: ${error.message}. Prøv igen.`;
-             if(storySectionHeading) storySectionHeading.textContent = "Fejl ved generering";
-             if (storyShareButtonsContainer) {
-                storyShareButtonsContainer.classList.remove('hidden');
-                const resetButton = storyShareButtonsContainer.querySelector('#reset-button');
-                if (resetButton) resetButton.style.display = 'inline-block';
-             }
-        } finally {
-             if(generateButton) { generateButton.disabled = false; generateButton.textContent = 'Skab Historie'; }
-             if(storyLoadingIndicator) storyLoadingIndicator.classList.add('hidden');
-        }
+    // --- Dataindsamling (uændret) ---
+    const karakterer = [];
+    if(karakterContainer) { karakterContainer.querySelectorAll('.character-group').forEach(group => { const descInput = group.querySelector('input[name="karakter_desc"]'); const nameInput = group.querySelector('input[name="karakter_navn"]'); const description = descInput ? descInput.value.trim() : ''; const name = nameInput ? nameInput.value.trim() : ''; if (description) { karakterer.push({ description: description, name: name }); } }); }
+    const steder = []; document.querySelectorAll('#sted-container .input-group input[name="sted"]').forEach(input => { const v = input.value.trim(); if(v) steder.push(v); });
+    const plots = []; document.querySelectorAll('#plot-container .input-group input[name="plot"]').forEach(input => { const v = input.value.trim(); if(v) plots.push(v); });
+    const listeners = [];
+    if(listenerContainer) { listenerContainer.querySelectorAll('.listener-group').forEach(group => { const nameInput = group.querySelector('input[name="listener_name_single"]'); const ageInput = group.querySelector('input[name="listener_age_single"]'); const name = nameInput ? nameInput.value.trim() : ''; const age = ageInput ? ageInput.value.trim() : ''; if (name || age) { listeners.push({ name: name, age: age }); } }); }
+    const selectedLaengde = laengdeSelect ? laengdeSelect.value : 'kort';
+    const selectedMoodValue = moodSelect ? moodSelect.value : 'neutral';
+    const isInteractive = interactiveStorySwitch ? interactiveStorySwitch.checked : false;
+    const isBedtimeStory = bedtimeStorySwitch ? bedtimeStorySwitch.checked : false;
+    const negativePromptText = negativePromptInput ? negativePromptInput.value.trim() : '';
+    let selectedModel = 'gemini-1.5-flash-latest';
+    if (aiModelSwitch && !aiModelSwitch.disabled && aiModelSwitch.checked) {
+        selectedModel = 'gemini-2.5-pro-preview-05-06';
     }
+    saveCurrentListeners();
+    const dataToSend = { karakterer, steder, plots, laengde: selectedLaengde, mood: selectedMoodValue, listeners, interactive: isInteractive, is_bedtime_story: isBedtimeStory, negative_prompt: negativePromptText, selected_model: selectedModel };
+
+    // --- UI Opdatering: Loading State ---
+    if(generateButton) { generateButton.disabled = true; generateButton.textContent = 'Laver historie...'; }
+
+    // ==================================================================
+    // ### NY AGGRESSIV OP RYDNING ###
+    // Vi bruger .innerHTML = '' til at slette ALT indhold (både tekst og skjulte elementer)
+    // fra historie-boksen, før vi starter.
+    if(storyDisplay) {
+        storyDisplay.innerHTML = '';
+    }
+    // ==================================================================
+
+    // Vis loading-indikatoren ved at tilføje den til den (nu tomme) boks
+    if(storyLoadingIndicator) storyDisplay.appendChild(storyLoadingIndicator);
+    if(storyLoadingIndicator) storyLoadingIndicator.classList.remove('hidden');
+
+    if(storySectionHeading) storySectionHeading.textContent = 'Jeres historie';
+    if (storyShareButtonsContainer) storyShareButtonsContainer.classList.add('hidden');
+    if(audioPlayer) { audioPlayer.classList.add('hidden'); audioPlayer.pause(); audioPlayer.src = ''; }
+    if (generateImageButtons.length > 0) generateImageButtons.forEach(button => button.disabled = true);
+
+    try {
+        const result = await generateStoryApi(dataToSend);
+
+        // Rens både titel og historie for en sikkerheds skyld
+        const cleanTitle = (result.title || "Jeres historie").trim();
+        const cleanStory = (result.story || "Modtog en tom historie fra serveren.").replace(/^\s+/, '');
+
+        // ==================================================================
+        // ### NY INDSÆTTELSE AF INDHOLD ###
+        // Igen, slet ALT i boksen først for at være helt sikker
+        if(storyDisplay) {
+            storyDisplay.innerHTML = '';
+        }
+        // Tilføj den nye, rene tekst
+        if(storyTextContent) {
+            storyTextContent.textContent = cleanStory;
+            storyDisplay.appendChild(storyTextContent);
+        }
+        // ==================================================================
+
+        if(storySectionHeading) storySectionHeading.textContent = cleanTitle;
+
+        if (storyShareButtonsContainer && cleanStory) {
+            storyShareButtonsContainer.classList.remove('hidden');
+            const resetButton = storyShareButtonsContainer.querySelector('#reset-button');
+            if(resetButton) resetButton.style.display = 'inline-block';
+        }
+        if (generateImageButtons.length > 0 && cleanStory) {
+            generateImageButtons.forEach(button => { button.disabled = false; button.removeAttribute('title'); });
+        }
+
+    } catch (error) {
+         if(storyDisplay) {
+            storyDisplay.innerHTML = `<p style="color: red; text-align: center;">Ups! Noget gik galt: ${error.message}. Prøv igen.</p>`;
+         }
+         if(storySectionHeading) storySectionHeading.textContent = "Fejl ved generering";
+         if (storyShareButtonsContainer) {
+            storyShareButtonsContainer.classList.remove('hidden');
+            const resetButton = storyShareButtonsContainer.querySelector('#reset-button');
+            if (resetButton) resetButton.style.display = 'inline-block';
+         }
+    } finally {
+         if(generateButton) { generateButton.disabled = false; generateButton.textContent = 'Skab Historie'; }
+         // Skjul loading-indikatoren, uanset hvor den er.
+         if(storyLoadingIndicator) storyLoadingIndicator.classList.add('hidden');
+    }
+}
 
     // === Lyd Generering (TTS) ===
-    async function handleReadAloudClick() {
+async function handleReadAloudClick() {
     console.log("Read Aloud: Started");
 
-    // Først, tjek om knappen er deaktiveret via HTML (pga. brugerrolle)
     if (readAloudButton.classList.contains('disabled-button')) {
         console.log("Read Aloud: Button is disabled (user not Basic/Premium).");
         if (loginPromptAudio) {
@@ -1377,10 +1403,11 @@ loadFontSizesFromLocalStorage();
         return;
     }
 
-    // Tjek om der er en gyldig historie at læse højt
-    if (!storyDisplay || !storyDisplay.textContent || storyDisplay.textContent.trim() === '' ||
-        storyDisplay.textContent.includes('Historien genereres...') || storyDisplay.textContent.includes('Ups!')) {
-        console.warn("Read Aloud: No valid story text found.");
+    const storyTextContent = document.getElementById('story-text-content');
+    const storyText = storyTextContent ? storyTextContent.textContent.trim() : "";
+
+    if (!storyText || storyText === '' || storyText.includes('Historien genereres...')) {
+        console.warn("Read Aloud: No valid story text found in #story-text-content.");
         if (audioErrorDiv) {
             audioErrorDiv.textContent = "Ingen historie at læse højt.";
             audioErrorDiv.classList.remove('hidden');
@@ -1389,7 +1416,6 @@ loadFontSizesFromLocalStorage();
         return;
     }
 
-    // Tjek for kritiske UI-elementer
     if (!audioLoadingDiv || !audioErrorDiv || !audioPlayer || !ttsVoiceSelect) {
         console.error("Read Aloud: Critical audio or voice selection elements missing from DOM.");
         if (audioErrorDiv) {
@@ -1399,50 +1425,60 @@ loadFontSizesFromLocalStorage();
         return;
     }
 
-    const storyText = storyDisplay.textContent;
-    const selectedVoice = ttsVoiceSelect.value; // Hent den valgte stemme fra dropdown
+    const selectedVoice = ttsVoiceSelect.value;
     console.log(`Read Aloud: Generating audio for voice: ${selectedVoice}`);
 
-    // UI Opdatering: Loading State
     if (audioLoadingDiv) audioLoadingDiv.classList.remove('hidden');
     if (audioErrorDiv) { audioErrorDiv.textContent = ''; audioErrorDiv.classList.add('hidden'); }
     if (audioPlayer) { audioPlayer.pause(); audioPlayer.src = ''; audioPlayer.classList.add('hidden'); }
     if (readAloudButton) { readAloudButton.disabled = true; readAloudButton.textContent = 'Genererer Lyd...'; }
 
     try {
-        // Kald generateAudioApi fra api_client.js
-        // Denne gang forventer vi et Response-objekt, der indeholder den streamede Blob
         const response = await generateAudioApi(storyText, selectedVoice);
-
-        // Opret en MediaSource for streaming
         const mediaSource = new MediaSource();
         audioPlayer.src = URL.createObjectURL(mediaSource);
         audioPlayer.classList.remove('hidden');
 
         mediaSource.addEventListener('sourceopen', async () => {
-            const sourceBuffer = mediaSource.addSourceBuffer('audio/mpeg'); // MP3 format
-            const reader = response.body.getReader(); // Læs body som en stream
+            const sourceBuffer = mediaSource.addSourceBuffer('audio/mpeg');
+            const reader = response.body.getReader();
+
+            const appendBuffer = async (buffer) => {
+                return new Promise((resolve, reject) => {
+                    sourceBuffer.addEventListener('updateend', () => resolve(), { once: true });
+                    sourceBuffer.addEventListener('error', (e) => reject(e), { once: true });
+                    sourceBuffer.appendBuffer(buffer);
+                });
+            };
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) {
-                    console.log("Read Aloud: Stream complete.");
+                    // KORREKTION: Vent til buffer er færdig med at opdatere FØR endOfStream kaldes
+                    const waitForUpdateEnd = () => {
+                        return new Promise(resolve => {
+                            if (!sourceBuffer.updating) {
+                                resolve();
+                            } else {
+                                sourceBuffer.addEventListener('updateend', () => resolve(), { once: true });
+                            }
+                        });
+                    };
+
+                    await waitForUpdateEnd();
+
                     if (mediaSource.readyState === 'open') {
                         mediaSource.endOfStream();
+                        console.log("Read Aloud: Stream complete and ended correctly.");
                     }
                     break;
                 }
                 if (value) {
-                    // Hvis sourceBuffer er fuld, vent et øjeblik
-                    if (sourceBuffer.updating) {
-                        await new Promise(resolve => sourceBuffer.addEventListener('updateend', resolve, { once: true }));
-                    }
-                    sourceBuffer.appendBuffer(value);
+                    await appendBuffer(value);
                 }
             }
         });
 
-        // Håndter fejl under MediaSource streaming
         mediaSource.addEventListener('sourceended', () => console.log('MediaSource ended'));
         mediaSource.addEventListener('error', (event) => {
             console.error('MediaSource error:', event);
@@ -2215,6 +2251,29 @@ async function handleNarrativeGenerateClick() {
     console.log("Script loaded and all initial event listeners attached, including for Narrative Support.");
 
     initializeInfoIcons(); // Kald funktionen for at aktivere infoknapperne
+
+// --- FORBEDRET: Logik til at vise/skjule Godnatsange sektionen ---
+    const sangteksterSektion = document.getElementById('sangtekster-sektion');
+
+    // En funktion, der kan genbruges, til at tjekke switchen og opdatere synligheden
+    function updateSongSectionVisibility() {
+        if (!bedtimeStorySwitch || !sangteksterSektion) return; // Sikkerhedstjek
+
+        if (bedtimeStorySwitch.checked) {
+            sangteksterSektion.classList.remove('hidden');
+        } else {
+            sangteksterSektion.classList.add('hidden');
+        }
+    }
+
+    // Tilføj en event listener, der kalder funktionen, HVER GANG switchen ændres
+    if (bedtimeStorySwitch) {
+        bedtimeStorySwitch.addEventListener('change', updateSongSectionVisibility);
+    }
+
+    // KALD FUNKTIONEN ÉN GANG MED DET SAMME, NÅR SIDEN LOADER:
+    // Dette er den vigtige linje, der sikrer, at sektionen er skjult fra start.
+    updateSongSectionVisibility();
 });
 
 

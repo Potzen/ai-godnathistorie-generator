@@ -1190,3 +1190,20 @@ input:disabled + .slider-label:before {
     min-height: 150px; /* Giver boksen en pæn højde, mens den loader */
 }
 
+/* Styling for loading-indikatoren i historie-output.
+   Anvender padding i stedet for margin for at undgå layout-problemer. */
+#story-loading-indicator {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 30px 0; /* Denne padding skaber afstanden, men forsvinder når elementet skjules */
+    font-style: italic;
+    color: #555;
+    gap: 10px;
+}
+
+/* Fjerner default margin på <p> tagget for at sikre ensartet afstand */
+#story-loading-indicator p {
+    margin: 0;
+}

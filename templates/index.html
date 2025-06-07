@@ -227,7 +227,7 @@
                 <label for="tts-voice-select">Vælg Stemme til Oplæsning:</label>
                 <select name="tts_voice" id="tts-voice-select">
                     <option value="Zephyr" selected>Zephyr (Kvinde)</option>
-                    <option value="Dansk Kvinde 1 (Standard)" selected>Dansk Kvinde 1 (Standard)</option>
+                    <option value="Dansk Kvinde 1 (Standard)">Dansk Kvinde 1 (Standard)</option>
                     <option value="Dansk Mand 1 (Standard)">Dansk Mand 1 (Standard)</option>
                     <option value="Dansk Mand 2 (Standard)">Dansk Mand 2 (Standard)</option>
                     <option value="Dansk Kvinde 2 (Standard)">Dansk Kvinde 2 (Standard)</option>
@@ -258,7 +258,7 @@
             <button id="generate-button">Skab Historie</button>
         </section>
 
-       <section id="narrative-support-module" class="content-section hidden">
+        <section id="narrative-support-module" class="content-section hidden">
             {% if current_user.is_authenticated and current_user.role == 'premium' %}
                 {# --- START: FULD BRUGERFLADE FOR PREMIUM BRUGERE --- #}
                 <h2>Narrativ Støtte</h2>
@@ -621,8 +621,9 @@
             </div>
 
             <div id="story-display">
-                <div id="story-loading-indicator" class="hidden" style="text-align: center; margin: 30px 0; font-style: italic; color: #555;">
-                    Historien genereres... Vent venligst. <span class="spinner"></span>
+                <div id="story-loading-indicator" class="hidden">
+                    <p>Historien genereres... Vent venligst.</p>
+                    <span class="spinner"></span>
                 </div>
                 <div id="story-text-content"></div>
             </div>
@@ -670,7 +671,23 @@
                 </div>
             </div>
         </section>
+        <section id="sangtekster-sektion" class="hidden">
+            <h2>Godnatsange</h2>
+            <div class="input-category">
+                <label for="sang-dropdown">Vælg en godnatsang</label>
+                <select id="sang-dropdown" name="sang_valg">
+                    <option value="">-- Vælg en sang --</option>
+                    </select>
+            </div>
+            <div id="sangtekst-output">
+                <h3 id="sangtekst-titel">Sangtekst:</h3>
+                <div id="sangtekst-visning" style="white-space: pre-wrap; background-color: #f9f9f9; padding: 15px; border-radius: var(--border-radius); border: 1px solid var(--border-color); min-height: 100px;">
+                    Vælg en sang fra listen ovenfor for at se teksten her.
+                </div>
+            </div>
+        </section>
 
+        <section id="feedback-section">
         <section id="feedback-section">
              <button type="button" id="toggle-feedback-button" class="utility-button">Giv Feedback / Skjul Feedback</button>
              <div id="feedback-embed-container" class="hidden">
