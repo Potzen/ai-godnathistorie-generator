@@ -1162,8 +1162,31 @@ input:disabled + .slider-label:before {
     vertical-align: middle;
     padding-top: 1px; /* NYT: Tilføjet for at skubbe 'i'-symbolet en smule ned. Juster evt. til 2px. */
 }
+/* Forbedret centrering af selve ⓘ-symbolet inde i ikonet */
 
+}
 .info-icon:hover {
     background-color: var(--color-primary);
     color: white;
 }
+
+/* Ny regel for at centrere label og info-ikon */
+.switch-option-group > div:first-child {
+    display: flex;
+    align-items: center; /* Vigtigste linje: Justerer label og ikon vertikalt */
+    gap: 5px;
+    margin-bottom: 6px;
+}
+
+.switch-option-group > div:first-child > label {
+    margin-bottom: 0; /* Fjerner evt. bundmargin på selve labelen for bedre justering */
+}
+
+/* Styling for historie-boksen, når den er i loading-tilstand */
+#story-display.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 150px; /* Giver boksen en pæn højde, mens den loader */
+}
+

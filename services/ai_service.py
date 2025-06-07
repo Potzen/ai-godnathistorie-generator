@@ -30,7 +30,11 @@ TTS_VOICES = {
     "Zephyr": {"language_code": "en-US", "name": "Zephyr", "gender": "FEMALE"},
     "Gacrux": {"language_code": "en-US", "name": "Gacrux", "gender": "FEMALE"},
     "Sadachbia": {"language_code": "en-US", "name": "Sadachbia", "gender": "MALE"},
-    "Zubenelgenubi": {"language_code": "en-US", "name": "Zubenelgenubi", "gender": "MALE"}
+    "Zubenelgenubi": {"language_code": "en-US", "name": "Zubenelgenubi", "gender": "MALE"},
+    "Dansk Kvinde 1 (Standard)": {"language_code": "da-DK", "name": "da-DK-Wavenet-A", "gender": "FEMALE"},
+    "Dansk Mand 1 (Standard)": {"language_code": "da-DK", "name": "da-DK-Wavenet-C", "gender": "MALE"},
+    "Dansk Mand 2 (Standard)": {"language_code": "da-DK", "name": "da-DK-Wavenet-D", "gender": "MALE"},
+    "Dansk Kvinde 2 (Standard)": {"language_code": "da-DK", "name": "da-DK-Wavenet-E", "gender": "FEMALE"}
 }
 
 def generate_story_text_from_gemini(full_prompt_string, generation_config_settings, safety_settings_values, target_model_name='gemini-1.5-flash-latest'):

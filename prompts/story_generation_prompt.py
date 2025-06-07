@@ -40,7 +40,7 @@ def build_story_prompt(
         bedtime_instruction = [
             "\n**SÆRLIG INSTRUKTION: GODNATHISTORIE-FOKUS**",
             "Denne historie er en godnathistorie. Det er din VIGTIGSTE opgave at sikre, at historiens tone, tempo og indhold er meget roligt, trygt og beroligende. Formålet er at hjælpe barnet med at falde til ro og forberede sig på at sove.",
-            "- **Variation i Navne:** Hvis brugeren ikke har angivet et specifikt navn for hovedpersonen, skal du selv finde på et passende og almindeligt dansk børnenavn (f.eks. Emil, Freja, Oscar, Ida). Det er vigtigt, at du varierer de navne, du vælger fra gang til gang, og undgår at bruge de samme navn (som f.eks. 'Luna').",
+            "- **Variation i Navne:** Hvis brugeren ikke har angivet et specifikt navn for hovedpersonen, skal du selv finde på et passende og almindeligt dansk børnenavn (f.eks. Emil, Freja, Oscar, Ida). Det er vigtigt, at du varierer de navne, du vælger fra gang til gang, og undgår at bruge navne som f.eks. 'Luna'.",
             "- **Undgå Spænding:** Minimer dramatiske, spændende eller uhyggelige elementer, især mod slutningen af historien.",
             "- **Roligt Tempo:** Fortæl historien i et roligt og afdæmpet tempo.",
             "- **Tryg Afslutning:** Sørg for at afslutningen er særligt blid, positiv og afklaret. Alle konflikter skal være løst på en tryg måde.",
@@ -61,14 +61,16 @@ def build_story_prompt(
     # Betinget logik for interaktiv historie
     if is_interactive:
         interactive_rules_list = [
-            "\nINSTRUKTIONER FOR INTERAKTIV HISTORIE MED VALGMULIGHEDER (ILLUSION AF VALG):",
-            "Når denne funktion er aktiv, skal du på 1-2 passende steder i historien (afhængigt af historiens samlede længde) indføre et segment med valgmuligheder for hovedpersonen. Følg denne struktur NØJE for hvert interaktivt segment:",
-            "1. Fortæl en del af hovedhistorien, der naturligt leder op til et klart beslutningspunkt for hovedpersonen.",
-            "2. Præsenter tydeligt TO specifikke og handlingsorienterede valgmuligheder (kald dem A og B).",
-            "3. Skriv derefter en KORT (1-2 sætninger) scene for, hvad der sker, hvis hovedpersonen vælger VALG A. Start denne del med den præcise tekst 'Valgmulighed A): ' efterfulgt af scenen.",
-            "4. Umiddelbart efter scenen for valg A, skriv en KORT (1-2 sætninger) scene for, hvad der sker, hvis hovedpersonen vælger VALG B. Start denne del med den præcise tekst 'Valgmulighed B): ' efterfulgt af scenen.",
-            "5. VIGTIGT - FORTSÆTTELSE AF HOVEDHISTORIEN: Efter at have beskrevet de korte scener for både Valgmulighed A og B, skal du fortsætte den primære hovedhistorie. Fortsættelsen skal føles som en naturlig fortsættelse, der kunne følge efter *begge* scenarier, men **du må ALDRIG bruge formuleringer, der afslører dette eller gør valget ligegyldigt (f.eks. undgå strengt sætninger som 'Uanset hvad [X] valgte...', 'Det var lige meget, for...')**. Find i stedet en elegant og generel overgang, der samler tråden op i hovedfortællingen og opretholder illusionen om et meningsfuldt valg.",
+            "\nSÆRLIG INSTRUKTION: INTERAKTIV HISTORIE",
+            "Dette skal være en interaktiv historie. Det betyder, at du på 1-2 passende steder i historien skal skabe et øjeblik, hvor læseren føler, de har et valg. Gør det på en naturlig og læsevenlig måde, uden at du skriver instruktions-overskrifter som 'OPTÆGT' eller 'SPØRGSMÅL' i den endelige tekst.",
+            "Flowet for et interaktivt øjeblik skal være som følger:",
+            "1. Først bygger du op til et valg for hovedpersonen i et almindeligt afsnit.",
+            "2. Så stiller du spørgsmålet direkte i teksten, f.eks. 'Hvad skulle [Navn] nu gøre? A) Gå over broen, eller B) Følge stien langs floden?'.",
+            "3. Lige efter, i et nyt afsnit, starter du med 'Valgmulighed A): ' og beskriver den korte scene for det valg i 1-2 sætninger.",
+            "4. I et nyt afsnit lige bagefter, starter du med 'Valgmulighed B): ' og beskriver den korte scene for det andet valg i 1-2 sætninger.",
+            "5. Til sidst fortsætter du hovedhistorien i et nyt afsnit. Meget vigtigt: Fortsættelsen skal kunne passe efter begge valg, men du må absolut ikke nævne det. Undgå ord som 'uanset' eller 'lige meget hvad'. Lad blot historien glide naturligt videre ved f.eks. at fokusere på hovedpersonens følelser eller omgivelserne."
         ]
+
         interactive_rules_str = "\n".join(interactive_rules_list)
         prompt_parts.append(interactive_rules_str)
 

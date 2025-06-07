@@ -11,6 +11,7 @@ const tooltipTextElement = document.getElementById('info-tooltip-text');
 const tooltipCloseButton = document.getElementById('info-tooltip-close');
 let currentVisibleTooltipIcon = null;
 let clickOpensTooltip = false; // Nyt flag for at håndtere den første klik-interaktion
+const storyTextContent = document.getElementById('story-text-content');
 
 const tooltipTexts = {
     'tooltip-narrative-focus': "Tip: Angiv her den centrale begivenhed, udfordring eller det fokus, historien skal omhandle. Det kan være en følelse (f.eks. generthed), en konkret situation (f.eks. 'svært ved at dele') eller en kommende begivenhed (f.eks. 'skolestart', 'en flytning'). En præcis beskrivelse hjælper AI'en med at skabe en målrettet historie.",
@@ -20,6 +21,7 @@ const tooltipTexts = {
     'interactive-info': "Når denne er slået til, vil AI'en forsøge at skrive historien med 1-2 indbyggede valgmuligheder for at engagere barnet. Funktionen virker bedst, når 'Lang' historielængde er valgt.",
     'bedtime-info': "Når denne er slået til, får AI'en en specifik instruktion om at gøre historien ekstra rolig, tryg og afdæmpet. Dette overtrumfer det generelle 'Stemning'-valg og er ideelt til at hjælpe et barn med at falde til ro ved sengetid."
 };
+const storyLoadingIndicator = document.getElementById('story-loading-indicator');
 
 function showTooltip(iconElement, text) {
     if (!tooltipElement || !tooltipTextElement) {
@@ -1299,85 +1301,66 @@ loadFontSizesFromLocalStorage();
 
     async function handleGenerateClick(event) {
         event.preventDefault();
-        console.log("Story Generation: Started");
-        console.log(`DEBUG: Før isInteractive: interactiveStorySwitch.checked = ${interactiveStorySwitch ? interactiveStorySwitch.checked : 'NOT FOUND'}, interactiveStorySwitch.disabled = ${interactiveStorySwitch ? interactiveStorySwitch.disabled : 'NOT FOUND'}`);
 
-        // Indsaml data fra inputfelter
+        // --- Dataindsamling (denne del er uændret) ---
         const karakterer = [];
         if(karakterContainer) { karakterContainer.querySelectorAll('.character-group').forEach(group => { const descInput = group.querySelector('input[name="karakter_desc"]'); const nameInput = group.querySelector('input[name="karakter_navn"]'); const description = descInput ? descInput.value.trim() : ''; const name = nameInput ? nameInput.value.trim() : ''; if (description) { karakterer.push({ description: description, name: name }); } }); }
         const steder = []; document.querySelectorAll('#sted-container .input-group input[name="sted"]').forEach(input => { const v = input.value.trim(); if(v) steder.push(v); });
         const plots = []; document.querySelectorAll('#plot-container .input-group input[name="plot"]').forEach(input => { const v = input.value.trim(); if(v) plots.push(v); });
         const listeners = [];
         if(listenerContainer) { listenerContainer.querySelectorAll('.listener-group').forEach(group => { const nameInput = group.querySelector('input[name="listener_name_single"]'); const ageInput = group.querySelector('input[name="listener_age_single"]'); const name = nameInput ? nameInput.value.trim() : ''; const age = ageInput ? ageInput.value.trim() : ''; if (name || age) { listeners.push({ name: name, age: age }); } }); }
-
         const selectedLaengde = laengdeSelect ? laengdeSelect.value : 'kort';
         const selectedMoodValue = moodSelect ? moodSelect.value : 'neutral';
         const isInteractive = interactiveStorySwitch ? interactiveStorySwitch.checked : false;
-        const negativePromptText = negativePromptInput ? negativePromptInput.value.trim() : '';
-
-        let selectedModel = 'gemini-1.5-flash-latest'; // Standardmodel
-        if (aiModelSwitch && !aiModelSwitch.disabled && aiModelSwitch.checked) {
-            selectedModel = 'gemini-2.5-pro-preview-05-06'; // Pro-model hvis switch er aktiv og tjekket
-        }
-        console.log("Selected AI Model for story generation:", selectedModel);
-
-        saveCurrentListeners(); // Gem lytter-data før API kald
         const isBedtimeStory = bedtimeStorySwitch ? bedtimeStorySwitch.checked : false;
+        const negativePromptText = negativePromptInput ? negativePromptInput.value.trim() : '';
+        let selectedModel = 'gemini-1.5-flash-latest';
+        if (aiModelSwitch && !aiModelSwitch.disabled && aiModelSwitch.checked) {
+            selectedModel = 'gemini-2.5-pro-preview-05-06';
+        }
+
+        saveCurrentListeners();
         const dataToSend = { karakterer, steder, plots, laengde: selectedLaengde, mood: selectedMoodValue, listeners, interactive: isInteractive, is_bedtime_story: isBedtimeStory, negative_prompt: negativePromptText, selected_model: selectedModel };
-        // console.log("Story Generation: Data prepared for sending to /generate:", dataToSend);
-        console.log("DEBUG: handleGenerateClick - dataToSend LIGE FØR API KALD:", JSON.stringify(dataToSend, null, 2));
 
-
-        // UI Opdatering: Loading State
+        // --- UI Opdatering: Loading State (KORREKT LOGIK NU) ---
         if(generateButton) { generateButton.disabled = true; generateButton.textContent = 'Laver historie...'; }
-        if(storyDisplay) storyDisplay.textContent = 'Historien genereres... Vent venligst.';
-        if(storySectionHeading) storySectionHeading.textContent = 'Jeres historie'; // Nulstil titel
-        if(resetButton && storyShareButtonsContainer) storyShareButtonsContainer.querySelector('#reset-button').style.display = 'none'; // Skjul reset knap i dele-container
-        if (storyShareButtonsContainer) storyShareButtonsContainer.classList.add('hidden');
-
-        // Nulstil lyd/billede elementer
-        if(audioPlayer) { audioPlayer.pause(); audioPlayer.src = ''; audioPlayer.classList.add('hidden'); }
-        if(audioLoadingDiv) audioLoadingDiv.classList.add('hidden');
-        if(audioErrorDiv) { audioErrorDiv.textContent = ''; audioErrorDiv.classList.add('hidden'); }
-        if(loginPromptAudio) loginPromptAudio.classList.add('hidden');
-        // Nulstil evt. billeder her hvis relevant
+        if(storyTextContent) storyTextContent.textContent = ''; // Ryd kun den indre tekst-container
+        if(storyLoadingIndicator) storyLoadingIndicator.classList.remove('hidden'); // Vis spinneren
+        if(storySectionHeading) storySectionHeading.textContent = 'Jeres historie'; // Nulstil overskrift
+        if (storyShareButtonsContainer) {
+            storyShareButtonsContainer.classList.add('hidden');
+        }
+        if(audioPlayer) { audioPlayer.classList.add('hidden'); audioPlayer.pause(); audioPlayer.src = ''; }
+        if (generateImageButtons.length > 0) generateImageButtons.forEach(button => button.disabled = true);
 
         try {
-            const result = await generateStoryApi(dataToSend); // Kald til den importerede funktion
-            console.log("Story Generation: JSON parsed successfully:", result);
+            const result = await generateStoryApi(dataToSend);
 
-            if(storyDisplay) storyDisplay.textContent = result.story || "Modtog en tom historie fra serveren.";
-            if(storySectionHeading) storySectionHeading.textContent = result.title || "Jeres historie"; // Opdater med titel fra backend
+            const storyText = (result.story || "Modtog en tom historie fra serveren.").trim();
+            if(storyTextContent) storyTextContent.textContent = storyText;
+            if(storySectionHeading) storySectionHeading.textContent = result.title || "Jeres historie";
 
-            if(resetButton && storyShareButtonsContainer) storyShareButtonsContainer.querySelector('#reset-button').style.display = 'inline-block'; // Vis reset knap igen
-            if (storyShareButtonsContainer && result.story && result.story.trim() !== "") {
+            if (storyShareButtonsContainer && storyText) {
                 storyShareButtonsContainer.classList.remove('hidden');
+                const resetButton = storyShareButtonsContainer.querySelector('#reset-button');
+                if(resetButton) resetButton.style.display = 'inline-block';
             }
-
-            // NY KODE (uden login tjek for billedknap)
-        if (generateImageButtons.length > 0) {
-            if (result.story && result.story.trim() !== "") {
-                generateImageButtons.forEach(button => {
-                    button.disabled = false;
-                    button.removeAttribute('title');
-                });
-                console.log("Alle 'Skab billede'-knapper er aktiveret.");
-            } else {
-                generateImageButtons.forEach(button => button.disabled = true);
+            if (generateImageButtons.length > 0 && storyText) {
+                generateImageButtons.forEach(button => { button.disabled = false; button.removeAttribute('title'); });
             }
-        }
 
         } catch (error) {
-             console.error('Story Generation: Error during generation (catch block):', error);
-             if(storyDisplay) storyDisplay.textContent = `Ups! Noget gik galt: ${error.message}. Prøv igen.`;
+             if(storyTextContent) storyTextContent.textContent = `Ups! Noget gik galt: ${error.message}. Prøv igen.`;
              if(storySectionHeading) storySectionHeading.textContent = "Fejl ved generering";
-             if(resetButton && storyShareButtonsContainer) storyShareButtonsContainer.querySelector('#reset-button').style.display = 'inline-block';
+             if (storyShareButtonsContainer) {
+                storyShareButtonsContainer.classList.remove('hidden');
+                const resetButton = storyShareButtonsContainer.querySelector('#reset-button');
+                if (resetButton) resetButton.style.display = 'inline-block';
+             }
         } finally {
-             // console.log("Story Generation: Executing finally block...");
              if(generateButton) { generateButton.disabled = false; generateButton.textContent = 'Skab Historie'; }
-             // console.log("Story Generation: Loading state removed.");
+             if(storyLoadingIndicator) storyLoadingIndicator.classList.add('hidden');
         }
-        console.log("Story Generation: Finished");
     }
 
     // === Lyd Generering (TTS) ===
