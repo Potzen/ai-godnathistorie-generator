@@ -1,7 +1,10 @@
-# Virtual environment
+# Environments
 .venv/
 venv/
 godnathistorie_env/
+
+# Instance Folder - VIGTIGT for at ignorere databasen
+/instance/
 
 # Python cache
 __pycache__/
@@ -11,14 +14,12 @@ __pycache__/
 # IDE files (PyCharm)
 .idea/
 
-# Log filer (Valgfrit - hvis du ikke vil have feedback.log med)
+# Log filer
 *.log
 
-# Downloadede nøgler (Hvis du gemmer en .json nøgle lokalt)
-# *.json
-
 # Downloadede nøgler (Service Account Keys etc.)
-gen-lang-client-0269317733-c9b35424f793.json
+# Ignorerer alle .json filer for en sikkerheds skyld
+*.json
 
 # macOS specific
 .DS_Store
