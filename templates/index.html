@@ -877,11 +877,8 @@
                             <option value="all">Alle</option>
                             <option value="Narrativ Støtte">Narrativ Støtte</option>
                             <option value="Højtlæsning">Højtlæsning</option>
-                            <option value="Læsehesten">Læsehesten</option> </select>
-                    </div>
-                    <div class="filter-group" style="flex: 2 1 250px;">
-                        <label for="search-term">Søg i titel og indhold</label>
-                        <input type="search" id="search-term" name="searchTerm" placeholder="Søg her...">
+                            <option value="Læsehesten">Læsehesten</option>
+                        </select>
                     </div>
                     <div class="filter-group">
                         <label for="sort-by">Sortér efter</label>
@@ -891,6 +888,10 @@
                             <option value="title_asc">Titel (A-Å)</option>
                             <option value="title_desc">Titel (Å-A)</option>
                         </select>
+                    </div>
+                    <div class="filter-group filter-group-search"> {# Tilføjet en specifik klasse her #}
+                        <label for="search-term">Søg i titel og indhold</label>
+                        <input type="search" id="search-term" name="searchTerm" placeholder="Søg her...">
                     </div>
                 </div>
 

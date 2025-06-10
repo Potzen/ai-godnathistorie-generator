@@ -1,5 +1,6 @@
 // Fil: static/script.js
 import { generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generateNarrativeStoryApi, getGuidingQuestionsApi, generateAudioApi, generateLixStoryApi, analyzeStoryForLogbookApi, saveLogbookEntryApi, listContinuableStoriesApi } from './modules/api_client.js';
+import { fetchAndRenderLogbook } from './logbook.js';
 
 // Kør først koden, når hele HTML dokumentet er færdigindlæst og klar
 document.addEventListener('DOMContentLoaded', () => {
@@ -560,37 +561,48 @@ loadFontSizesFromLocalStorage();
     const contentSections = document.querySelectorAll('.content-section');
 
     if (tabButtons.length > 0 && contentSections.length > 0) {
-    const historieOutput = document.getElementById('historie-output');
+        const historieOutput = document.getElementById('historie-output');
 
-    const handleTabClick = (button) => {
-        tabButtons.forEach(btn => btn.classList.remove('active'));
-        contentSections.forEach(section => section.classList.add('hidden'));
+        const handleTabClick = (button) => {
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            contentSections.forEach(section => section.classList.add('hidden'));
 
-        button.classList.add('active');
-        const targetId = button.dataset.tabTarget;
-        const targetSection = document.querySelector(targetId);
-        if (targetSection) {
-            targetSection.classList.remove('hidden');
-        }
+            button.classList.add('active');
+            const targetId = button.dataset.tabTarget;
+            const targetSection = document.querySelector(targetId);
+            if (targetSection) {
+                targetSection.classList.remove('hidden');
+            }
 
-        // Styr synlighed af den delte output sektion
-        if (targetId === '#generator' || targetId === '#laesehesten-module') {
-            if (historieOutput) historieOutput.classList.remove('hidden');
+            // Styr synlighed af den delte output sektion
+            if (targetId === '#generator' || targetId === '#laesehesten-module') {
+                if (historieOutput) historieOutput.classList.remove('hidden');
+            } else {
+                if (historieOutput) historieOutput.classList.add('hidden');
+            }
+
+            // NYT: Kald fetchAndRenderLogbook() når logbog-fanen aktiveres
+            if (targetId === '#logbook-module') {
+                fetchAndRenderLogbook(); //
+            }
+        };
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => handleTabClick(button));
+        });
+
+        // Sørg for at den korrekte tilstand er sat ved sideindlæsning
+        const initiallyActiveButton = document.querySelector('.tab-button.active');
+        if (initiallyActiveButton) {
+            handleTabClick(initiallyActiveButton);
         } else {
-            if (historieOutput) historieOutput.classList.add('hidden');
+            // Hvis ingen fane er aktiv som standard, aktiver den første og kald dens handler
+            const firstTabButton = tabButtons[0];
+            if (firstTabButton) {
+                handleTabClick(firstTabButton);
+            }
         }
-    };
-
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => handleTabClick(button));
-    });
-
-    // Sørg for at den korrekte tilstand er sat ved sideindlæsning
-    const initiallyActiveButton = document.querySelector('.tab-button.active');
-    if (initiallyActiveButton) {
-        handleTabClick(initiallyActiveButton);
     }
-}
 
 // === SLUT PÅ NYT: Fane Navigation Funktionalitet ===
 

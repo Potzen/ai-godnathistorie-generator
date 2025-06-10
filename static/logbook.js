@@ -1,3 +1,4 @@
+// Fil: static/logbook.js
 import { filterLogbookApi, updateNoteApi } from './modules/api_client.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -52,25 +53,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Funktion til at tilføje event listeners til dynamisk indhold
     const attachEventListeners = () => {
+        console.log("Logbook: Attaching event listeners...");
+
         // Harmonika-funktionalitet
-        document.querySelectorAll('.logbook-accordion-toggle').forEach(toggle => {
-            toggle.addEventListener('click', () => {
-                const content = toggle.nextElementSibling;
-                toggle.classList.toggle('open');
-                content.classList.toggle('hidden');
+        document.querySelectorAll('.logbook-accordion-toggle').forEach((toggle, index) => {
+            // Først, fjern eventuelle eksisterende listeners for at undgå duplikater
+            // Dette er vigtigt, når `attachEventListeners` kaldes flere gange (f.eks. ved filtrering)
+            // Klon knappen for at fjerne gamle eventlisteners (en simpel, men effektiv metode)
+            const newToggle = toggle.cloneNode(true);
+            toggle.parentNode.replaceChild(newToggle, toggle);
+
+            newToggle.addEventListener('click', (event) => {
+                console.log(`Logbook: Clicked accordion toggle #${index}.`);
+                // Stop event bubbling, så klik på en indre toggle ikke udløser en ydre
+                event.stopPropagation();
+
+                const content = newToggle.nextElementSibling;
+                if (content) {
+                    console.log(`Logbook: Content element found for toggle #${index}. Current hidden state: ${content.classList.contains('hidden')}`);
+                    newToggle.classList.toggle('open');
+                    content.classList.toggle('hidden');
+                } else {
+                    console.warn(`Logbook: No nextElementSibling (content) found for toggle #${index}.`);
+                }
             });
         });
 
         // Gem-note funktionalitet
-        document.querySelectorAll('.note-save-button').forEach(button => {
-            button.addEventListener('click', async () => {
-                const entryDiv = button.closest('.logbook-entry');
+        document.querySelectorAll('.note-save-button').forEach((button, index) => {
+            // Fjern eventuelle eksisterende listeners på samme måde
+            const newButton = button.cloneNode(true);
+            button.parentNode.replaceChild(newButton, button);
+
+            newButton.addEventListener('click', async () => {
+                console.log(`Logbook: Clicked save note button #${index}.`);
+                const entryDiv = newButton.closest('.logbook-entry');
                 const storyId = entryDiv.dataset.storyId;
                 const textarea = entryDiv.querySelector('.user-notes-textarea');
                 const feedbackSpan = entryDiv.querySelector('.note-save-feedback');
 
-                button.disabled = true;
-                button.textContent = 'Gemmer...';
+                newButton.disabled = true;
+                newButton.textContent = 'Gemmer...';
 
                 try {
                     await updateNoteApi(storyId, textarea.value);
@@ -83,15 +106,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     feedbackSpan.style.color = 'red';
                     feedbackSpan.classList.remove('hidden');
                 } finally {
-                    button.disabled = false;
-                    button.textContent = 'Gem ændringer i noter';
+                    newButton.disabled = false;
+                    newButton.textContent = 'Gem ændringer i noter';
                 }
             });
         });
+        console.log("Logbook: Event listeners attached successfully.");
     };
 
     // Funktion til at hente og rendere logbogen baseret på filtre
-    const fetchAndRenderLogbook = async () => {
+    export const fetchAndRenderLogbook = async () => {
+        console.log("Logbook: Fetching and rendering logbook data...");
         const filterData = {
             source: document.getElementById('filter-source').value,
             searchTerm: document.getElementById('search-term').value,
@@ -110,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
             attachEventListeners(); // VIGTIGT: Tilføj listeners efter HTML er indsat
         } catch (error) {
             logbookListContainer.innerHTML = `<p style="color: red; text-align: center;">Kunne ikke hente historier: ${error.message}</p>`;
+            console.error("Logbook: Error fetching or rendering logbook:", error);
         }
     };
 
@@ -126,4 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Initialiser logbogen ved første indlæsning af siden
+    fetchAndRenderLogbook();
 });

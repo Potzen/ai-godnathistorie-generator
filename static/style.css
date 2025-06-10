@@ -1589,3 +1589,68 @@ input:disabled + .slider-label:before {
     -webkit-appearance: none; /* Fjerner default styling på iOS */
     appearance: none;
 }
+
+/* Styling for logbog toolbar */
+.logbook-toolbar {
+    display: flex;
+    flex-wrap: wrap; /* Tillad ombrydning på små skærme */
+    gap: 15px; /* Øget mellemrum mellem elementer */
+    margin-bottom: 25px; /* Lidt mere plads under toolbar */
+    align-items: flex-end; /* Juster elementer i bunden, så labels flugter */
+    justify-content: space-between; /* Fordel elementer jævnt */
+}
+
+.logbook-toolbar .filter-group {
+    flex: 1; /* Hvert filter-group element får lige meget plads */
+    min-width: 150px; /* Minimum bredde for hvert filter-group */
+    display: flex; /* Gør filter-group til en flex-container for label/input */
+    flex-direction: column; /* Stabel label og input vertikalt */
+    align-items: flex-start; /* Juster indhold til venstre */
+}
+
+.logbook-toolbar .filter-group-search { /* Specifik styling for søgefeltet */
+    flex: 2; /* Søgefeltet tager dobbelt så meget plads */
+    min-width: 200px; /* Øget minimum bredde for søgefeltet */
+}
+
+.logbook-toolbar label {
+    margin-bottom: 5px; /* Mindre afstand mellem label og input i filter-groups */
+    font-size: 0.9em; /* Lidt mindre font for labels */
+    font-weight: bold;
+    color: #555;
+}
+
+.logbook-toolbar select,
+.logbook-toolbar input[type="search"] {
+    width: 100%; /* Sørg for at select og input fylder deres container */
+    padding: 8px 10px; /* Mindre padding for et mere kompakt look */
+    height: 38px; /* Fast højde for ensartethed */
+    box-sizing: border-box; /* Inkluder padding og border i højden */
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    font-family: var(--font-body); /* Ensartet font */
+    font-size: 1em; /* Ensartet font-størrelse */
+    color: var(--color-text); /* Ensartet tekstfarve */
+    background-color: white; /* Hvid baggrund for minimalt design */
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out; /* Smooth transitions */
+}
+
+.logbook-toolbar select:focus,
+.logbook-toolbar input[type="search"]:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(77, 182, 172, 0.3);
+}
+
+
+/* Medieforespørgsel for mindre skærme */
+@media (max-width: 600px) {
+    .logbook-toolbar {
+        flex-direction: column; /* Stabel elementer vertikalt på små skærme */
+        align-items: stretch; /* Få elementer til at fylde bredden */
+    }
+    .logbook-toolbar .filter-group,
+    .logbook-toolbar .filter-group-search {
+        min-width: unset; /* Fjern minimum bredde på små skærme */
+    }
+}
