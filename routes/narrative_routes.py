@@ -1,118 +1,107 @@
 # Fil: routes/narrative_routes.py
 from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required, current_user
+from models import Story
+from extensions import db
+from sqlalchemy import or_
 from services.ai_service import (
     get_ai_suggested_character_traits,
     generate_narrative_brief,
     draft_narrative_story_with_rag,
     edit_narrative_story,
-    generate_reflection_questions_step4
+    generate_reflection_questions_step4,
+    analyze_story_for_logbook
 )
 import traceback
+
 
 narrative_bp = Blueprint('narrative', __name__, url_prefix='/narrative')
 
 
 @narrative_bp.route('/generate_narrative_story', methods=['POST'])
-@login_required  # Nu aktiv
+@login_required
 def generate_narrative_story():
-    # Tjek om brugeren har 'premium' rolle
     if current_user.role != 'premium':
-        current_app.logger.warning(
-            f"Uautoriseret forsøg på adgang til '/generate_narrative_story' af bruger: "
-            f"{current_user.email} (Rolle: {current_user.role})"
-        )
-        return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403  # Forbidden
+        return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403
 
     original_user_inputs = request.get_json()
     if not original_user_inputs:
-        current_app.logger.error("Narrative Route: Ingen JSON data modtaget.")
         return jsonify({"error": "Ingen JSON data modtaget"}), 400
 
-    # Definer user_id_for_log her, så den er tilgængelig i hele funktionen
-    # user_id_for_log defineres allerede nedenfor, så vi behøver ikke ændre den del
-    user_id_for_log = current_user.id  # Kan nu bruge current_user.id direkte her, da brugeren er logget ind
-    current_app.logger.info(
-        f"Narrative Route (Bruger: {user_id_for_log}, E-mail: {current_user.email}): Modtaget data for /generate_narrative_story: {original_user_inputs}")
+    user_id_for_log = current_user.id
+    current_app.logger.info(f"Narrative Route (Bruger: {user_id_for_log}): Modtaget anmodning om historiegenerering.")
 
-    # --- TRIN 1: Generer Narrativt Brief ---
-    narrative_focus = original_user_inputs.get('narrative_focus')
-    if not narrative_focus:
-        current_app.logger.error(f"Bruger {user_id_for_log}: Manglende 'narrative_focus' i /generate_narrative_story.")
-        return jsonify({"error": "Obligatorisk felt 'narrative_focus' mangler."}), 400
+    # NYT: Hent data for fortsættelse
+    parent_story_id = original_user_inputs.get('parent_story_id')
+    continuation_strategy = original_user_inputs.get('continuation_strategy')
+    continuation_context = None
+
+    if parent_story_id and continuation_strategy:
+        current_app.logger.info(
+            f"Dette er en fortsættelse af historie ID {parent_story_id} med strategi '{continuation_strategy}'.")
+        parent_story = Story.query.get(parent_story_id)
+        if parent_story and parent_story.user_id == current_user.id:
+            continuation_context = {
+                'strategy': continuation_strategy,
+                'problem_name': parent_story.problem_name,
+                'discovered_method_name': parent_story.discovered_method_name
+                # Vi kan tilføje flere felter her senere om nødvendigt
+            }
+        else:
+            current_app.logger.warning(
+                f"Bruger {user_id_for_log} forsøgte at fortsætte en ugyldig eller uautoriseret historie (ID: {parent_story_id}).")
+            # Ignorer fortsættelsen, men generer stadig en normal historie for at undgå fejl i frontend
+            parent_story_id = None
 
     try:
-        current_app.logger.info(f"Bruger {user_id_for_log}: Starter TRIN 1 - Generering af narrativt brief...")
+        # VI SKAL OPDATERE DISSE KALD SENERE TIL AT BRUGE 'continuation_context'
+        # For nu lader vi dem være, så appen ikke crasher.
+        # Send nu den nye kontekst med i kaldene
         narrative_brief = generate_narrative_brief(original_user_inputs)
-
-        if isinstance(narrative_brief, str) and narrative_brief.lower().startswith("fejl:"):
-            current_app.logger.error(f"Bruger {user_id_for_log} (TRIN 1): Fejl fra generate_narrative_brief: {narrative_brief}")
-            return jsonify({"error": narrative_brief, "details": "Fejl under Trin 1 (brief generering)"}), 500
-
-        current_app.logger.info(f"Bruger {user_id_for_log}: TRIN 1 fuldført. Narrativt brief genereret.")
-        current_app.logger.debug(f"Narrative Route (Bruger: {user_id_for_log}): Modtaget brief (første 200 tegn): {narrative_brief[:200]}")
-
-        # --- TRIN 2: Udarbejd Historieudkast med RAG ---
-        current_app.logger.info(f"Bruger {user_id_for_log}: Starter TRIN 2 - Udarbejdelse af historieudkast med RAG...")
         story_title_from_draft, story_content_from_draft = draft_narrative_story_with_rag(
-            # Fjernet reflection_questions her
             structured_brief=narrative_brief,
             original_user_inputs=original_user_inputs,
-            narrative_focus_for_rag=narrative_focus
+            narrative_focus_for_rag=original_user_inputs.get('narrative_focus'),
+            continuation_context=continuation_context  # <--- VIGTIG TILFØJELSE
         )
-
-        if isinstance(story_content_from_draft, str) and story_content_from_draft.lower().startswith("fejl:"):
-            current_app.logger.error(
-                f"Bruger {user_id_for_log} (TRIN 2): Fejl fra draft_narrative_story_with_rag: {story_content_from_draft}")
-            return jsonify({"error": story_content_from_draft, "details": "Fejl under Trin 2 (historie udarbejdelse)"}), 500
-
-        if not story_title_from_draft or not story_content_from_draft:  # Korrekt tjek
-            current_app.logger.warning(
-                f"Bruger {user_id_for_log} (TRIN 2): draft_narrative_story_with_rag returnerede tom titel eller indhold. Titel: '{story_title_from_draft}', Indhold OK: {bool(story_content_from_draft)}")
-            return jsonify(
-                {"error": "Historieudkast fra Trin 2 var ufuldstændigt.", "title_received": story_title_from_draft,
-                 "content_received": bool(story_content_from_draft)}), 500
-
-        current_app.logger.info(  # <--- OPDATERET LINJE
-            f"Bruger {user_id_for_log}: TRIN 2 fuldført. Historieudkast '{story_title_from_draft[:50]}...' genereret. (Spørgsmål genereres i Trin 4)")
-
-        # --- TRIN 3: Rediger Historieudkast ---
-        current_app.logger.info(f"Bruger {user_id_for_log}: Starter TRIN 3 - Redigering af historieudkast...")
         final_story_title, final_story_content = edit_narrative_story(
             story_draft_title=story_title_from_draft,
             story_draft_content=story_content_from_draft,
             original_user_inputs=original_user_inputs
         )
 
-        if isinstance(final_story_content, str) and final_story_content.lower().startswith("fejl:"):
-            current_app.logger.error(
-                f"Bruger {user_id_for_log} (TRIN 3): Fejl fra edit_narrative_story: {final_story_content}")
-            return jsonify({
-                "status": "Trin 1 & 2 fuldført, men Trin 3 (Redigering) fejlede.",
-                "warning": "Historien nedenfor er et uredigeret udkast, da den endelige redigering mislykkedes.",
-                "title": story_title_from_draft,
-                "story": story_content_from_draft,
-                # "reflection_questions": reflection_questions,
-                "narrative_brief_for_reference": narrative_brief,
-                "error_details_step3": final_story_content
-            }), 200
+        # Gem den nye historie
+        new_story = Story(
+            title=final_story_title,
+            content=final_story_content,
+            user_id=current_user.id,
+            source='Narrativ Støtte',
+            is_log_entry=False
+        )
 
-        current_app.logger.info(f"Bruger {user_id_for_log}: TRIN 3 fuldført. Historie redigeret til '{final_story_title[:50]}...'.")
+        # NYT: Sæt parent_id og series_part, hvis det er en fortsættelse
+        if parent_story_id and parent_story:
+            new_story.parent_story_id = parent_story_id
+            new_story.series_part = parent_story.series_part + 1
+
+        db.session.add(new_story)
+        db.session.commit()
+        current_app.logger.info(
+            f"Bruger {user_id_for_log}: Ny historie (ID: {new_story.id}) gemt. Parent ID: {new_story.parent_story_id}.")
 
         return jsonify({
-            "status": "Alle 3 historiegenereringstrin fuldført. Endelig narrativ historie er klar. Refleksionsspørgsmål hentes separat.",
-            "title": final_story_title,
-            "story": final_story_content,
-            # "reflection_questions": reflection_questions, <-- FJERNET
-            "narrative_brief_for_reference": narrative_brief,
-            "draft_title_from_step2_for_reference": story_title_from_draft,
-            "draft_content_from_step2_for_reference": story_content_from_draft[:200] + "..." if story_content_from_draft else None
+            "status": "Historie genereret og gemt succesfuldt.",
+            "story_id": new_story.id,
+            "title": new_story.title,
+            "story": new_story.content,
+            "narrative_brief_for_reference": narrative_brief
         }), 200
 
     except Exception as e:
+        db.session.rollback()
         current_app.logger.error(
-            f"Bruger {user_id_for_log}: Uventet fejl i /generate_narrative_story endpoint: {e}\n{traceback.format_exc()}")
-        return jsonify({"error": "En uventet intern serverfejl opstod under narrativ generering."}), 500
+            f"Bruger {user_id_for_log}: Uventet fejl i /generate_narrative_story: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": "En uventet serverfejl opstod."}), 500
 
 @narrative_bp.route('/get_guiding_questions', methods=['POST'])
 @login_required
@@ -229,5 +218,209 @@ def suggest_character_traits():
             f"Bruger {user_id_for_log}: Uventet fejl i /suggest_character_traits efter validering: {e}\n{traceback.format_exc()}")
         return jsonify({"error": "En uventet intern serverfejl opstod under forslag til karaktertræk."}), 500
 
-# Kommentar: Den gamle step1 generator funktion er fjernet fra imports og brug,
-# da den er erstattet af det nye 3-trins flow.
+
+@narrative_bp.route('/analyze-for-logbook', methods=['POST'])
+@login_required
+def analyze_for_logbook():
+    """
+    API-endepunkt der modtager en historie og returnerer en AI-genereret
+    analyse med henblik på at oprette en logbogs-indtastning.
+    """
+    if current_user.role != 'premium':
+        return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403
+
+    if not request.is_json:
+        return jsonify({"error": "Anmodning skal være JSON."}), 415
+
+    data = request.get_json()
+    story_content = data.get('story_content')
+
+    if not story_content:
+        return jsonify({"error": "Feltet 'story_content' mangler."}), 400
+
+    try:
+        analysis_data = analyze_story_for_logbook(story_content)
+        if 'error' in analysis_data:
+            # Hvis ai_service selv fangede en fejl, returneres den
+            return jsonify(analysis_data), 500
+
+        return jsonify(analysis_data), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Route /analyze-for-logbook: Uventet fejl: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": "En uventet serverfejl opstod."}), 500
+
+@narrative_bp.route('/save-log-entry/<int:story_id>', methods=['POST'])
+@login_required
+def save_log_entry(story_id):
+    """
+    API-endepunkt der modtager de udfyldte data fra dokumentations-formularen
+    og gemmer dem på den specifikke historie i databasen.
+    """
+    if current_user.role != 'premium':
+        return jsonify({"error": "Adgang nægtet."}), 403
+
+    # Find den eksisterende historie, der blev oprettet ved generering
+    story = Story.query.get_or_404(story_id)
+
+    # Sikkerhedstjek: Sørg for at brugeren ejer historien
+    if story.user_id != current_user.id:
+        current_app.logger.warning(
+            f"Bruger {current_user.id} forsøgte at gemme logbogsdata for en andens historie (ID: {story_id}).")
+        return jsonify({"error": "Uautoriseret adgang."}), 403
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Ingen data modtaget."}), 400
+
+    current_app.logger.info(f"Modtager logbogsdata for historie {story_id}: {data}")
+
+    try:
+        # Opdater Story-objektet med alle data fra formularen
+        story.problem_name = data.get('problem_name')
+        story.problem_influence = data.get('problem_influence')
+        story.unique_outcome = data.get('unique_outcome')
+        story.discovered_method_name = data.get('discovered_method_name')
+        story.discovered_method_steps = data.get('discovered_method_steps')
+        story.child_values = data.get('child_values')
+        story.support_system = data.get('support_system')
+        story.user_notes = data.get('user_notes')
+
+        # Håndter tal-inputs, der kan være tomme strenge
+        progress_before = data.get('progress_before')
+        story.progress_before = int(progress_before) if progress_before and progress_before.isdigit() else None
+
+        progress_after = data.get('progress_after')
+        story.progress_after = int(progress_after) if progress_after and progress_after.isdigit() else None
+
+        # VIGTIGT: Markér historien som en logbogs-indtastning
+        story.is_log_entry = True
+
+        db.session.commit()
+        current_app.logger.info(
+            f"Historie {story_id} er succesfuldt opdateret og markeret som logbogs-indtastning.")
+
+        return jsonify({"success": True, "message": "Historien er gemt i din logbog."}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(
+            f"Fejl under gemning af logbogsdata for historie {story_id}: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": "En intern fejl opstod under gemning."}), 500
+
+
+@narrative_bp.route('/api/logbook/filter', methods=['POST'])
+@login_required
+def filter_logbook():
+    """
+    API-endepunkt til dynamisk at filtrere og sortere logbogs-historier.
+    """
+    data = request.get_json()
+
+    source = data.get('source')
+    search_term = data.get('searchTerm')
+    sort_by = data.get('sortBy')
+
+    # Start med en basisforespørgsel
+    query = Story.query.filter_by(user_id=current_user.id, is_log_entry=True)
+
+    # Tilføj filter for kilde
+    if source and source != 'all':
+        query = query.filter(Story.source == source)
+
+    # Tilføj filter for søgeterm
+    if search_term:
+        query = query.filter(or_(
+            Story.title.ilike(f'%{search_term}%'),
+            Story.content.ilike(f'%{search_term}%')
+        ))
+
+    # Tilføj sortering
+    if sort_by == 'oldest':
+        query = query.order_by(Story.created_at.asc())
+    elif sort_by == 'title_asc':
+        query = query.order_by(Story.title.asc())
+    elif sort_by == 'title_desc':
+        query = query.order_by(Story.title.desc())
+    else:  # Default til nyeste først
+        query = query.order_by(Story.created_at.desc())
+
+    filtered_stories = query.all()
+
+    # Konverter historierne til et format, der kan sendes som JSON
+    stories_list = []
+    for story in filtered_stories:
+        stories_list.append({
+            'id': story.id,
+            'title': story.title,
+            'content': story.content,
+            'source': story.source,
+            'created_at': story.created_at.strftime('%d. %b %Y'),
+            'problem_name': story.problem_name,
+            'problem_influence': story.problem_influence,
+            'unique_outcome': story.unique_outcome,
+            'discovered_method_name': story.discovered_method_name,
+            'discovered_method_steps': story.discovered_method_steps,
+            'child_values': story.child_values,
+            'support_system': story.support_system,
+            'user_notes': story.user_notes
+        })
+
+    return jsonify(stories_list)
+
+
+@narrative_bp.route('/api/notes/update/<int:story_id>', methods=['POST'])
+@login_required
+def update_note(story_id):
+    """
+    API-endepunkt til specifikt at opdatere user_notes for en given historie.
+    Dette er en letvægts-operation designet til hurtige 'auto-save' eller 'gem'-kald.
+    """
+    story = Story.query.get_or_404(story_id)
+
+    # Sikkerhedstjek: Sørg for at brugeren ejer historien
+    if story.user_id != current_user.id:
+        return jsonify({"error": "Uautoriseret adgang."}), 403
+
+    data = request.get_json()
+    if not data or 'notes' not in data:
+        return jsonify({"error": "Manglende 'notes' felt i anmodning."}), 400
+
+    try:
+        story.user_notes = data['notes']
+        db.session.commit()
+        current_app.logger.info(f"Noter for historie {story_id} opdateret for bruger {current_user.id}.")
+        return jsonify({"success": True, "message": "Noter er gemt."})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Fejl under opdatering af noter for historie {story_id}: {e}")
+        return jsonify({"error": "Intern fejl ved gemning af noter."}), 500
+
+
+@narrative_bp.route('/api/list-stories', methods=['GET'])
+@login_required
+def list_stories_for_continuation():
+    """
+    API-endepunkt der returnerer en simpel liste af brugerens gemte
+    "Narrativ Støtte"-historier, som kan bruges som forældre-historier.
+    """
+    if current_user.role != 'premium':
+        return jsonify({"error": "Adgang nægtet."}), 403
+
+    try:
+        # Find alle historier fra den loggede bruger, som er gemt i logbogen
+        # og som stammer fra "Narrativ Støtte".
+        continuable_stories = Story.query.filter_by(
+            user_id=current_user.id,
+            is_log_entry=True,
+            source='Narrativ Støtte'
+        ).order_by(Story.created_at.desc()).all()
+
+        # Formater outputtet til kun at indeholde id og titel
+        stories_data = [{'id': story.id, 'title': story.title} for story in continuable_stories]
+
+        return jsonify(stories_data)
+
+    except Exception as e:
+        current_app.logger.error(f"Fejl under hentning af historieliste for bruger {current_user.id}: {e}")
+        return jsonify({"error": "Intern fejl ved hentning af historieliste."}), 500

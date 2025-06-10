@@ -3,19 +3,44 @@
 def build_narrative_drafting_prompt(
         structured_brief,
         rag_context,
-        original_user_inputs
+        original_user_inputs,
+        continuation_context=None  # NYT: Modtager nu kontekst for fortsættelse
 ):
     """
-    Bygger prompten for Trin 2 AI (Narrativ Udkast AI / Terapi-AI),
-    der KUN skal generere det første, komplette, narrativt rige historieudkast (titel og indhold).
-    Refleksionsspørgsmål genereres nu i et separat Trin 4.
+    Bygger prompten for Trin 2 AI (Narrativ Udkast AI / Terapi-AI).
+    Kan nu håndtere at skabe en fortsættelse baseret på continuation_context.
     """
 
     prompt_parts = [
         "SYSTEM INSTRUKTION: Du er en yderst kreativ og empatisk AI-assistent med speciale i at skrive engagerende børnehistorier. Du har dyb viden om narrativ terapi og pædagogik og forstår, hvordan man bruger historiefortælling til at støtte børns følelsesmæssige udvikling. Din opgave er at skrive et komplet, narrativt rigt historieudkast baseret på nedenstående information.",
-        "Outputtet skal starte med historiens TITEL på den allerførste linje. Efter titlen, indsæt ET ENKELT LINJESKIFT, og start derefter selve historieteksten. Returner KUN titel og historietekst.", # ÆNDRET
+        "Outputtet skal starte med historiens TITEL på den allerførste linje. Efter titlen, indsæt ET ENKELT LINJESKIFT, og start derefter selve historieteksten. Returner KUN titel og historietekst.",
         "---"
     ]
+
+    # NYT: Tilføjelse af Kontekst-sektion HVIS det er en fortsættelse
+    if continuation_context:
+        strategy = continuation_context.get('strategy')
+        problem_name = continuation_context.get('problem_name')
+        method_name = continuation_context.get('discovered_method_name')
+
+        context_header = "DEL 0: KONTEKST FOR FORTSÆTTELSE (MEGET VIGTIGT!)"
+        context_body = ""
+
+        if strategy == 'deepen':
+            context_body = (
+                f"Dette er en fortsættelse. Protagonisten har allerede opdaget en metode kaldet '{method_name}' til at håndtere problemet '{problem_name}'.\n"
+                f"Den nye historie skal handle om, hvordan protagonisten **forfiner, opgraderer eller bruger denne metode på en ny måde** i mødet med det **samme problem** ('{problem_name}'). "
+                "Fokus er på at bygge selvtillid og mestre metoden i en velkendt situation."
+            )
+        elif strategy == 'generalize':
+            context_body = (
+                f"Dette er en fortsættelse. Protagonisten skal nu anvende sin kendte og lærte metode, '{method_name}', til at løse en **helt ny og anderledes udfordring**.\n"
+                f"Den nye historie skal illustrere, hvordan styrken eller metoden er fleksibel og kan bruges i andre sammenhænge. Problemet '{problem_name}' fra den forrige historie skal IKKE være hovedfokus her."
+            )
+
+        prompt_parts.append(context_header)
+        prompt_parts.append(context_body)
+        prompt_parts.append("---")
 
     prompt_parts.append(
         "DEL 1: BRUGERENS ØNSKER OG BARNETS PROFIL (FRA TRIN 1 BRIEF - DETTE ER DIN PRIMÆRE OG ULTIMATIVE GUIDE FOR HISTORIENS INDHOLD, INPUT SKAL ANVENDES I HISTORIEN):")
@@ -96,7 +121,6 @@ def build_narrative_drafting_prompt(
         "   D.  **Undgå Negativer:** Respekter eventuelle 'Elementer der IKKE skal med i historien' fra briefet (DEL 1).")
     prompt_parts.append(
         "   E.  **Afslutning:** Sørg for en positiv og tryg afslutning, der er passende for en godnathistorie. Følg eventuelle specifikke instruktioner for afslutningen fra briefet (DEL 1).")
-    # Punkt F er fjernet
 
     prompt_parts.append("\nSTRUKTUR FOR DIT OUTPUT (VIGTIGT AT FØLGE PRÆCIST):")
     prompt_parts.append("TITEL PÅ HISTORIEN")
@@ -104,58 +128,5 @@ def build_narrative_drafting_prompt(
     prompt_parts.append("Selve historieteksten her...")
     prompt_parts.append("...historien fortsætter...")
     prompt_parts.append("...historien slutter her.")
-    # Linjer for REFLEKSIONSSPØRGSMÅL er fjernet
 
     return "\n".join(prompt_parts)
-
-
-if __name__ == '__main__':  # Denne del er kun til test og påvirker ikke importen
-    example_structured_brief = """
-STRUKTURERET OPSUMMERING AF BRUGERINPUT:
-========================================
-1. NARRATIVT FOKUS (TEMA/UDFORDRING):
-   - Min datter på 6 år er bange for mørke og monstre under sengen.
-2. ØNSKET UDVIKLING/MÅL FOR HISTORIEN:
-   - At hun føler sig mere modig og tryg ved sengetid.
-3. INFORMATION OM BARNET (PROTAGONISTENS UDGANGSPUNKT):
-   - Navn: Lily
-   - Alder: 6
-   - Styrker/Ressourcer: Fantasifuld, God til at tegne, Elsker sin bamse Bruno
-   - Værdier/Overbevisninger: Ikke angivet
-   - Dybeste Ønske/Motivation (udover problemfokus): Vil gerne sove med lyset slukket
-   - Typisk Reaktion på Udfordring: Bliver bange og kalder
-   - Vigtige Relationer (Støttefigurer): Bamse Bruno (Tryghedsgiver), Mor (Hjælper)
-4. PROBLEM-KARAKTER (EKSTERNALISERING AF UDFORDRING - SOM ANGIVET AF BRUGER):
-   - Navn/Identitet for Problemet: Skygge-Snip
-   - Problemets Rolle/Funktion: Gemmer sig i mørket og hvisker
-   - Problemets Formål/Intention: Vil gøre Lily utryg
-   - Problemets Adfærd/Handling: Laver uhyggelige former, lyder skræmmende
-   - Problemets Indflydelse på Hovedpersonen: Gør Lily bange for at sove alene
-5. GENERELLE HISTORIEELEMENTER OG RAMMER (SOM ANGIVET AF BRUGER):
-   - Andre Hovedkarakterer i Historien: En klog, gammel måne-ugle
-   - Sted(er) hvor historien skal foregå: Lilys soveværelse, et drømmeland på månen
-   - Plot-elementer eller Ønsket Morale: Lily lærer at bruge sin fantasi til at gøre skyggerne til venner.
-   - Elementer der IKKE skal med i historien: At monstre er virkelige og onde.
-   - Ønsket Historiens Længde: kort
-   - Ønsket Historiens Stemning: tryg, håbefuld, lidt magisk
-========================================
-    """
-    example_rag_context = [
-        "Eksternalisering: At give problemet et navn og se det som adskilt fra barnet.",
-        "Unikke udfald: Fokuser på øjeblikke, hvor problemet ikke havde magt."
-    ]
-    example_original_inputs = {
-        'narrative_focus': "Min datter på 6 år er bange for mørke og monstre under sengen.",
-        'child_name': "Lily",
-        'child_age': "6",
-        'length': "kort",
-        'mood': "håbefuld",
-        'narrative_problem_identity_name': "Skygge-Monstret"
-    }
-
-    drafting_prompt = build_narrative_drafting_prompt(
-        structured_brief=example_structured_brief,
-        rag_context=example_rag_context,
-        original_user_inputs=example_original_inputs
-    )
-    print(drafting_prompt)

@@ -24,6 +24,7 @@ from prompts.narrative_editing_prompt import build_narrative_editing_prompt
 from services.rag_service import find_relevant_chunks_v2
 from prompts.narrative_question_prompt import build_narrative_question_prompt
 from google.cloud.texttospeech_v1 import TextToSpeechClient, SynthesisInput, VoiceSelectionParams, AudioConfig, SsmlVoiceGender, AudioEncoding
+from prompts.logbook_analysis_prompt import build_logbook_analysis_prompt
 
 # Definerede stemmer til Google Text-to-Speech (Engelske Gemini TTS-modeller)
 # Zephyr virker. Gacrux, Sadachbia, Zubenelgenubi forventes IKKE at virke med denne klient/model.
@@ -620,31 +621,19 @@ def generate_narrative_brief(
 
 
 def draft_narrative_story_with_rag(
-        structured_brief,  # Output fra Trin 1
-        original_user_inputs,  # Dictionary med alle originale brugerinput
-        narrative_focus_for_rag  # Specifikt felt fra brugerinput til RAG-søgning, f.eks. 'narrative_focus' strengen
+        structured_brief,
+        original_user_inputs,
+        narrative_focus_for_rag,
+        continuation_context=None
 ):
     """
-    Genererer et første udkast til en narrativ historie og refleksionsspørgsmål
-    ved hjælp af en AI-model, det strukturerede brief fra Trin 1, og RAG-kontekst.
-    Dette er Trin 2 i den reviderede narrative AI-proces.
-
-    Args:
-        structured_brief (str): Det brief, der blev genereret af Trin 1 AI.
-        original_user_inputs (dict): En dictionary med de oprindelige brugerinput.
-                                     Kan bruges til at give AI'en adgang til råtekst
-                                     eller detaljer, der måtte være opsummeret i briefet.
-        narrative_focus_for_rag (str): Den tekststreng (typisk brugerens narrative fokus),
-                                       der skal bruges til at søge i RAG-videnbasen.
-
-    Returns:
-        tuple: (story_title, story_content, reflection_questions)
-               Hvor reflection_questions er en liste af strenge.
-               Returnerer (None, "Fejlbesked...", []) ved fejl.
+    Genererer et første udkast til en narrativ historie.
+    Kan nu håndtere at skabe en fortsættelse baseret på continuation_context.
     """
     current_app.logger.info("AI Service: Påbegynder udarbejdelse af narrativ historie med RAG (Trin 2)...")
     story_title = None
     story_content = "Fejl: Kunne ikke generere historieudkast (Trin 2)."
+    reflection_questions = []
 
     # 1. Hent RAG-kontekst
     rag_chunks = []
@@ -652,19 +641,15 @@ def draft_narrative_story_with_rag(
         try:
             current_app.logger.info(
                 f"AI Service: Henter RAG-kontekst baseret på: '{narrative_focus_for_rag[:100]}...'")
-            rag_chunks = find_relevant_chunks_v2(narrative_focus_for_rag,
-                                              top_k=2)  # Hent f.eks. top 2 relevante chunks
+            rag_chunks = find_relevant_chunks_v2(narrative_focus_for_rag, top_k=2)
             if rag_chunks:
                 current_app.logger.info(f"AI Service: {len(rag_chunks)} RAG-chunks fundet.")
-                for i, chunk_text in enumerate(rag_chunks):
-                    current_app.logger.debug(f"AI Service: RAG Chunk #{i + 1}: {chunk_text[:100]}...")
             else:
                 current_app.logger.info("AI Service: Ingen relevante RAG-chunks fundet.")
         except Exception as e_rag:
             current_app.logger.error(
                 f"AI Service: Fejl under hentning af RAG-kontekst: {e_rag}\n{traceback.format_exc()}")
-            # Fortsæt uden RAG-kontekst, men log fejlen. AI'en får besked i prompten.
-            rag_chunks = []  # Sikrer at det er en tom liste
+            rag_chunks = []
     else:
         current_app.logger.warning("AI Service: narrative_focus_for_rag var tom. Skipper RAG-søgning.")
 
@@ -673,44 +658,33 @@ def draft_narrative_story_with_rag(
         prompt_string = build_narrative_drafting_prompt(
             structured_brief=structured_brief,
             rag_context=rag_chunks,
-            original_user_inputs=original_user_inputs
+            original_user_inputs=original_user_inputs,
+            continuation_context=continuation_context
         )
         current_app.logger.debug(
-            f"AI Service: Narrativ drafting prompt bygget (længde: {len(prompt_string)}). Første 300 tegn:\n{prompt_string[:300]}")
+            f"AI Service: Narrativ drafting prompt bygget (længde: {len(prompt_string)}).")
 
         # 3. Konfigurer og kald AI-modellen
-        # Anbefalet model er Gemini 2.5 Pro ifølge modulbeskrivelsen.
-        # For nuværende test kan vi starte med 'gemini-1.5-pro-latest' eller 'gemini-1.5-flash-latest'
-        # 'gemini-1.5-pro-latest' er kraftigere og bedre til kreativ skrivning end flash.
-        # Husk at 'gemini-2.5-pro-preview-05-06' var den specifikke model nævnt.
-        # Hvis den ikke er tilgængelig via din API-nøgle, brug en tilgængelig Pro-model.
-        # Lad os prøve med 'gemini-1.5-pro-latest' som et godt kompromis for nu.
         ai_model_name = 'gemini-2.5-pro-preview-05-06'
         model = genai.GenerativeModel(ai_model_name)
         current_app.logger.info(f"AI Service: Anvender AI-model '{ai_model_name}' for Trin 2.")
 
         safety_settings = {
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
         }
 
         story_length_preference = original_user_inputs.get('length', 'mellem')
-        max_tokens_for_draft = 8192  # Default til den højeste værdi (for 'lang' og fallback)
-
+        max_tokens_for_draft = 8192
         if story_length_preference == 'kort':
-            max_tokens_for_draft = 2048  # Lavere grænse for "kort" (plads til ca. 6-8 afsnit + spørgsmål)
+            max_tokens_for_draft = 2048
         elif story_length_preference == 'mellem':
-            max_tokens_for_draft = 4096  # Mellem grænse for "mellem" (plads til ca. 10-14 afsnit + spørgsmål)
-        # Hvis 'lang', forbliver den 8192
-
-        current_app.logger.info(
-            f"AI Service (Trin 2 Udkast): Ønsket længde '{story_length_preference}'. Sætter max_tokens_for_draft til {max_tokens_for_draft}.")
-        # --- SLUT PÅ NY DYNAMISK MAX_OUTPUT_TOKENS LOGIK ---
+            max_tokens_for_draft = 4096
 
         generation_config_settings = {
-            "max_output_tokens": max_tokens_for_draft,  # BRUGER NU DEN DYNAMISKE VÆRDI
+            "max_output_tokens": max_tokens_for_draft,
             "temperature": 0.6,
             "top_p": 0.95,
         }
@@ -732,64 +706,36 @@ def draft_narrative_story_with_rag(
             if not raw_response_text:
                 current_app.logger.warning("AI Service: Historieudkast (Trin 2) fra Gemini var tomt.")
                 story_content = "Fejl: AI returnerede et tomt historieudkast."
-                return story_title, story_content, reflection_questions
+                return story_title, story_content
 
             current_app.logger.info("AI Service: Historieudkast (Trin 2) genereret succesfuldt.")
-            current_app.logger.debug(
-                f"AI Service: KOMPLET Rå output fra Trin 2 AI:\n---- START ----\n{raw_response_text}\n---- SLUT ----")
 
-            current_app.logger.info("AI Service: Historieudkast (Trin 2) genereret succesfuldt.")
-            current_app.logger.debug(
-                f"AI Service: KOMPLET Rå output fra Trin 2 AI:\n---- START ----\n{raw_response_text}\n---- SLUT ----")
-
-            # Forenklet parsing for kun titel og historie
-            # Vi forventer nu, at AI'en IKKE inkluderer "--- REFLEKSIONSSPØRGSMÅL ---"
             title_story_parts = raw_response_text.split('\n', 1)
             if title_story_parts and title_story_parts[0].strip():
                 story_title = title_story_parts[0].strip()
                 story_content = title_story_parts[1].strip() if len(title_story_parts) > 1 and title_story_parts[
                     1].strip() else ""
-                if not story_content:
-                    current_app.logger.warning(
-                        f"AI Service (Trin 2): Modtog titel '{story_title}', men ingen efterfølgende historietekst.")
-                    # story_content = "Historien mangler indhold efter titlen." # Eller lad den være tom
-            elif raw_response_text:  # Hvis der ikke er linjeskift, men der er tekst
-                story_title = "Uden Titel (Trin 2)"
+            else:
+                story_title = "Uden Titel (Trin 2 - Parse Fejl)"
                 story_content = raw_response_text
-                current_app.logger.warning(
-                    "AI Service (Trin 2): Kunne ikke splitte titel og historie, bruger råtekst som historie.")
-            else:  # Tom respons
-                story_title = "Uden Titel (Trin 2 - Tom Respons)"
-                story_content = "AI returnerede et tomt svar for historieudkastet."
-                current_app.logger.warning("AI Service (Trin 2): Modtog helt tom respons fra AI.")
-
-            if not story_content:  # Denne linje bevares og er vigtig
-                current_app.logger.warning("AI Service: Selve historieteksten er tom efter parsing.")
-                story_content = "Historien mangler indhold."
 
             if not story_content:
                 current_app.logger.warning("AI Service: Selve historieteksten er tom efter parsing.")
                 story_content = "Historien mangler indhold."
 
-
-        except ValueError as e_safety:  # Håndter hvis AI'ens svar blokeres
+        except ValueError as e_safety:
             current_app.logger.error(
                 f"AI Service: Svar til historieudkast (Trin 2) blokeret af sikkerhedsfilter: {e_safety}")
-            current_app.logger.error(
-                f"AI Service: Prompt Feedback (Trin 2): {response.prompt_feedback if hasattr(response, 'prompt_feedback') else 'Ingen prompt feedback.'}")
             story_content = "Fejl: Indhold til historien blev blokeret af AI'en. Prøv at justere dine input."
-            # story_title forbliver None eller hvad den var før
         except Exception as e_parse:
             current_app.logger.error(
                 f"AI Service: Fejl ved parsing af AI-svar (Trin 2): {e_parse}\n{traceback.format_exc()}")
-            story_content = f"Fejl: Kunne ikke parse svaret fra AI for historieudkast (Trin 2). Rå output: {raw_response_text[:200]}..."
-            # story_title forbliver None
+            story_content = f"Fejl: Kunne ikke parse svaret fra AI. Rå output: {raw_response_text[:200]}..."
 
     except Exception as e_general:
         current_app.logger.error(
             f"AI Service: Generel fejl under udarbejdelse af historieudkast (Trin 2): {e_general}\n{traceback.format_exc()}")
         story_content = f"Fejl: Teknisk fejl i AI-tjenesten under udarbejdelse af historieudkast (Trin 2)."
-        # story_title forbliver None
 
     return story_title, story_content
 
@@ -1146,3 +1092,45 @@ def refine_story_for_lix(story_title: str, story_content: str, target_lix: int, 
     current_app.logger.warning(
         f"LIX-justering: Max antal forsøg ({MAX_RETRIES}) nået. Returnerer bedste forsøg med LIX: {final_lix}")
     return current_title, current_content, final_lix
+
+
+def analyze_story_for_logbook(story_content: str) -> dict:
+    """
+    Analyserer en historie og returnerer en struktureret ordbog med narrative indsigter.
+    Bruger en specifik prompt og forventer et JSON-svar fra AI'en.
+
+    Args:
+        story_content: Teksten fra den genererede historie.
+
+    Returns:
+        En ordbog med de analyserede data, eller en ordbog med en 'error'-nøgle.
+    """
+    current_app.logger.info("AI Service: Starter analyse af historie for logbog...")
+    try:
+        prompt = build_logbook_analysis_prompt(story_content)
+
+        model = genai.GenerativeModel('gemini-1.5-pro-latest')  # Bruger en stærk model til analyse
+
+        # Konfiguration for at sikre JSON output
+        generation_config = genai.types.GenerationConfig(
+            temperature=0.4,
+            response_mime_type="application/json"
+        )
+
+        response = model.generate_content(
+            prompt,
+            generation_config=generation_config
+        )
+
+        # response.text vil nu være den rene JSON-streng
+        analysis_result = json.loads(response.text)
+        current_app.logger.info("AI Service: Succesfuld analyse af historie. JSON parset.")
+        return analysis_result
+
+    except json.JSONDecodeError as e:
+        current_app.logger.error(f"AI Service: JSONDecodeError ved analyse af historie: {e}")
+        current_app.logger.error(f"AI'ens rå output: {response.text}")
+        return {"error": "AI'en returnerede et ugyldigt format."}
+    except Exception as e:
+        current_app.logger.error(f"AI Service: Generel fejl ved analyse af historie: {e}\n{traceback.format_exc()}")
+        return {"error": f"En teknisk fejl opstod under analysen: {e}"}

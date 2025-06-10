@@ -1476,3 +1476,116 @@ input:disabled + .slider-label:before {
 /* =================================================================== */
 /* SLUT PÅ STYLING FOR LÆSEHESTEN MODUL                                */
 /* =================================================================== */
+
+/* ... eksisterende CSS ... */
+/* =================================================================== */
+/* SLUT PÅ STYLING FOR LÆSEHESTEN MODUL                                */
+/* =================================================================== */
+
+/* ----- KODE, DER SKAL TILFØJES, STARTER HER ----- */
+
+/* Styling for Logbogs-dokumentationssektion */
+#logbook-entry-form {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+}
+
+.logbook-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-group-logbook {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group-logbook.full-width {
+    grid-column: 1 / -1; /* Spænd over begge kolonner */
+}
+
+.form-group-logbook label {
+    margin-bottom: 8px;
+    font-weight: bold;
+    font-size: 0.9em;
+    color: #333;
+}
+
+.form-group-logbook input[type="text"],
+.form-group-logbook textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-family: var(--font-body);
+    font-size: 1em;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group-logbook input[type="text"]:focus,
+.form-group-logbook textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(77, 182, 172, 0.3);
+}
+
+.form-group-logbook textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Styling for inputfelter, der er forudfyldt af AI */
+.ai-suggested-input {
+    background-color: #e6fffa; /* En meget lys teal/mint farve */
+    border-left: 3px solid var(--color-primary);
+    transition: background-color 0.5s ease-in-out;
+}
+
+/* Styling for progress sliders */
+.form-group-logbook.progress-slider {
+    align-items: center;
+}
+.form-group-logbook.progress-slider input[type="range"] {
+    width: 100%;
+    margin-top: 5px;
+}
+.form-group-logbook.progress-slider .range-value {
+    font-weight: bold;
+    color: var(--color-primary);
+    margin-left: 10px;
+}
+.primary-action-button {
+    display: block;
+    width: 100%;
+    background-color: var(--color-primary);
+    color: white;
+    font-size: 1.1em;
+    font-weight: 700;
+    padding: 12px 20px;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.primary-action-button:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+    transform: translateY(-1px);
+}
+
+.primary-action-button:disabled {
+    background-color: #ccc !important;
+    color: #888 !important;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.tab-navigation .tab-button {
+    text-decoration: none; /* Fjerner understregning hvis det er et <a> tag */
+    -webkit-appearance: none; /* Fjerner default styling på iOS */
+    appearance: none;
+}

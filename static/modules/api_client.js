@@ -239,3 +239,98 @@ export async function generateLixStoryApi(lixStoryData) {
     console.log("api_client.js: LIX Story data received from server:", result);
     return result;
 }
+
+// ... eksisterende kode i api_client.js
+// Sørg for at denne funktion tilføjes til filen.
+// Den kan placeres efter den sidste eksisterende funktion.
+
+export async function analyzeStoryForLogbookApi(storyContent) {
+    console.log("api_client.js: analyzeStoryForLogbookApi called.");
+    const response = await fetch('/narrative/analyze-for-logbook', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ story_content: storyContent })
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Serverfejl med ugyldigt svarformat." }));
+        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+export async function saveLogbookEntryApi(storyId, dataToSave) {
+    console.log(`api_client.js: saveLogbookEntryApi called for story ID: ${storyId}`);
+    const response = await fetch(`/narrative/save-log-entry/${storyId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(dataToSave)
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved gem." }));
+        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+export async function filterLogbookApi(filterData) {
+    console.log("api_client.js: filterLogbookApi called with:", filterData);
+    // VIGTIGT: Sørg for at URL'en matcher den route, vi har defineret i narrative_routes.py
+    const response = await fetch('/narrative/api/logbook/filter', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(filterData)
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved filtrering." }));
+        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+export async function updateNoteApi(storyId, notes) {
+    console.log(`api_client.js: updateNoteApi called for story ID: ${storyId}`);
+    // VIGTIGT: Sørg for at URL'en matcher den route, vi har defineret i narrative_routes.py
+    const response = await fetch(`/narrative/api/notes/update/${storyId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ notes: notes })
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved opdatering af note." }));
+        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+export async function listContinuableStoriesApi() {
+    console.log("api_client.js: listContinuableStoriesApi called.");
+    const response = await fetch('/narrative/api/list-stories', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved hentning af historieliste." }));
+        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
+    }
+
+    return await response.json();
+}

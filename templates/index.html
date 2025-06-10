@@ -29,7 +29,7 @@
         </div>
     </header>
 
-    <div class="tab-navigation">
+<div class="tab-navigation">
         <button type="button" class="tab-button active" data-tab-target="#generator">Højtlæsning</button>
         <button type="button" class="tab-button" data-tab-target="#laesehesten-module">Læsehesten</button>
         <button type="button" class="tab-button" data-tab-target="#narrative-support-module">
@@ -38,6 +38,7 @@
                     <span class="icon-lock" title="Kræver Premium medlemskab">🔒</span>
                 {% endif %}
         </button>
+        <button type="button" class="tab-button" data-tab-target="#logbook-module">Logbog</button>
     </div>
     <main>
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -355,6 +356,35 @@
                 {# --- START: FULD BRUGERFLADE FOR PREMIUM BRUGERE --- #}
                 <h2>Narrativ Støtte</h2>
                 <p>Skab historier med et specifikt pædagogisk eller følelsesmæssigt fokus.</p>
+                <div class="continuation-flow-section" style="background-color: #f0f8ff; border: 1px solid var(--color-secondary); border-radius: var(--border-radius); padding: 15px; margin-bottom: 25px;">
+                    <div class="switch-option-group">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <label for="continue-story-switch" style="font-weight: bold; margin-bottom: 0;">Fortsæt en Historie fra logbogen:</label>
+                            <div class="switch-container">
+                                <input type="checkbox" id="continue-story-switch" name="continue_story_switch">
+                                <label for="continue-story-switch" class="slider-label"></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="continuation-options" class="hidden" style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+                        <div class="form-group-logbook" style="margin-bottom: 20px;">
+                            <label for="parent-story-select">Vælg historie at bygge videre på:</label>
+                            <select id="parent-story-select" name="parent_story_id">
+                                <option value="">-- Henter Historier... --</option>
+                            </select>
+                        </div>
+
+                        <div id="continuation-strategy-selection" class="hidden" style="text-align: center;">
+                            <p style="font-weight: bold;">Vælg jeres næste skridt:</p>
+                            <div style="display: flex; gap: 15px; justify-content: center;">
+                                <button type="button" class="utility-button" name="continuation_strategy" value="deepen" style="background-color: var(--color-secondary);">Dyk Dybere</button>
+                                <button type="button" class="utility-button" name="continuation_strategy" value="generalize" style="background-color: var(--color-secondary);">Flyv Højere</button>
+                            </div>
+                            <div id="continuation-context-box" style="margin-top:15px; text-align:left; font-size: 0.9em;"></div>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="narrative-info-dropdown">
                     <button type="button" class="dropdown-toggle">Hvad er Narrativ Terapi? <span class="dropdown-arrow">&#9664;</span></button>
@@ -608,6 +638,66 @@
                             Vent venligst, eller tryk "Generer Narrativ Historie"...
                         </div>
                     </div>
+                    <div id="logbook-documentation-section" class="hidden" style="margin-top: 30px;">
+                        <hr>
+                         <h3 style="color: var(--color-primary); margin-top: 25px;">Gør Eventyret til Indsigt: Udforsk Historiens Styrker</h3>
+
+                        <div id="logbook-analysis-loader" class="narrative-loading-spinner hidden" style="padding: 20px 0;">
+                            Analyserer historiens guldkorn... <span class="spinner"></span>
+                        </div>
+
+                        <div id="logbook-analysis-error" class="flash-message flash-error hidden"></div>
+
+                        <form id="logbook-entry-form" class="hidden">
+                            <input type="hidden" id="logbook-story-id" name="story_id">
+
+                            <div class="logbook-form-grid">
+                                <div class="form-group-logbook">
+                                    <label for="logbook-problem-name">Problemets Navn</label>
+                                    <input type="text" id="logbook-problem-name" name="problem_name" placeholder="AI-forslag vises her...">
+                                </div>
+                                <div class="form-group-logbook">
+                                    <label for="logbook-method-name">Opdaget Metode/Styrke</label>
+                                    <input type="text" id="logbook-method-name" name="discovered_method_name" placeholder="AI-forslag vises her...">
+                                </div>
+                                <div class="form-group-logbook full-width">
+                                    <label for="logbook-problem-influence">Problemets Indflydelse (Hvordan påvirkede det barnet?)</label>
+                                    <textarea id="logbook-problem-influence" name="problem_influence" rows="3" placeholder="AI-forslag vises her..."></textarea>
+                                </div>
+                                <div class="form-group-logbook full-width">
+                                    <label for="logbook-unique-outcome">Unique Outcome ("Glimtet" - Hvad var det kloge/modige barnet gjorde?)</label>
+                                    <textarea id="logbook-unique-outcome" name="unique_outcome" rows="4" placeholder="AI-forslag vises her..."></textarea>
+                                </div>
+                                 <div class="form-group-logbook full-width">
+                                    <label for="logbook-method-steps">Trin-for-trin guide til metoden</label>
+                                    <textarea id="logbook-method-steps" name="discovered_method_steps" rows="4" placeholder="Beskriv metoden, så I kan huske den..."></textarea>
+                                </div>
+                                <div class="form-group-logbook">
+                                    <label for="logbook-child-values">Barnets Værdier (f.eks. Mod, Venskab)</label>
+                                    <input type="text" id="logbook-child-values" name="child_values" placeholder="AI-forslag vises her...">
+                                </div>
+                                <div class="form-group-logbook">
+                                    <label for="logbook-support-system">Støttesystem ("Vidner")</label>
+                                    <input type="text" id="logbook-support-system" name="support_system" placeholder="AI-forslag vises her...">
+                                </div>
+                                <div class="form-group-logbook full-width">
+                                    <label for="logbook-user-notes">Mine Noter (Dine egne tanker og observationer)</label>
+                                    <textarea id="logbook-user-notes" name="user_notes" rows="4" placeholder="Tilføj private noter om situationen, barnets reaktion osv."></textarea>
+                                </div>
+                                <div class="form-group-logbook progress-slider">
+                                    <label for="logbook-progress-before">Problemets styrke FØR (1-10)</label>
+                                    <input type="range" id="logbook-progress-before" name="progress_before" min="1" max="10" value="5">
+                                    <span class="range-value">5</span>
+                                </div>
+                                <div class="form-group-logbook progress-slider">
+                                    <label for="logbook-progress-after">Problemets styrke EFTER (1-10)</label>
+                                    <input type="range" id="logbook-progress-after" name="progress_after" min="1" max="10" value="5">
+                                    <span class="range-value">5</span>
+                                </div>
+                            </div>
+                            <button type="submit" id="save-logbook-entry-button" class="primary-action-button" style="margin-top: 20px; width: 100%;">Gem Historien i Logbog</button>
+                        </form>
+                    </div>
                 </section>
 
                 <section id="narrative-reflection-section" class="narrative-output-section hidden">
@@ -774,6 +864,57 @@
                  <img id="story-image-display" class="hidden" src="#" alt="Genereret billede til historien" style="max-width: 100%; border-radius: var(--border-radius); box-shadow: var(--box-shadow);">
             </div>
             <div id="image-generation-error" class="flash-message flash-error hidden" style="margin-top: 15px;"></div>
+        </section>
+        <section id="logbook-module" class="content-section hidden">
+            <div class="logbook-container" style="padding: 0; background: none; box-shadow: none;">
+                <h1 style="text-align: center;">Min Logbog</h1>
+                <p style="text-align: center; margin-top: -10px; margin-bottom: 25px;">Et bibliotek af personlige sejre og opdagede styrker.</p>
+
+                <div class="logbook-toolbar">
+                    <div class="filter-group">
+                        <label for="filter-source">Kilde</label>
+                        <select name="source" id="filter-source">
+                            <option value="all">Alle</option>
+                            <option value="Narrativ Støtte">Narrativ Støtte</option>
+                            <option value="Højtlæsning">Højtlæsning</option>
+                            <option value="Læsehesten">Læsehesten</option> </select>
+                    </div>
+                    <div class="filter-group" style="flex: 2 1 250px;">
+                        <label for="search-term">Søg i titel og indhold</label>
+                        <input type="search" id="search-term" name="searchTerm" placeholder="Søg her...">
+                    </div>
+                    <div class="filter-group">
+                        <label for="sort-by">Sortér efter</label>
+                        <select name="sortBy" id="sort-by">
+                            <option value="newest">Dato (nyeste)</option>
+                            <option value="oldest">Dato (ældste)</option>
+                            <option value="title_asc">Titel (A-Å)</option>
+                            <option value="title_desc">Titel (Å-A)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="logbook-list-container">
+                    {% if stories %}
+                        {% for story in stories %}
+                        <div class="logbook-entry" data-story-id="{{ story.id }}">
+                            <button type="button" class="logbook-accordion-toggle">
+                                <span>
+                                    <strong>{{ story.title }}</strong>
+                                    <small style="display: inline; color: #555; font-weight: normal; margin-left: 10px;">
+                                        (Kilde: {{ story.source or 'Ukendt' }} - Del {{ story.series_part }})
+                                    </small>
+                                </span>
+                                <span class="arrow">◀</span> </button>
+                            <div class="logbook-accordion-content hidden">
+                                </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="text-align: center;">Du har endnu ikke gemt nogen Historier.</p>
+                    {% endif %}
+                </div>
+            </div>
         </section>
 
         <section id="sangtekster-sektion" class="hidden">
