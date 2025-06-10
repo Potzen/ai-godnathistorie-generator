@@ -206,3 +206,36 @@ export async function generateAudioApi(storyText, voiceName) {
     console.log("api_client.js: Audio stream response received.");
     return response; // Returnerer hele respons-objektet for streaming
 }
+
+/**
+ * Sender data til backend for at generere en LIX-styret historie.
+ * @param {object} lixStoryData - Objektet der indeholder alle input til Læsehesten.
+ * @returns {Promise<object>} Et promise der resolver med JSON-svar fra serveren.
+ * @throws {Error} Kaster en fejl hvis netværksrespons ikke er ok.
+ */
+export async function generateLixStoryApi(lixStoryData) {
+    console.log("api_client.js: generateLixStoryApi called with:", lixStoryData);
+    const response = await fetch('/story/generate_lix', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(lixStoryData)
+    });
+
+    if (!response.ok) {
+        let errorMsg = `Serverfejl under generering af Læsehest-historie (${response.status})`;
+        try {
+            const errorData = await response.json();
+            errorMsg = errorData.error || `${errorMsg} - ${response.statusText}`;
+        } catch (e) {
+            errorMsg += ` - ${response.statusText}`;
+        }
+        console.error("api_client.js: Server error in generateLixStoryApi:", errorMsg);
+        throw new Error(errorMsg);
+    }
+
+    const result = await response.json();
+    console.log("api_client.js: LIX Story data received from server:", result);
+    return result;
+}

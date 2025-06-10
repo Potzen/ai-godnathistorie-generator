@@ -12,30 +12,43 @@ def build_story_prompt(
         ending_instruction,
         negative_prompt_text,
         is_interactive=False,
-        is_bedtime_story=False
+        is_bedtime_story=False,
+        focus_letter=None,
+        target_lix=None  # NYT ARGUMENT
 ):
     """
-    Bygger den komplette prompt-streng til generering af en historie i Højtlæsnings-sektionen.
+    Bygger den komplette prompt-streng til historiegenerering.
+    Kan nu inkludere detaljerede LIX-instruktioner for "one-shot" generering.
     """
-    # Log de modtagne flag til debugging
     current_app.logger.info(
-        f"--- build_story_prompt funktionen: Modtog is_interactive = {is_interactive}, is_bedtime_story = {is_bedtime_story} ---")
+        f"--- build_story_prompt: is_interactive={is_interactive}, is_bedtime={is_bedtime_story}, target_lix={target_lix} ---")
 
-    prompt_parts = []
-    prompt_parts.append(
-        "SYSTEM INSTRUKTION: Du er en kreativ AI, der er ekspert i at skrive højtlæsningshistorier og godnathistorier for børn.")
-    prompt_parts.append(
-        "OPGAVE: Skriv en historie baseret på følgende input. Historien skal være engagerende, passende for målgruppen og have en klar begyndelse, midte og slutning.")
-    prompt_parts.append(
-        "FØRST, generer en kort og fængende titel til historien. Skriv KUN titlen på den allerførste linje af dit output. Efter titlen, indsæt ET ENKELT LINJESKIFT (ikke dobbelt), og start derefter selve historien.")
-    prompt_parts.append("---")
+    prompt_parts = [
+        "SYSTEM INSTRUKTION: Du er en kreativ AI, der er ekspert i at skrive højtlæsningshistorier for børn på et præcist læsbarhedsniveau (LIX).",
+        "OPGAVE: Skriv en historie baseret på følgende input. Følg alle instruktioner om format, indhold og sproglig stil meget nøje.",
+        "FORMAT: Start outputtet med en kort, fængende TITEL på den allerførste linje. Efter titlen, indsæt ET ENKELT LINJESKIFT, og start derefter selve historien.",
+        "---"
+    ]
+
+    # NYT: Detaljeret LIX-instruktion
+    if target_lix is not None:
+        lix_instruction = f"\n**KRITISK INSTRUKTION: SPROGLIGT NIVEAU (LIX {target_lix})**\n"
+        if target_lix <= 19:
+            lix_instruction += "Dette er for en helt ny læser. Skriv i et EKSTREMT simpelt sprog. Brug meget korte sætninger (typisk 4-8 ord). Brug primært en- og tostavelsesord, som er almindelige i dansk. Undgå komplekse sætningskonstruktioner og bisætninger. Stilen skal være meget direkte og let at afkode."
+        elif 20 <= target_lix <= 29:
+            lix_instruction += "Dette er for en læser, der er ved at få fat. Brug simple, korte til mellemlange sætninger (typisk 8-12 ord). Du kan introducere lidt flere beskrivende ord, men hold den overordnede sætningsstruktur klar og ligetil. Enkelte bisætninger er acceptable, men hold dem korte."
+        elif 30 <= target_lix <= 44:
+            lix_instruction += "Dette er for en sikker læser. Du kan nu bruge mere komplekse og varierede sætningslængder (typisk 12-18 ord). Brug et rigere og mere nuanceret ordforråd med flere lange ord. Sætninger med flere bisætninger er velkomne for at skabe et bedre flow."
+        else:  # target_lix >= 45
+            lix_instruction += "Dette er for en meget erfaren læser. Skriv med litterær kvalitet. Anvend komplekse og varierede sætningsstrukturer, et sofistikeret og præcist ordforråd og mere abstrakte begreber. Stilen skal minde om god børne- og ungdomslitteratur."
+
+        prompt_parts.append(lix_instruction)
 
     if listener_context_instruction:
         prompt_parts.append(listener_context_instruction)
 
     prompt_parts.append(f"Længdeønske: {length_instruction}")
 
-    # Betinget logik for godnathistorie
     if is_bedtime_story:
         bedtime_instruction = [
             "\n**SÆRLIG INSTRUKTION: GODNATHISTORIE-FOKUS**",
@@ -53,12 +66,21 @@ def build_story_prompt(
 
     if karakter_str:
         prompt_parts.append(f"Hovedperson(er): {karakter_str}")
+
+    if focus_letter:
+        focus_letter_instruction = (
+            f"\n**SÆRLIG INSTRUKTION: FONETISK FOKUS**\n"
+            f"Historien skal have et tydeligt fonetisk fokus på bogstavet/bogstaverne: '{focus_letter}'. "
+            f"Inkluder naturligt og hyppigt ord, der indeholder disse bogstaver/lyde. "
+            f"Gør det subtilt og kreativt, så historien stadig føles flydende og ikke forceret."
+        )
+        prompt_parts.append(focus_letter_instruction)
+
     if sted_str:
         prompt_parts.append(f"Sted(er): {sted_str}")
     if plot_str:
         prompt_parts.append(f"Plot/Elementer/Morale: {plot_str}")
 
-    # Betinget logik for interaktiv historie
     if is_interactive:
         interactive_rules_list = [
             "\nSÆRLIG INSTRUKTION: INTERAKTIV HISTORIE",
@@ -70,9 +92,7 @@ def build_story_prompt(
             "4. I et nyt afsnit lige bagefter, starter du med 'Valgmulighed B): ' og beskriver den korte scene for det andet valg i 1-2 sætninger.",
             "5. Til sidst fortsætter du hovedhistorien i et nyt afsnit. Meget vigtigt: Fortsættelsen skal kunne passe efter begge valg, men du må absolut ikke nævne det. Undgå ord som 'uanset' eller 'lige meget hvad'. Lad blot historien glide naturligt videre ved f.eks. at fokusere på hovedpersonens følelser eller omgivelserne."
         ]
-
-        interactive_rules_str = "\n".join(interactive_rules_list)
-        prompt_parts.append(interactive_rules_str)
+        prompt_parts.append("\n".join(interactive_rules_list))
 
     prompt_parts.append("\nGENERELLE REGLER FOR HISTORIEN:")
     prompt_parts.append("- Undgå komplekse sætninger og ord. Sproget skal være letforståeligt for børn.")
@@ -81,7 +101,7 @@ def build_story_prompt(
     prompt_parts.append("- Undgå vold, upassende temaer eller noget, der kan give mareridt.")
 
     if negative_prompt_text:
-        prompt_parts.append(f"- VIGTIGT: Følgende elementer må IKKE indgå i historien: {negative_prompt_text}")
+        prompt_parts.append(f"- VIGTIGT: Følgende må IKKE indgå i historien: {negative_prompt_text}")
 
     prompt_parts.append(f"- {ending_instruction}")
     prompt_parts.append("---")

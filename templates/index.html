@@ -31,6 +31,7 @@
 
     <div class="tab-navigation">
         <button type="button" class="tab-button active" data-tab-target="#generator">Højtlæsning</button>
+        <button type="button" class="tab-button" data-tab-target="#laesehesten-module">Læsehesten</button>
         <button type="button" class="tab-button" data-tab-target="#narrative-support-module">
                 Narrativ Støtte
                 {% if not current_user.is_authenticated or current_user.role != 'premium' %}
@@ -257,6 +258,97 @@
             </div>
             <button id="generate-button">Skab Historie</button>
         </section>
+
+        <section id="laesehesten-module" class="content-section hidden">
+
+            <h2>Byg en historie til dit læseniveau</h2>
+            <p>Vælg et LIX-tal og nogle elementer fra listerne, så skaber AI'en en historie, der passer præcist til niveauet.</p>
+
+            <div class="input-category">
+                <label for="lix-slider" class="lix-label">Vælg Læse Niveau (LIX): <span id="lix-value-display" class="lix-value">25</span></label>
+                <div class="lix-slider-container">
+                    <span class="lix-range-label">Let</span>
+                    <input type="range" id="lix-slider" name="lix_target" min="5" max="55" value="25" class="lix-slider-style">
+                    <span class="lix-range-label">Svær</span>
+                </div>
+                <p id="lix-description" class="lix-description-text">Passer til et barn på ca. 8-9 år, der er ved at være sikker i sin læsning.</p>
+            </div>
+            <hr>
+
+            <div class="input-category">
+                <label>Sortér elementer efter sværhedsgrad:</label>
+                <div class="sort-bar">
+                    <button type="button" class="utility-button sort-button active" data-sort="all">Alle</button>
+                    <button type="button" class="utility-button sort-button" data-sort="1">Let ●○○</button>
+                    <button type="button" class="utility-button sort-button" data-sort="2">Medium ●●○</button>
+                    <button type="button" class="utility-button sort-button" data-sort="3">Svær ●●●</button>
+                </div>
+            </div>
+
+            <div id="laesehesten-accordion-container">
+                </div>
+
+            <hr>
+
+            <div class="input-category">
+                <label for="laesehest-focus-letter">Fokus-bogstav (valgfrit):</label>
+                <input type="text" id="laesehest-focus-letter" name="laesehest_focus_letter" placeholder="F.eks. 's' for at øve s-lyde, eller 'a, o, i' for vokalfokus" maxlength="10">
+            </div>
+
+            <div class="input-category">
+                <label>Tilføj dine egne ord eller navne (valgfrit):</label>
+                <div id="laesehest-custom-words-container">
+                    <div class="input-group">
+                        <input type="text" name="laesehest_custom_word" placeholder="f.eks. farmor, Buster, en sej kasket">
+                        <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+                    </div>
+                </div>
+                <button type="button" id="laesehest-add-word-button" class="add-button">+ Tilføj ord</button>
+            </div>
+
+            <div class="input-category">
+                <label for="laesehest-plot">Ting, hændelser eller morale (valgfrit)?</label>
+                <input type="text" id="laesehest-plot" name="laesehest_plot" placeholder="f.eks. en magisk fjer, 'at dele er godt'">
+            </div>
+            <div class="input-category">
+                <label for="laesehest-negative-prompt">Ting der IKKE skal med i historien (valgfrit):</label>
+                <textarea id="laesehest-negative-prompt" name="laesehest_negative_prompt" rows="2" placeholder="f.eks. 'ingen edderkopper', 'ikke noget om at falde'"></textarea>
+            </div>
+
+            <div class="input-category" style="display: flex; gap: 20px;">
+                <div style="flex: 1;">
+                    <label for="laesehest-laengde-select">Vælg historie længde:</label>
+                    <select name="laesehest_laengde" id="laesehest-laengde-select">
+                        <option value="kort">Kort</option>
+                        <option value="mellem" selected>Mellem</option>
+                        <option value="lang">Lang</option>
+                    </select>
+                </div>
+                <div style="flex: 1;">
+                    <label for="laesehest-mood-select">Vælg stemning:</label>
+                    <select name="laesehest_mood" id="laesehest-mood-select">
+                        <option value="neutral" selected>Neutral / Blandet</option>
+                        <option value="sød">Sød</option>
+                        <option value="sjov">Sjov</option>
+                        <option value="eventyr">Eventyrlig</option>
+                        <option value="spændende">Spændende</option>
+                        <option value="rolig">Rolig / Afslappende</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 25px;">
+                {% if current_user.is_authenticated and current_user.role in ['basic', 'premium'] %}
+                    <button id="generate-laesehest-button" class="primary-action-button">Skab Læsehest-Historie</button>
+                {% else %}
+                    <button id="generate-laesehest-button-disabled" class="primary-action-button" disabled title="Log ind for at skabe en historie">Skab Læsehest-Historie</button>
+                    <p style="font-size: 0.9em; margin-top: 10px;">
+                        <a href="{{ url_for('auth.auth_login') }}">Log ind</a> eller <a href="{{ url_for('auth.register') }}">opret en bruger</a> for at skabe historier.
+                    </p>
+                {% endif %}
+            </div>
+        </section>
+
 
         <section id="narrative-support-module" class="content-section hidden">
             {% if current_user.is_authenticated and current_user.role == 'premium' %}
@@ -671,6 +763,19 @@
                 </div>
             </div>
         </section>
+
+        <section id="billede-til-historien-sektion" class="hidden">
+            <h2>Billede til historien</h2>
+            <div id="image-loading-indicator" class="hidden" style="text-align: center; padding: 20px;">
+                <p>Billedet genereres... Vent venligst.</p>
+                <span class="spinner"></span>
+            </div>
+            <div style="text-align: center;">
+                 <img id="story-image-display" class="hidden" src="#" alt="Genereret billede til historien" style="max-width: 100%; border-radius: var(--border-radius); box-shadow: var(--box-shadow);">
+            </div>
+            <div id="image-generation-error" class="flash-message flash-error hidden" style="margin-top: 15px;"></div>
+        </section>
+
         <section id="sangtekster-sektion" class="hidden">
             <h2>Godnatsange</h2>
             <div class="input-category">

@@ -1,5 +1,5 @@
 // Fil: static/script.js
-import { generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generateNarrativeStoryApi, getGuidingQuestionsApi, generateAudioApi } from './modules/api_client.js'; // TILFØJET generateAudioApi
+import { generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generateNarrativeStoryApi, getGuidingQuestionsApi, generateAudioApi, generateLixStoryApi } from './modules/api_client.js';
 
 // Kør først koden, når hele HTML dokumentet er færdigindlæst og klar
 document.addEventListener('DOMContentLoaded', () => {
@@ -561,97 +561,37 @@ loadFontSizesFromLocalStorage();
     const contentSections = document.querySelectorAll('.content-section');
 
     if (tabButtons.length > 0 && contentSections.length > 0) {
-        // Sæt den første fane og sektion som aktiv/synlig ved start
-        // (HTML'en har allerede .active på første knap, og den første sektion er ikke .hidden)
-        // Vi kan sikre, at kun den korrekte sektion vises, hvis HTML ikke er sat op:
-        // const initiallyActiveTabTarget = document.querySelector('.tab-button.active').dataset.tabTarget;
-        // contentSections.forEach(section => {
-        //     if (section.id === initiallyActiveTabTarget.substring(1)) { // fjerner '#'
-        //         section.classList.remove('hidden');
-        //     } else {
-        //         section.classList.add('hidden');
-        //     }
-        // });
+    const historieOutput = document.getElementById('historie-output');
 
+    const handleTabClick = (button) => {
+        tabButtons.forEach(btn => btn.classList.remove('active'));
+        contentSections.forEach(section => section.classList.add('hidden'));
 
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                // Deaktiver alle faner og skjul alle sektioner først
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                contentSections.forEach(section => section.classList.add('hidden'));
-
-                // Aktiver den klikkede fane
-                button.classList.add('active');
-
-                // Vis den korresponderende sektion
-                const targetId = button.dataset.tabTarget; // f.eks. "#generator" eller "#narrative-support-module"
-                const targetSection = document.querySelector(targetId);
-                if (targetSection) {
-                    targetSection.classList.remove('hidden');
-                    console.log(`Tab switched to: ${targetId}`);
-                } else {
-                    console.error(`Target section ${targetId} not found for tab button.`);
-                }
-            });
-        });
-        console.log("Tab navigation functionality initialized.");
-        // Hent referencer til de output-sektioner, der skal styres
-        const standardStoryOutputSection = document.getElementById('historie-output');
-        const standardImageOutputSection = document.getElementById('billede-til-historien-sektion');
-        const standardSongsSection = document.getElementById('sangtekster-sektion');
-        // narrativeStoryOutputDiv (og dens container) er allerede en del af #narrative-support-module sectionen
-        // og vil blive vist/skjult sammen med den.
-
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                // Deaktiver alle faner og skjul alle *input* sektioner først
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                contentSections.forEach(section => section.classList.add('hidden'));
-
-                // Aktiver den klikkede fane
-                button.classList.add('active');
-
-                // Vis den korresponderende *input* sektion
-                const targetId = button.dataset.tabTarget; // f.eks. "#generator" eller "#narrative-support-module"
-                const targetSection = document.querySelector(targetId);
-                if (targetSection) {
-                    targetSection.classList.remove('hidden');
-                    console.log(`Tab switched to input section: ${targetId}`);
-                } else {
-                    console.error(`Target input section ${targetId} not found for tab button.`);
-                }
-
-                // Styr synligheden af de delte output-sektioner
-                if (targetId === '#generator') {
-                    // Vis standard output sektioner, skjul narrativ output (selvom narrativ output er inde i sin egen fane)
-                    if (standardStoryOutputSection) standardStoryOutputSection.classList.remove('hidden');
-                    // Billedsektionen vises kun, når der er et billede, men vi sikrer, den KAN vises her.
-                    // Dens 'hidden' klasse styres også af billedgenereringslogikken.
-                    // if (standardImageOutputSection) standardImageOutputSection.classList.remove('hidden'); // Eller lad billedlogik styre den helt
-                    if (standardSongsSection) standardSongsSection.classList.remove('hidden');
-
-                    // Sørg for at narrativets specifikke output-div er tom eller skjult, hvis #narrative-story-output er global
-                    // Da #narrative-story-output er inde i #narrative-support-module, klares dette af den generelle sektionsskjulning.
-                } else if (targetId === '#narrative-support-module') {
-                    // Skjul standard output sektioner
-                    if (standardStoryOutputSection) standardStoryOutputSection.classList.add('hidden');
-                    if (standardImageOutputSection) standardImageOutputSection.classList.add('hidden');
-                    if (standardSongsSection) standardSongsSection.classList.add('hidden');
-                    // Den narrative output sektion (#narrative-story-output) vises/skjules sammen med #narrative-support-module.
-                }
-            });
-        });
-        // Udløs et klik på den aktive fane ved sideindlæsning for at sikre korrekt initiel tilstand
-        const initiallyActiveButton = document.querySelector('.tab-button.active');
-        if (initiallyActiveButton) {
-            initiallyActiveButton.click();
+        button.classList.add('active');
+        const targetId = button.dataset.tabTarget;
+        const targetSection = document.querySelector(targetId);
+        if (targetSection) {
+            targetSection.classList.remove('hidden');
         }
 
-        console.log("Tab navigation functionality initialized and updated for output sections.");
-    } else {
-        console.warn("Tab buttons or content sections not found. Tab navigation will not work.");
+        // Styr synlighed af den delte output sektion
+        if (targetId === '#generator' || targetId === '#laesehesten-module') {
+            if (historieOutput) historieOutput.classList.remove('hidden');
+        } else {
+            if (historieOutput) historieOutput.classList.add('hidden');
+        }
+    };
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => handleTabClick(button));
+    });
+
+    // Sørg for at den korrekte tilstand er sat ved sideindlæsning
+    const initiallyActiveButton = document.querySelector('.tab-button.active');
+    if (initiallyActiveButton) {
+        handleTabClick(initiallyActiveButton);
     }
-    // === SLUT PÅ NYT: Fane Navigation Funktionalitet ===
+}
 
 // === SLUT PÅ NYT: Fane Navigation Funktionalitet ===
 
@@ -2037,6 +1977,8 @@ async function handleNarrativeGenerateClick() {
     // === Tilknyt Event Listeners ===
     // Indlæs gemte lyttere for historie-sektionen
     loadAndDisplaySavedListeners();
+    // NYT: Initialiserer det nye Læsehesten-modul
+    initializeLaesehestenModule();
 
     // Funktion til at forudfylde felter med AI-forslag
     function populateCharacterTraitFields(suggestions) {
@@ -2275,6 +2217,208 @@ async function handleNarrativeGenerateClick() {
     // Dette er den vigtige linje, der sikrer, at sektionen er skjult fra start.
     updateSongSectionVisibility();
 });
+// ===================================================================
+// START: FUNKTIONER TIL LÆSEHESTEN MODUL
+// ===================================================================
+
+function initializeLaesehestenModule() {
+    console.log("Initializing Læsehesten Module...");
+    const laesehestenSection = document.getElementById('laesehesten-module');
+    if (!laesehestenSection) {
+        console.log("Læsehesten module section not found, skipping initialization.");
+        return;
+    }
+    fetchLaesehestDataAndRender();
+    setupLaesehestEventListeners();
+    console.log("Læsehesten Module Initialized.");
+}
+
+async function fetchLaesehestDataAndRender() {
+    try {
+        const response = await fetch('/static/laesehest_data.json');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        renderAccordion(data.categories);
+    } catch (error) {
+        console.error("Failed to load laesehest_data.json:", error);
+        const container = document.getElementById('laesehesten-accordion-container');
+        if (container) container.innerHTML = '<p style="color: red;">Fejl: Kunne ikke indlæse element-listerne.</p>';
+    }
+}
+
+function renderAccordion(categories) {
+    const container = document.getElementById('laesehesten-accordion-container');
+    if (!container) return;
+    container.innerHTML = categories.map(category => `
+        <div class="accordion-item" data-category-id="${category.id}">
+            <button type="button" class="accordion-header">
+                <span>${category.name}</span>
+                <span class="accordion-arrow">▶</span>
+            </button>
+            <div class="accordion-content hidden">
+                <div class="element-checklist-container">
+                    ${renderChecklistForCategory(category)}
+                </div>
+            </div>
+        </div>
+    `).join('');
+    container.querySelectorAll('.accordion-header').forEach(header => {
+        header.addEventListener('click', () => {
+            header.classList.toggle('open');
+            header.nextElementSibling.classList.toggle('hidden');
+        });
+    });
+}
+
+function renderChecklistForCategory(category) {
+    return category.items.map(item => `
+        <div class="element-item" data-complexity="${item.complexity}">
+            <input type="checkbox" id="element-${item.id}" name="laesehest_element" value="${item.value}">
+            <label for="element-${item.id}" class="element-label">
+                <span class="element-emoji">${item.emoji}</span>
+                <span class="element-name">${item.name}</span>
+                <span class="element-complexity" title="Sværhedsgrad ${item.complexity} af 3">
+                    ${'●'.repeat(item.complexity)}${'○'.repeat(3 - item.complexity)}
+                </span>
+            </label>
+        </div>
+    `).join('');
+}
+
+function setupLaesehestEventListeners() {
+    const lixSlider = document.getElementById('lix-slider');
+    const lixValueDisplay = document.getElementById('lix-value-display');
+    const lixDescription = document.getElementById('lix-description');
+    if (lixSlider && lixValueDisplay && lixDescription) {
+        const updateLixDescription = (value) => {
+            const val = parseInt(value, 10);
+            if (val <= 19) return "Perfekt til de helt nye læsere (ca. 6-7 år).";
+            if (val <= 29) return "Godt for barnet, der har knækket læsekoden (ca. 8-9 år).";
+            if (val <= 39) return "Udfordrende for den sikre læser (ca. 10-11 år).";
+            if (val <= 49) return "For den meget erfarne læser (ca. 12+ år).";
+            return "Meget svær tekst, svarer til faglitteratur for voksne.";
+        };
+        lixSlider.addEventListener('input', () => {
+            lixValueDisplay.textContent = lixSlider.value;
+            lixDescription.textContent = updateLixDescription(lixSlider.value);
+        });
+        lixDescription.textContent = updateLixDescription(lixSlider.value);
+    }
+
+    const sortButtons = document.querySelectorAll('.sort-button');
+    sortButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const sortBy = button.dataset.sort;
+            sortButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            document.querySelectorAll('#laesehesten-accordion-container .element-item').forEach(item => {
+                item.style.display = (sortBy === 'all' || item.dataset.complexity === sortBy) ? 'block' : 'none';
+            });
+        });
+    });
+
+    const addWordButton = document.getElementById('laesehest-add-word-button');
+    if (addWordButton) {
+        addWordButton.addEventListener('click', () => {
+            const container = document.getElementById('laesehest-custom-words-container');
+            const newGroup = document.createElement('div');
+            newGroup.className = 'input-group';
+            newGroup.innerHTML = `
+                <input type="text" name="laesehest_custom_word" placeholder="f.eks. farmor, Buster...">
+                <button type="button" class="remove-button">-</button>
+            `;
+            newGroup.querySelector('.remove-button').addEventListener('click', () => newGroup.remove());
+            container.appendChild(newGroup);
+        });
+    }
+
+    const generateButton = document.getElementById('generate-laesehest-button');
+    if (generateButton) {
+        generateButton.addEventListener('click', handleLaesehestGenerateClick);
+    }
+}
+
+async function handleLaesehestGenerateClick() {
+    const generateButton = document.getElementById('generate-laesehest-button');
+    if (!generateButton || generateButton.disabled) return;
+
+    const originalButtonText = generateButton.textContent;
+    generateButton.disabled = true;
+    generateButton.textContent = 'Skaber historie...';
+
+    const storyDisplay = document.getElementById('story-display');
+    const storyTextContent = document.getElementById('story-text-content');
+    const storyLoadingIndicator = document.getElementById('story-loading-indicator');
+    const storySectionHeading = document.getElementById('story-section-heading');
+
+    storyDisplay.innerHTML = '';
+    storyDisplay.appendChild(storyLoadingIndicator);
+    storyLoadingIndicator.classList.remove('hidden');
+    storyLoadingIndicator.querySelector('p').textContent = 'Historien genereres... Vent venligst.';
+    storySectionHeading.textContent = "Jeres historie";
+    document.getElementById('story-share-buttons').classList.add('hidden');
+
+    const dataToSend = {
+        target_lix: parseInt(document.getElementById('lix-slider').value, 10),
+        elements: Array.from(document.querySelectorAll('input[name="laesehest_element"]:checked')).map(el => el.value),
+        custom_words: Array.from(document.querySelectorAll('input[name="laesehest_custom_word"]')).map(el => el.value.trim()).filter(Boolean),
+        focus_letter: document.getElementById('laesehest-focus-letter').value.trim(),
+        plot: document.getElementById('laesehest-plot').value.trim(),
+        negative_prompt: document.getElementById('laesehest-negative-prompt').value.trim(),
+        laengde: document.getElementById('laesehest-laengde-select').value,
+        mood: document.getElementById('laesehest-mood-select').value,
+    };
+
+    const loadingTextTimeout = setTimeout(() => {
+        if (generateButton.disabled) {
+            storyLoadingIndicator.querySelector('p').textContent = 'Justerer teksten til at passe lixtallet...';
+        }
+    }, 7000);
+
+    try {
+        const result = await generateLixStoryApi(dataToSend);
+        clearTimeout(loadingTextTimeout);
+        if (result.error) throw new Error(result.error);
+
+        // Tjek om der er en advarselsbesked fra backend
+        if (result.warning_message) {
+            const storyDisplay = document.getElementById('story-display');
+            const warningDiv = document.createElement('div');
+            warningDiv.className = 'flash-message flash-warning'; // Genbruger din flash-besked styling
+            warningDiv.style.marginBottom = '15px'; // Lidt luft ned til historien
+            warningDiv.textContent = result.warning_message;
+            storyDisplay.prepend(warningDiv); // Indsætter advarslen øverst i historie-boksen
+        }
+
+        const cleanTitle = (result.title || "Uden Titel").trim();
+        const cleanStory = (result.story || "Modtog en tom historie.").replace(/^\s+/, '');
+
+        storyLoadingIndicator.classList.add('hidden');
+
+        // Sørg for at tilføje selve historieteksten efter en eventuel advarsel
+        const storyContentDiv = document.createElement('div');
+        storyContentDiv.id = 'story-text-content'; // Genskab ID for font-styling
+        storyContentDiv.textContent = cleanStory;
+        storyDisplay.appendChild(storyContentDiv);
+
+        storySectionHeading.innerHTML = `${cleanTitle} <span class="final-lix-tag" title="Beregnet Læsbarhedsindeks">LIX: ${result.final_lix_score}</span>`;
+        document.getElementById('story-share-buttons').classList.remove('hidden');
+        document.querySelectorAll('.js-generate-image, #read-aloud-button').forEach(btn => btn.disabled = false);
+
+    } catch (error) {
+        clearTimeout(loadingTextTimeout);
+        console.error("Error in handleLaesehestGenerateClick:", error);
+        storyLoadingIndicator.classList.add('hidden');
+        storyDisplay.innerHTML = `<p style="color: red; text-align: center;">Ups! Noget gik galt: ${error.message}.</p>`;
+        storySectionHeading.textContent = "Fejl ved generering";
+    } finally {
+        generateButton.disabled = false;
+        generateButton.textContent = originalButtonText;
+    }
+}
+// ===================================================================
+// SLUT: FUNKTIONER TIL LÆSEHESTEN MODUL
+// ===================================================================
 
 
 

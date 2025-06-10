@@ -1,5 +1,6 @@
 # Fil: services/ai_service.py
 from flask import current_app # For at tilgå config, men ikke logger i generatoren
+from .lix_service import calculate_lix
 from flask_login import current_user
 import google.generativeai as genai
 import logging # NY IMPORT
@@ -22,7 +23,7 @@ from prompts.narrative_drafting_prompt import build_narrative_drafting_prompt
 from prompts.narrative_editing_prompt import build_narrative_editing_prompt
 from services.rag_service import find_relevant_chunks_v2
 from prompts.narrative_question_prompt import build_narrative_question_prompt
-from google.cloud import texttospeech_v1beta1 as texttospeech # SØRG FOR DENNE ER HER
+from google.cloud.texttospeech_v1 import TextToSpeechClient, SynthesisInput, VoiceSelectionParams, AudioConfig, SsmlVoiceGender, AudioEncoding
 
 # Definerede stemmer til Google Text-to-Speech (Engelske Gemini TTS-modeller)
 # Zephyr virker. Gacrux, Sadachbia, Zubenelgenubi forventes IKKE at virke med denne klient/model.
@@ -267,7 +268,8 @@ def generate_image_with_vertexai(image_prompt_text):
 
     return image_data_url
 
-def generate_gemini_tts_audio(text_content: str, voice_name: str = "Zephyr (Engelsk Kvinde)"):
+# ERSTAT HELE DEN GAMLE FUNKTION MED DENNE NYE:
+def generate_gemini_tts_audio(text_content: str, voice_name: str = "Zephyr"):
     """
     Genererer lyd fra tekst ved hjælp af Google Text-to-Speech med
     standard Wavenet/Neural2 stemmer for streaming.
@@ -286,29 +288,28 @@ def generate_gemini_tts_audio(text_content: str, voice_name: str = "Zephyr (Enge
         return
 
     # Initialiserer klienten her
-    # Bemærk: Dette er texttospeech_v1beta1 klienten
-    client = texttospeech.TextToSpeechClient()
+    client = TextToSpeechClient()
 
     # Vælg den ønskede stemme konfiguration
     voice_config = TTS_VOICES.get(voice_name)
     if not voice_config:
         logger.error(f"TTS Service: Ugyldigt stemmenavn '{voice_name}' valgt. Bruger standard stemme (Zephyr).")
-        voice_config = TTS_VOICES["Zephyr (Engelsk Kvinde)"] # Brug det fulde navn her, som er en nøgle i TTS_VOICES
+        voice_config = TTS_VOICES["Zephyr"]
 
-    synthesis_input = texttospeech.SynthesisInput(text=text_content)
+    synthesis_input = SynthesisInput(text=text_content)
 
     # Vælg stemmekonfiguration
-    voice_selection_params = texttospeech.VoiceSelectionParams(
+    voice_selection_params = VoiceSelectionParams(
         language_code=voice_config["language_code"],
         name=voice_config["name"],
-        ssml_gender=texttospeech.SsmlVoiceGender[voice_config["gender"]]
+        ssml_gender=SsmlVoiceGender[voice_config["gender"]]
     )
 
     # Vælg audio output format og inkluder pitch/speaking_rate for at justere stemmen
-    audio_config = texttospeech.AudioConfig(
-        audio_encoding=texttospeech.AudioEncoding.MP3,
-        pitch=0.0,         # Standard: 0.0. Kan justeres, f.eks. 2.0 for højere, -2.0 for lavere
-        speaking_rate=1.0  # Standard: 1.0. Kan justeres, f.eks. 0.9 for langsommere, 1.1 for hurtigere
+    audio_config = AudioConfig(
+        audio_encoding=AudioEncoding.MP3,
+        pitch=0.0,
+        speaking_rate=1.0
     )
 
     try:
@@ -326,7 +327,7 @@ def generate_gemini_tts_audio(text_content: str, voice_name: str = "Zephyr (Enge
 
     except Exception as e:
         logger.error(f"TTS Service: Fejl under lydgenerering: {e}\n{traceback.format_exc()}")
-        raise # Kaster exception, som Flask ruten kan fange og håndtere.
+        raise
 
 def generate_narrative_story_step1_generator_ai(
         narrative_focus,
@@ -1053,3 +1054,95 @@ def edit_narrative_story(
         # edited_title forbliver originalens titel
 
     return edited_title, edited_content
+
+
+def refine_story_for_lix(story_title: str, story_content: str, target_lix: int, generation_config_settings: dict, target_model_name: str):
+    """
+    Tager et eksisterende historieudkast og justerer det iterativt for at ramme et mål-LIX.
+
+    Args:
+        story_title (str): Den oprindelige titel på historien.
+        story_content (str): Det oprindelige indhold af historien.
+        target_lix (int): Det ønskede LIX-tal.
+        generation_config_settings (dict): Konfigurationsindstillinger for Gemini.
+        safety_settings_values (dict): Sikkerhedsindstillinger for Gemini.
+        target_model_name (str): Navnet på den AI-model, der skal bruges.
+
+    Returns:
+        tuple: (final_title, final_content, final_lix)
+    """
+    MAX_RETRIES = 2  # Juster antallet af forsøg efter behov (2 er et godt startpunkt)
+    LIX_TOLERANCE = 4  # Tillader en margen på +/- 4 fra målet
+
+    current_title = story_title
+    current_content = story_content
+    final_lix = calculate_lix(current_content)
+
+    current_app.logger.info(
+        f"LIX-justering starter. Mål: {target_lix}, Start LIX: {final_lix}, Tolerance: +/-{LIX_TOLERANCE}")
+
+    for attempt in range(MAX_RETRIES):
+        if abs(final_lix - target_lix) <= LIX_TOLERANCE:
+            current_app.logger.info(f"LIX-mål opnået på forsøg {attempt}. Endelig LIX: {final_lix}")
+            return current_title, current_content, final_lix
+
+        # Byg justeringsprompten
+        if final_lix > target_lix:
+            instruction = f"Gør sproget markant simplere. Brug kortere sætninger og færre lange ord (ord med mere end 6 bogstaver) for at sænke læsbarhedsniveauet."
+        else:
+            instruction = f"Gør sproget mere avanceret. Brug lidt længere og mere komplekse sætninger og et mere varieret ordforråd med flere lange ord (ord med mere end 6 bogstaver) for at hæve læsbarhedsniveauet."
+
+        revision_prompt = (
+            f"SYSTEM INSTRUKTION: Du er en dygtig redaktør, der skal omskrive en børnehistorie for at ramme et bestemt læsbarhedsniveau (LIX).\n"
+            f"OPGAVE: Omskriv den følgende historie. Bevar plottet, karaktererne og den generelle stemning, men juster sproget for at ændre LIX-tallet.\n"
+            f"MÅL-LIX: ca. {target_lix}\n"
+            f"NUVÆRENDE LIX: {final_lix}\n"
+            f"INSTRUKTION: {instruction}\n"
+            f"VIGTIGT FORMAT: Start dit svar med historiens titel på den allerførste linje, efterfulgt af et enkelt linjeskift, og derefter den fulde, omskrevne historie.\n\n"
+            f"--- ORIGINAL HISTORIE (TITEL: {current_title}) ---\n{current_content}\n\n"
+            f"--- DIN REVIDEREDE HISTORIE ---\n"
+        )
+
+        current_app.logger.info(
+            f"LIX-justeringsforsøg #{attempt + 1}: LIX er {final_lix}, bygger ny prompt for at ramme {target_lix}.")
+        current_app.logger.debug(f"Justeringsprompt (delvis): {revision_prompt[:300]}")
+
+        # Kald AI igen for at få en revideret version
+        try:
+            # I refine_story_for_lix funktionen
+
+            # Definer mere lempelige sikkerhedsindstillinger KUN for justeringskaldet
+            revision_safety_settings = {
+                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+            }
+
+            # Vi genbruger din eksisterende funktion, men med de nye, lempelige indstillinger
+            revised_title, revised_content = generate_story_text_from_gemini(
+                full_prompt_string=revision_prompt,
+                generation_config_settings=generation_config_settings,
+                safety_settings_values=revision_safety_settings,  # BRUGER DE NYE INDSTILLINGER
+                target_model_name=target_model_name
+            )
+
+            # Tjek for fejl fra AI-kaldet
+            if "Fejl" in revised_title or "blokeret" in revised_content:
+                current_app.logger.error(
+                    f"LIX-justering: Fejl eller blokeret indhold modtaget under justeringsforsøg #{attempt + 1}. Afbryder.")
+                # Returnerer den *sidste fungerende* version
+                return current_title, current_content, final_lix
+
+            current_title = revised_title
+            current_content = revised_content
+            final_lix = calculate_lix(current_content)
+
+        except Exception as e:
+            current_app.logger.error(f"LIX-justering: Fejl under AI-kald i forsøg #{attempt + 1}: {e}")
+            # Ved fejl returnerer vi den seneste succesfulde version
+            return current_title, current_content, final_lix
+
+    current_app.logger.warning(
+        f"LIX-justering: Max antal forsøg ({MAX_RETRIES}) nået. Returnerer bedste forsøg med LIX: {final_lix}")
+    return current_title, current_content, final_lix

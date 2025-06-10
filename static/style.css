@@ -1207,3 +1207,272 @@ input:disabled + .slider-label:before {
 #story-loading-indicator p {
     margin: 0;
 }
+
+/* =================================================================== */
+/* START PÅ STYLING FOR LÆSEHESTEN MODUL                               */
+/* =================================================================== */
+
+/* --- LIX Slider Styling --- */
+.lix-label {
+    font-weight: 700;
+    color: #555;
+    font-size: 1.1em; /* Lidt større for at fremhæve */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.lix-value {
+    display: inline-block;
+    padding: 3px 10px;
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: 14px; /* Mere afrundet */
+    font-weight: bold;
+    font-size: 0.9em;
+    min-width: 30px; /* Sikrer at den ikke hopper i størrelse */
+    text-align: center;
+}
+
+.lix-slider-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.lix-slider-style {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    background: #ddd;
+    outline: none;
+    opacity: 0.9;
+    transition: opacity .2s;
+    border-radius: 5px;
+}
+
+.lix-slider-style:hover {
+    opacity: 1;
+}
+
+.lix-slider-style::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    background: var(--color-primary);
+    cursor: pointer;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: var(--box-shadow);
+}
+
+.lix-slider-style::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    background: var(--color-primary);
+    cursor: pointer;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: var(--box-shadow);
+}
+
+
+.lix-range-label {
+    font-size: 0.9em;
+    color: #777;
+    font-weight: bold;
+}
+
+.lix-description-text {
+    font-size: 0.9em;
+    color: #666;
+    font-style: italic;
+    text-align: center;
+    margin-top: 10px;
+    min-height: 1.2em; /* Sikrer at layout ikke hopper ved tekstskift */
+}
+
+
+/* --- Sorteringsbar Styling --- */
+.sort-bar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.sort-button {
+    font-size: 0.85em;
+    font-weight: normal;
+    background-color: #f0f0f0;
+    color: #555;
+    border: 1px solid var(--border-color);
+}
+
+.sort-button.active {
+    background-color: var(--color-secondary);
+    color: #333;
+    font-weight: 700;
+    border-color: var(--color-secondary-hover);
+}
+
+
+/* --- Harmonika/Dropdown for Kategorier --- */
+#laesehesten-accordion-container {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.accordion-item {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden; /* Vigtigt for border-radius på indhold */
+}
+
+.accordion-header {
+    width: 100%;
+    background-color: #f8f9fa;
+    padding: 12px 15px;
+    border: none;
+    text-align: left;
+    font-family: var(--font-heading);
+    font-size: 1.1em;
+    font-weight: 500;
+    color: var(--color-text);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+.accordion-header:hover {
+    background-color: #e9ecef;
+}
+
+.accordion-arrow {
+    font-size: 0.8em;
+    transition: transform 0.3s ease;
+    transform: rotate(0deg);
+}
+
+.accordion-header.open .accordion-arrow {
+    transform: rotate(90deg);
+}
+
+.accordion-content {
+    padding: 15px;
+    background-color: white;
+    border-top: 1px solid var(--border-color);
+}
+
+
+/* --- Element Checklist Styling --- */
+.element-checklist-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 15px;
+}
+
+.element-item {
+    position: relative;
+}
+
+.element-item input[type="checkbox"] {
+    display: none; /* Skjul den faktiske checkbox */
+}
+
+.element-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 15px 10px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    text-align: center;
+    height: 100%;
+    user-select: none; /* Forhindrer tekst-markering ved klik */
+}
+
+.element-label:hover {
+    border-color: var(--color-secondary-hover);
+    background-color: #f8f9fa;
+    transform: translateY(-2px);
+}
+
+.element-item input:checked + .element-label {
+    border-color: var(--color-primary);
+    background-color: #e6fffa;
+    box-shadow: 0 0 8px rgba(77, 182, 172, 0.4);
+    transform: translateY(-2px);
+}
+
+.element-emoji {
+    font-size: 2.5em;
+    margin-bottom: 5px;
+    line-height: 1;
+}
+
+.element-name {
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.element-complexity {
+    font-size: 1.2em;
+    letter-spacing: 2px;
+    margin-top: 8px;
+    line-height: 1;
+}
+
+.element-complexity[data-complexity="1"] { color: #28a745; } /* Grøn */
+.element-complexity[data-complexity="2"] { color: #ffc107; } /* Gul */
+.element-complexity[data-complexity="3"] { color: #dc3545; } /* Rød */
+
+
+/* --- Knapper i Læsehesten --- */
+#laesehest-add-word-button {
+    margin-top: 5px;
+}
+
+#generate-laesehest-button {
+    background-color: var(--color-primary);
+    color: white;
+    font-size: 1.1em;
+    padding: 12px 20px;
+}
+
+#generate-laesehest-button-disabled {
+    background-color: #ccc;
+    color: #888;
+    cursor: not-allowed;
+    font-size: 1.1em;
+    padding: 12px 20px;
+}
+
+
+/* --- Output Styling --- */
+.final-lix-tag {
+    display: inline-block;
+    font-size: 0.7em;
+    font-weight: bold;
+    color: white;
+    background-color: var(--color-primary-hover);
+    padding: 3px 10px;
+    border-radius: 15px;
+    vertical-align: middle;
+    margin-left: 10px;
+    cursor: help; /* Giver en lille hjælp-cursor ved hover */
+}
+
+/* =================================================================== */
+/* SLUT PÅ STYLING FOR LÆSEHESTEN MODUL                                */
+/* =================================================================== */
