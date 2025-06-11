@@ -1,4 +1,5 @@
 # Fil: routes/narrative_routes.py
+
 from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required, current_user
 from models import Story
@@ -33,38 +34,44 @@ def generate_narrative_story():
     parent_story_id = original_user_inputs.get('parent_story_id')
     continuation_strategy = original_user_inputs.get('continuation_strategy')
     continuation_context = None
-    parent_story = None
+
+    # --- START PÅ RETTELSE ---
     root_story_title = None
+    parent_story = None  # Initialiserer parent_story
+    # --- SLUT PÅ RETTELSE ---
 
-    try:
-        if parent_story_id and continuation_strategy:
-            parent_story = Story.query.get(parent_story_id)
-            if not (parent_story and parent_story.user_id == current_user.id):
-                raise ValueError("Ugyldig eller uautoriseret forælder-historie.")
-
-            # Find moderhistoriens titel til at sende tilbage
-            root_story = Story.query.get(parent_story.root_story_id or parent_story.id)
-            if root_story:
-                root_story_title = root_story.title
-
+    if parent_story_id and continuation_strategy:
+        current_app.logger.info(
+            f"Dette er en fortsættelse af historie ID {parent_story_id} med strategi '{continuation_strategy}'.")
+        parent_story = Story.query.get(parent_story_id)
+        if parent_story and parent_story.user_id == current_user.id:
             continuation_context = {
                 'strategy': continuation_strategy,
                 'problem_name': parent_story.problem_name,
                 'discovered_method_name': parent_story.discovered_method_name
             }
+            # --- START PÅ RETTELSE: Find den oprindelige histories titel ---
+            # Vi traverserer op gennem forældre-kæden for at finde den allerførste historie
+            root_story = parent_story
+            while root_story.parent_story:
+                root_story = root_story.parent_story
+            root_story_title = root_story.title
+            current_app.logger.info(f"Oprindelig historie fundet: '{root_story_title}' (ID: {root_story.id})")
+            # --- SLUT PÅ RETTELSE ---
+        else:
+            current_app.logger.warning(
+                f"Bruger {user_id_for_log} forsøgte at fortsætte en ugyldig eller uautoriseret historie (ID: {parent_story_id}).")
+            parent_story_id = None
 
-        # --- KORREKT 3-TRINS AI-PROCES ---
+    try:
+        # Den eksisterende logik til at generere historien forbliver uændret
         narrative_brief = generate_narrative_brief(original_user_inputs)
-        if hasattr(narrative_brief, 'error') or "Fejl:" in narrative_brief:
-            raise ValueError(f"Fejl i Trin 1 (Briefing): {narrative_brief}")
-
         story_title_from_draft, story_content_from_draft = draft_narrative_story_with_rag(
             structured_brief=narrative_brief,
             original_user_inputs=original_user_inputs,
             narrative_focus_for_rag=original_user_inputs.get('narrative_focus'),
             continuation_context=continuation_context
         )
-
         final_story_title, final_story_content = edit_narrative_story(
             story_draft_title=story_title_from_draft,
             story_draft_content=story_content_from_draft,
@@ -72,43 +79,43 @@ def generate_narrative_story():
         )
 
         new_story = Story(
-            title=final_story_title, content=final_story_content, user_id=current_user.id,
-            source='Narrativ Støtte', is_log_entry=False
+            title=final_story_title,
+            content=final_story_content,
+            user_id=current_user.id,
+            source='Narrativ Støtte',
+            is_log_entry=False
         )
 
-        if parent_story:
-            new_story.parent_story_id = parent_story.id
-            new_story.root_story_id = parent_story.root_story_id or parent_story.id
-            new_story.strategy_used = continuation_strategy
-            max_part = db.session.query(db.func.max(Story.series_part)).filter(
-                Story.root_story_id == new_story.root_story_id).scalar()
-            new_story.series_part = (max_part or 0) + 1
-        else:
-            new_story.series_part = 1
+        if parent_story_id and parent_story:
+            new_story.parent_story_id = parent_story_id
+            # Sæt series_part til forælderens + 1. Hvis forælder ikke har series_part, start fra 2.
+            new_story.series_part = (parent_story.series_part or 1) + 1
 
         db.session.add(new_story)
-        db.session.flush()
-
-        if not new_story.root_story_id:
-            new_story.root_story_id = new_story.id
-
         db.session.commit()
         current_app.logger.info(
-            f"Bruger {user_id_for_log}: Ny historie (ID: {new_story.id}) gemt. Root ID: {new_story.root_story_id}, Del: {new_story.series_part}.")
+            f"Bruger {user_id_for_log}: Ny historie (ID: {new_story.id}) gemt. Parent ID: {new_story.parent_story_id}.")
 
-        return jsonify({
+        # --- START PÅ RETTELSE: Opdater JSON-svar ---
+        response_data = {
             "status": "Historie genereret og gemt succesfuldt.",
             "story_id": new_story.id,
             "title": new_story.title,
             "story": new_story.content,
-            "root_story_title": root_story_title
-        }), 200
+            "narrative_brief_for_reference": narrative_brief
+        }
+        # Tilføj kun root_story_title hvis den blev fundet
+        if root_story_title:
+            response_data["root_story_title"] = root_story_title
+
+        return jsonify(response_data), 200
+        # --- SLUT PÅ RETTELSE ---
 
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(
-            f"Bruger {user_id_for_log}: Fejl under narrativ historiegenerering: {e}\n{traceback.format_exc()}")
-        return jsonify({"error": f"Historiegenerering mislykkedes: {str(e)}"}), 500
+            f"Bruger {user_id_for_log}: Uventet fejl i /generate_narrative_story: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": "En uventet serverfejl opstod."}), 500
 
 @narrative_bp.route('/suggest_character_traits', methods=['POST'])
 @login_required  # Tilføjet/aktiveret

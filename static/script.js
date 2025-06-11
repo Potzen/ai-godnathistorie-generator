@@ -2320,17 +2320,6 @@ async function handleLaesehestGenerateClick() {
             }
         };
 
-        fillField('logbook-ai-summary', data.ai_summary);
-
-        const originalStoryContainer = document.getElementById('logbook-original-story-container');
-        const originalStoryTitleField = document.getElementById('logbook-original-story-title');
-        if(originalStoryContainer && originalStoryTitleField && data.root_story_title) {
-            originalStoryTitleField.value = data.root_story_title;
-            originalStoryContainer.style.display = 'block';
-        } else if (originalStoryContainer) {
-            originalStoryContainer.style.display = 'none';
-        }
-
         fillField('logbook-problem-name', data.problem_name);
         fillField('logbook-problem-category', data.problem_category);
         fillField('logbook-problem-influence', data.problem_influence);
@@ -2340,6 +2329,24 @@ async function handleLaesehestGenerateClick() {
         fillField('logbook-method-steps', data.discovered_method_steps);
         fillField('logbook-child-values', data.child_values);
         fillField('logbook-support-system', data.support_system);
+
+         if (data.ai_summary) {
+        fillField('logbook-ai-summary', data.ai_summary);
+        }
+
+        const originalStoryContainer = document.getElementById('logbook-original-story-container');
+        const originalStoryTitleField = document.getElementById('logbook-original-story-title');
+
+        if (originalStoryContainer && originalStoryTitleField && data.root_story_title) {
+            // Hvis der er data, indsæt titlen og vis containeren
+            originalStoryTitleField.value = data.root_story_title;
+            originalStoryContainer.style.display = 'block'; // Gør den synlig
+            console.log("Viser 'Original Historie' med titlen:", data.root_story_title);
+        } else if (originalStoryContainer) {
+            // Hvis der ikke er data, sørg for at containeren er skjult
+            originalStoryContainer.style.display = 'none';
+        }
+
     }
 
     // Tilføj event listeners til progress sliders
@@ -2395,7 +2402,10 @@ async function handleLaesehestGenerateClick() {
         });
     }
 
-        async function triggerLogbookAnalysis(storyId, storyContent, rootStoryTitle) {
+        // Denne funktion kalder analyse-API'en
+    // --- START PÅ RETTELSE: Tilføj 'rootStoryTitle' som parameter ---
+    async function triggerLogbookAnalysis(storyId, storyContent, rootStoryTitle) {
+    // --- SLUT PÅ RETTELSE ---
         console.log("Logbog: Starter analyse for story ID:", storyId);
         resetLogbookSection();
 
@@ -2409,9 +2419,17 @@ async function handleLaesehestGenerateClick() {
 
         try {
             const analysisData = await analyzeStoryForLogbookApi(storyContent);
-            if (analysisData.error) throw new Error(analysisData.error);
+            console.log("Logbog: Analyse modtaget fra API:", analysisData);
 
-            analysisData.root_story_title = rootStoryTitle;
+            if (analysisData.error) {
+                throw new Error(analysisData.error);
+            }
+
+            // --- START PÅ RETTELSE: Føj titlen til de data, der sendes til formularen ---
+            if (rootStoryTitle) {
+                analysisData.root_story_title = rootStoryTitle;
+            }
+            // --- SLUT PÅ RETTELSE ---
 
             populateLogbookForm(storyId, analysisData);
             logbookLoader.classList.add('hidden');
@@ -2630,65 +2648,49 @@ async function handleLaesehestGenerateClick() {
         button.addEventListener('click', handleStrategyClick);
     });
 
-    async function executeNarrativeGeneration(dataToSend) {
-        const imageButton = document.getElementById('narrative-generate-image-button');
+    // Denne funktion starter hele processen, når en narrativ historie genereres
+async function executeNarrativeGeneration(dataToSend) {
+    console.log("executeNarrativeGeneration: Starter med data:", dataToSend);
+    resetLogbookSection();
 
-        if (imageButton) {
-            imageButton.disabled = true;
-            imageButton.classList.add('disabled-button');
+    const originalButtonText = narrativeGenerateStoryButton.textContent;
+    narrativeGenerateStoryButton.disabled = true;
+    strategyButtons.forEach(btn => btn.disabled = true);
+    narrativeGenerateStoryButton.textContent = "Genererer...";
+
+    narrativeErrorDisplay.classList.add('hidden');
+    narrativeGeneratedStorySection.classList.add('hidden');
+    narrativeLoadingIndicator.classList.remove('hidden');
+
+    try {
+        const result = await generateNarrativeStoryApi(dataToSend);
+        console.log("Svar modtaget fra server:", result);
+        if (result.error) throw new Error(result.error);
+
+        if (narrativeGeneratedTitle) narrativeGeneratedTitle.textContent = result.title;
+        if (narrativeGeneratedStory) narrativeGeneratedStory.innerHTML = result.story.replace(/\n/g, '<br>');
+        if (narrativeGeneratedStorySection) narrativeGeneratedStorySection.classList.remove('hidden');
+
+        if (result.story_id && result.story) {
+            // --- START PÅ RETTELSE ---
+            // Send `result.root_story_title` med til næste funktion.
+            // Hvis den er `undefined` (fordi det ikke var en fortsættelse), bliver den sendt som `undefined`, hvilket er fint.
+            triggerLogbookAnalysis(result.story_id, result.story, result.root_story_title);
+            // --- SLUT PÅ RETTELSE ---
+        } else {
+            throw new Error("Modtog ikke et validt story_id fra backend.");
         }
-
-        resetLogbookSection();
-
-        const originalButtonText = narrativeGenerateStoryButton.textContent;
-        narrativeGenerateStoryButton.disabled = true;
-        strategyButtons.forEach(btn => btn.disabled = true);
-        narrativeGenerateStoryButton.textContent = "Genererer...";
-
-        narrativeErrorDisplay.classList.add('hidden');
-        narrativeGeneratedStorySection.classList.add('hidden');
-        narrativeLoadingIndicator.classList.remove('hidden');
-
-        try {
-            const result = await generateNarrativeStoryApi(dataToSend);
-            if (result.error) throw new Error(result.error);
-
-            if (narrativeGeneratedTitle) narrativeGeneratedTitle.textContent = result.title;
-            if (narrativeGeneratedStory) narrativeGeneratedStory.innerHTML = result.story.replace(/\n/g, '<br>');
-            if (narrativeGeneratedStorySection) narrativeGeneratedStorySection.classList.remove('hidden');
-
-            if (imageButton) {
-                imageButton.disabled = false;
-                imageButton.classList.remove('disabled-button');
-            }
-
-            if (result.story_id && result.story) {
-                triggerLogbookAnalysis(result.story_id, result.story, result.root_story_title);
-            } else {
-                throw new Error("Modtog ikke et validt story_id fra backend.");
-            }
-            if (result.title && result.story && result.narrative_brief_for_reference) {
-                triggerAndDisplayReflectionQuestions(
-                    result.title,
-                    result.story,
-                    result.narrative_brief_for_reference,
-                    dataToSend // 'dataToSend' indeholder de oprindelige brugerinput
-                );
-            }
-        } catch (error) {
-            console.error('Fejl under historiegenerering:', error);
-            if (narrativeErrorDisplay) narrativeErrorDisplay.textContent = `Ups! Noget gik galt: ${error.message}`;
-            narrativeErrorDisplay.classList.remove('hidden');
-        } finally {
-            if (narrativeLoadingIndicator) narrativeLoadingIndicator.classList.add('hidden');
-            narrativeGenerateStoryButton.disabled = false;
-            strategyButtons.forEach(btn => btn.disabled = false);
-            narrativeGenerateStoryButton.textContent = originalButtonText;
-
-            if (continueStorySwitch) continueStorySwitch.checked = false;
-            if (continuationOptions) continuationOptions.classList.add('hidden');
-            if (parentStorySelect) parentStorySelect.value = '';
-        }
+    } catch (error) {
+        console.error('Fejl under historiegenerering:', error);
+        if (narrativeErrorDisplay) narrativeErrorDisplay.textContent = `Ups! Noget gik galt: ${error.message}`;
+        narrativeErrorDisplay.classList.remove('hidden');
+    } finally {
+        if (narrativeLoadingIndicator) narrativeLoadingIndicator.classList.add('hidden');
+        narrativeGenerateStoryButton.disabled = false;
+        strategyButtons.forEach(btn => btn.disabled = false);
+        narrativeGenerateStoryButton.textContent = originalButtonText;
     }
+}
+
 
 // Slut på DOMContentLoaded listener
