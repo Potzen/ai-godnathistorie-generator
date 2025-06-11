@@ -1590,67 +1590,224 @@ input:disabled + .slider-label:before {
     appearance: none;
 }
 
+/* =================================================================== */
+/* START PÅ STYLING FOR LOGBOG (Heltens Logbog v2.0 - Style Rettet)   */
+/* =================================================================== */
+
 /* Styling for logbog toolbar */
 .logbook-toolbar {
     display: flex;
-    flex-wrap: wrap; /* Tillad ombrydning på små skærme */
-    gap: 15px; /* Øget mellemrum mellem elementer */
-    margin-bottom: 25px; /* Lidt mere plads under toolbar */
-    align-items: flex-end; /* Juster elementer i bunden, så labels flugter */
-    justify-content: space-between; /* Fordel elementer jævnt */
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 25px;
+    align-items: flex-end;
+    justify-content: space-between;
 }
-
 .logbook-toolbar .filter-group {
-    flex: 1; /* Hvert filter-group element får lige meget plads */
-    min-width: 150px; /* Minimum bredde for hvert filter-group */
-    display: flex; /* Gør filter-group til en flex-container for label/input */
-    flex-direction: column; /* Stabel label og input vertikalt */
-    align-items: flex-start; /* Juster indhold til venstre */
+    flex: 1;
+    min-width: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
 }
-
-.logbook-toolbar .filter-group-search { /* Specifik styling for søgefeltet */
-    flex: 2; /* Søgefeltet tager dobbelt så meget plads */
-    min-width: 200px; /* Øget minimum bredde for søgefeltet */
+.logbook-toolbar .filter-group-search {
+    flex: 2;
+    min-width: 200px;
 }
-
 .logbook-toolbar label {
-    margin-bottom: 5px; /* Mindre afstand mellem label og input i filter-groups */
-    font-size: 0.9em; /* Lidt mindre font for labels */
+    margin-bottom: 5px;
+    font-size: 0.9em;
     font-weight: bold;
     color: #555;
 }
-
 .logbook-toolbar select,
 .logbook-toolbar input[type="search"] {
-    width: 100%; /* Sørg for at select og input fylder deres container */
-    padding: 8px 10px; /* Mindre padding for et mere kompakt look */
-    height: 38px; /* Fast højde for ensartethed */
-    box-sizing: border-box; /* Inkluder padding og border i højden */
+    width: 100%;
+    padding: 8px 10px;
+    height: 38px;
+    box-sizing: border-box;
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
-    font-family: var(--font-body); /* Ensartet font */
-    font-size: 1em; /* Ensartet font-størrelse */
-    color: var(--color-text); /* Ensartet tekstfarve */
-    background-color: white; /* Hvid baggrund for minimalt design */
-    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out; /* Smooth transitions */
+    font-family: var(--font-body);
+    font-size: 1em;
+    color: var(--color-text);
+    background-color: white;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
-
 .logbook-toolbar select:focus,
 .logbook-toolbar input[type="search"]:focus {
     outline: none;
     border-color: var(--color-primary);
     box-shadow: 0 0 0 2px rgba(77, 182, 172, 0.3);
 }
-
-
-/* Medieforespørgsel for mindre skærme */
 @media (max-width: 600px) {
     .logbook-toolbar {
-        flex-direction: column; /* Stabel elementer vertikalt på små skærme */
-        align-items: stretch; /* Få elementer til at fylde bredden */
+        flex-direction: column;
+        align-items: stretch;
     }
     .logbook-toolbar .filter-group,
     .logbook-toolbar .filter-group-search {
-        min-width: unset; /* Fjern minimum bredde på små skærme */
+        min-width: unset;
     }
+}
+
+/* --- Styling for selve logbogs-indtastningerne (Opdateret for "Spinkelt & Simpelt" look) --- */
+
+.logbook-entry {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    margin-bottom: 15px;
+    background-color: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    overflow: hidden;
+}
+
+/* Den primære knap for hver historie */
+.logbook-entry > .logbook-accordion-toggle {
+    width: 100%;
+    padding: 12px 15px;
+    background-color: var(--color-box-bg, #f8f9fa);
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+.logbook-entry > .logbook-accordion-toggle:hover {
+    background-color: #eef7ff;
+}
+.logbook-entry > .logbook-accordion-toggle.open {
+    border-bottom: none;
+}
+
+/* Styling for titel-teksten i knappen */
+.logbook-title {
+    display: block;
+    font-family: var(--font-body); /* Rettet: Bruger den "spinkle" brødtekst-font */
+    font-size: 1em; /* Rettet: Normal størrelse */
+    font-weight: 600; /* Lettere end fed, men stadig markeret */
+    color: var(--color-text);
+    margin-bottom: 2px;
+}
+
+/* Styling for undertitel (Kilde, Dato) */
+.logbook-subtitle {
+    display: block;
+    font-size: 0.8em;
+    font-weight: normal;
+    color: #6c757d; /* En afdæmpet grå farve */
+}
+
+/* Generel styling for alle pile */
+.logbook-accordion-toggle .arrow {
+    font-size: 0.8em;
+    line-height: 1;
+    transition: transform 0.3s ease;
+    transform: rotate(0deg); /* Peger mod venstre (◀) når lukket */
+    color: var(--color-primary);
+    padding-left: 10px;
+}
+.logbook-accordion-toggle.open .arrow {
+    transform: rotate(-90deg); /* Peger nedad (▼) når åben */
+}
+.logbook-entry > .logbook-accordion-toggle .arrow {
+    color: #555;
+}
+
+
+/* Container for indholdet ("Læs Historien", "Se Doku", etc.) */
+.logbook-accordion-content {
+    padding: 10px 15px 15px 15px;
+    background-color: #ffffff;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Wrapper for hver indre sektion */
+.logbook-inner-entry {
+    margin-top: 8px;
+}
+.logbook-inner-entry:first-child {
+    margin-top: 0;
+}
+
+/* Styling for de indre knapper (Læs, Doku, Noter) for at matche style guide */
+.nested-accordion-toggle {
+    width: 100%;
+    padding: 10px 15px;
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    text-align: left;
+    font-size: 0.9em;
+    font-weight: bold;
+    color: var(--color-primary);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.nested-accordion-toggle:hover {
+    background-color: #f7f9fa;
+}
+
+/* Indholdet af de indre harmonikaer */
+.nested-accordion-content {
+    padding: 15px;
+    margin-top: -1px;
+    background-color: var(--color-box-bg);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+}
+.nested-accordion-content h4 {
+    margin-top: 0;
+    color: var(--color-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+    margin-bottom: 15px;
+}
+
+/* Styling af dokumentationslinjer */
+.logbook-doc-item {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+}
+.logbook-doc-item strong {
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 4px;
+    font-size: 0.9em;
+}
+.logbook-doc-item span, .logbook-doc-item p {
+    margin-left: 0;
+    line-height: 1.6;
+}
+
+/* Styling for note-sektionen */
+.user-notes-textarea {
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    font-family: var(--font-body);
+    font-size: 1em;
+    width: 100%;
+    box-sizing: border-box;
+}
+.note-save-feedback {
+    margin-left: 10px;
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+/* Ny klasse for at få en textarea til at ligne et input-felt på én linje */
+.single-line-textarea {
+    height: 38px; /* Samme højde som .logbook-toolbar input */
+    line-height: 1.5; /* Justerer tekstens vertikale placering */
+    padding-top: 6px;
+    padding-bottom: 6px;
+    resize: vertical; /* Tillad lodret udvidelse, men start småt */
 }

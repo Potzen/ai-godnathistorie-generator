@@ -14,7 +14,6 @@ from services.ai_service import (
 )
 import traceback
 
-
 narrative_bp = Blueprint('narrative', __name__, url_prefix='/narrative')
 
 
@@ -31,141 +30,85 @@ def generate_narrative_story():
     user_id_for_log = current_user.id
     current_app.logger.info(f"Narrative Route (Bruger: {user_id_for_log}): Modtaget anmodning om historiegenerering.")
 
-    # NYT: Hent data for fortsættelse
     parent_story_id = original_user_inputs.get('parent_story_id')
     continuation_strategy = original_user_inputs.get('continuation_strategy')
     continuation_context = None
+    parent_story = None
+    root_story_title = None
 
-    if parent_story_id and continuation_strategy:
-        current_app.logger.info(
-            f"Dette er en fortsættelse af historie ID {parent_story_id} med strategi '{continuation_strategy}'.")
-        parent_story = Story.query.get(parent_story_id)
-        if parent_story and parent_story.user_id == current_user.id:
+    try:
+        if parent_story_id and continuation_strategy:
+            parent_story = Story.query.get(parent_story_id)
+            if not (parent_story and parent_story.user_id == current_user.id):
+                raise ValueError("Ugyldig eller uautoriseret forælder-historie.")
+
+            # Find moderhistoriens titel til at sende tilbage
+            root_story = Story.query.get(parent_story.root_story_id or parent_story.id)
+            if root_story:
+                root_story_title = root_story.title
+
             continuation_context = {
                 'strategy': continuation_strategy,
                 'problem_name': parent_story.problem_name,
                 'discovered_method_name': parent_story.discovered_method_name
-                # Vi kan tilføje flere felter her senere om nødvendigt
             }
-        else:
-            current_app.logger.warning(
-                f"Bruger {user_id_for_log} forsøgte at fortsætte en ugyldig eller uautoriseret historie (ID: {parent_story_id}).")
-            # Ignorer fortsættelsen, men generer stadig en normal historie for at undgå fejl i frontend
-            parent_story_id = None
 
-    try:
-        # VI SKAL OPDATERE DISSE KALD SENERE TIL AT BRUGE 'continuation_context'
-        # For nu lader vi dem være, så appen ikke crasher.
-        # Send nu den nye kontekst med i kaldene
+        # --- KORREKT 3-TRINS AI-PROCES ---
         narrative_brief = generate_narrative_brief(original_user_inputs)
+        if hasattr(narrative_brief, 'error') or "Fejl:" in narrative_brief:
+            raise ValueError(f"Fejl i Trin 1 (Briefing): {narrative_brief}")
+
         story_title_from_draft, story_content_from_draft = draft_narrative_story_with_rag(
             structured_brief=narrative_brief,
             original_user_inputs=original_user_inputs,
             narrative_focus_for_rag=original_user_inputs.get('narrative_focus'),
-            continuation_context=continuation_context  # <--- VIGTIG TILFØJELSE
+            continuation_context=continuation_context
         )
+
         final_story_title, final_story_content = edit_narrative_story(
             story_draft_title=story_title_from_draft,
             story_draft_content=story_content_from_draft,
             original_user_inputs=original_user_inputs
         )
 
-        # Gem den nye historie
         new_story = Story(
-            title=final_story_title,
-            content=final_story_content,
-            user_id=current_user.id,
-            source='Narrativ Støtte',
-            is_log_entry=False
+            title=final_story_title, content=final_story_content, user_id=current_user.id,
+            source='Narrativ Støtte', is_log_entry=False
         )
 
-        # NYT: Sæt parent_id og series_part, hvis det er en fortsættelse
-        if parent_story_id and parent_story:
-            new_story.parent_story_id = parent_story_id
-            new_story.series_part = parent_story.series_part + 1
+        if parent_story:
+            new_story.parent_story_id = parent_story.id
+            new_story.root_story_id = parent_story.root_story_id or parent_story.id
+            new_story.strategy_used = continuation_strategy
+            max_part = db.session.query(db.func.max(Story.series_part)).filter(
+                Story.root_story_id == new_story.root_story_id).scalar()
+            new_story.series_part = (max_part or 0) + 1
+        else:
+            new_story.series_part = 1
 
         db.session.add(new_story)
+        db.session.flush()
+
+        if not new_story.root_story_id:
+            new_story.root_story_id = new_story.id
+
         db.session.commit()
         current_app.logger.info(
-            f"Bruger {user_id_for_log}: Ny historie (ID: {new_story.id}) gemt. Parent ID: {new_story.parent_story_id}.")
+            f"Bruger {user_id_for_log}: Ny historie (ID: {new_story.id}) gemt. Root ID: {new_story.root_story_id}, Del: {new_story.series_part}.")
 
         return jsonify({
             "status": "Historie genereret og gemt succesfuldt.",
             "story_id": new_story.id,
             "title": new_story.title,
             "story": new_story.content,
-            "narrative_brief_for_reference": narrative_brief
+            "root_story_title": root_story_title
         }), 200
 
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(
-            f"Bruger {user_id_for_log}: Uventet fejl i /generate_narrative_story: {e}\n{traceback.format_exc()}")
-        return jsonify({"error": "En uventet serverfejl opstod."}), 500
-
-@narrative_bp.route('/get_guiding_questions', methods=['POST'])
-@login_required
-def get_guiding_questions():
-    if current_user.role != 'premium':
-        current_app.logger.warning(
-            f"Uautoriseret forsøg på adgang til '/get_guiding_questions' af bruger: "
-            f"{current_user.email} (Rolle: {current_user.role})"
-        )
-        return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403
-
-    user_id_for_log = current_user.id
-    current_app.logger.info(
-        f"Narrative Route (Bruger: {user_id_for_log}, E-mail: {current_user.email}): Modtaget anmodning til /get_guiding_questions."
-    )
-
-    if not request.is_json:
-        current_app.logger.error(f"Bruger {user_id_for_log}: Anmodning til /get_guiding_questions er ikke JSON.")
-        return jsonify({"error": "Anmodning skal være JSON."}), 415
-
-    data = request.get_json()
-    current_app.logger.debug(f"Bruger {user_id_for_log}: Modtaget data for /get_guiding_questions: {str(data)[:500]}...") # Log kun starten af data
-
-    final_story_title = data.get('final_story_title')
-    final_story_content = data.get('final_story_content')
-    narrative_brief = data.get('narrative_brief')
-    original_user_inputs = data.get('original_user_inputs') # Bruges til barnets alder etc.
-
-    if not all([final_story_title, final_story_content, narrative_brief, original_user_inputs]):
-        missing_fields = [
-            field for field, value in {
-                "final_story_title": final_story_title,
-                "final_story_content": final_story_content,
-                "narrative_brief": narrative_brief,
-                "original_user_inputs": original_user_inputs
-            }.items() if not value
-        ]
-        current_app.logger.error(
-            f"Bruger {user_id_for_log}: Manglende felter i anmodning til /get_guiding_questions: {', '.join(missing_fields)}"
-        )
-        return jsonify({"error": f"Manglende nødvendige felter i anmodningen: {', '.join(missing_fields)}"}), 400
-
-    try:
-        current_app.logger.info(f"Bruger {user_id_for_log}: Kalder ai_service for at generere refleksionsspørgsmål (Trin 4)...")
-        questions = generate_reflection_questions_step4(
-            final_story_title=final_story_title,
-            final_story_content=final_story_content,
-            narrative_brief=narrative_brief,
-            original_user_inputs=original_user_inputs
-        )
-
-        if questions: # Hvis listen ikke er tom
-            current_app.logger.info(f"Bruger {user_id_for_log}: {len(questions)} refleksionsspørgsmål genereret succesfuldt.")
-            return jsonify({"reflection_questions": questions}), 200
-        else:
-            current_app.logger.warning(f"Bruger {user_id_for_log}: Ingen refleksionsspørgsmål genereret af ai_service (Trin 4).")
-            return jsonify({"reflection_questions": [], "message": "Ingen specifikke spørgsmål kunne genereres på baggrund af denne historie, eller AI-kaldet returnerede ingen."}), 200
-
-    except Exception as e:
-        current_app.logger.error(
-            f"Bruger {user_id_for_log}: Uventet fejl i /get_guiding_questions endpoint: {e}\n{traceback.format_exc()}"
-        )
-        return jsonify({"error": "En uventet intern serverfejl opstod under generering af refleksionsspørgsmål."}), 500
-
+            f"Bruger {user_id_for_log}: Fejl under narrativ historiegenerering: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": f"Historiegenerering mislykkedes: {str(e)}"}), 500
 
 @narrative_bp.route('/suggest_character_traits', methods=['POST'])
 @login_required  # Tilføjet/aktiveret
@@ -316,40 +259,44 @@ def filter_logbook():
     API-endepunkt til dynamisk at filtrere og sortere logbogs-historier.
     """
     data = request.get_json()
-
     source = data.get('source')
     search_term = data.get('searchTerm')
     sort_by = data.get('sortBy')
 
-    # Start med en basisforespørgsel
-    query = Story.query.filter_by(user_id=current_user.id, is_log_entry=True)
+    # Alias for Story tabellen for at kunne joine den med sig selv
+    RootStory = db.aliased(Story)
 
-    # Tilføj filter for kilde
+    # Start med en basisforespørgsel, og join med RootStory for at hente moderhistoriens titel
+    query = db.session.query(
+        Story,
+        RootStory.title.label('root_story_title')
+    ).outerjoin(RootStory, Story.root_story_id == RootStory.id).filter(
+        Story.user_id == current_user.id,
+        Story.is_log_entry == True
+    )
+
     if source and source != 'all':
         query = query.filter(Story.source == source)
 
-    # Tilføj filter for søgeterm
     if search_term:
         query = query.filter(or_(
             Story.title.ilike(f'%{search_term}%'),
             Story.content.ilike(f'%{search_term}%')
         ))
 
-    # Tilføj sortering
     if sort_by == 'oldest':
         query = query.order_by(Story.created_at.asc())
     elif sort_by == 'title_asc':
         query = query.order_by(Story.title.asc())
     elif sort_by == 'title_desc':
         query = query.order_by(Story.title.desc())
-    else:  # Default til nyeste først
+    else:
         query = query.order_by(Story.created_at.desc())
 
-    filtered_stories = query.all()
+    results = query.all()
 
-    # Konverter historierne til et format, der kan sendes som JSON
     stories_list = []
-    for story in filtered_stories:
+    for story, root_title in results:
         stories_list.append({
             'id': story.id,
             'title': story.title,
@@ -363,7 +310,10 @@ def filter_logbook():
             'discovered_method_steps': story.discovered_method_steps,
             'child_values': story.child_values,
             'support_system': story.support_system,
-            'user_notes': story.user_notes
+            'user_notes': story.user_notes,
+            'series_part': story.series_part,
+            'strategy_used': story.strategy_used,
+            'root_story_title': root_title if story.id != story.root_story_id else None
         })
 
     return jsonify(stories_list)

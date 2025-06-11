@@ -25,6 +25,8 @@ from services.rag_service import find_relevant_chunks_v2
 from prompts.narrative_question_prompt import build_narrative_question_prompt
 from google.cloud.texttospeech_v1 import TextToSpeechClient, SynthesisInput, VoiceSelectionParams, AudioConfig, SsmlVoiceGender, AudioEncoding
 from prompts.logbook_analysis_prompt import build_logbook_analysis_prompt
+from google.api_core.exceptions import InternalServerError
+import time
 
 # Definerede stemmer til Google Text-to-Speech (Engelske Gemini TTS-modeller)
 # Zephyr virker. Gacrux, Sadachbia, Zubenelgenubi forventes IKKE at virke med denne klient/model.
@@ -627,117 +629,82 @@ def draft_narrative_story_with_rag(
         continuation_context=None
 ):
     """
-    Genererer et første udkast til en narrativ historie.
-    Kan nu håndtere at skabe en fortsættelse baseret på continuation_context.
+    Genererer et første udkast til en narrativ historie med retry-logik.
     """
     current_app.logger.info("AI Service: Påbegynder udarbejdelse af narrativ historie med RAG (Trin 2)...")
-    story_title = None
-    story_content = "Fejl: Kunne ikke generere historieudkast (Trin 2)."
-    reflection_questions = []
 
-    # 1. Hent RAG-kontekst
-    rag_chunks = []
-    if narrative_focus_for_rag and narrative_focus_for_rag.strip():
+    max_retries = 2
+    for attempt in range(max_retries):
         try:
-            current_app.logger.info(
-                f"AI Service: Henter RAG-kontekst baseret på: '{narrative_focus_for_rag[:100]}...'")
-            rag_chunks = find_relevant_chunks_v2(narrative_focus_for_rag, top_k=2)
-            if rag_chunks:
-                current_app.logger.info(f"AI Service: {len(rag_chunks)} RAG-chunks fundet.")
-            else:
-                current_app.logger.info("AI Service: Ingen relevante RAG-chunks fundet.")
-        except Exception as e_rag:
-            current_app.logger.error(
-                f"AI Service: Fejl under hentning af RAG-kontekst: {e_rag}\n{traceback.format_exc()}")
+            current_app.logger.info(f"Forsøg {attempt + 1}/{max_retries} på at generere narrativt udkast.")
+
             rag_chunks = []
-    else:
-        current_app.logger.warning("AI Service: narrative_focus_for_rag var tom. Skipper RAG-søgning.")
+            if narrative_focus_for_rag and narrative_focus_for_rag.strip():
+                rag_chunks = find_relevant_chunks_v2(narrative_focus_for_rag, top_k=2)
 
-    try:
-        # 2. Byg prompten til Trin 2 AI'en
-        prompt_string = build_narrative_drafting_prompt(
-            structured_brief=structured_brief,
-            rag_context=rag_chunks,
-            original_user_inputs=original_user_inputs,
-            continuation_context=continuation_context
-        )
-        current_app.logger.debug(
-            f"AI Service: Narrativ drafting prompt bygget (længde: {len(prompt_string)}).")
+            prompt_string = build_narrative_drafting_prompt(
+                structured_brief=structured_brief,
+                rag_context=rag_chunks,
+                original_user_inputs=original_user_inputs,
+                continuation_context=continuation_context
+            )
+            ai_model_name = 'gemini-2.5-pro-preview-05-06'
+            model = genai.GenerativeModel(ai_model_name)
+            safety_settings = {
+                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+            }
+            story_length_preference = original_user_inputs.get('length', 'mellem')
+            max_tokens_for_draft = 8192
+            if story_length_preference == 'kort':
+                max_tokens_for_draft = 2048
+            elif story_length_preference == 'mellem':
+                max_tokens_for_draft = 4096
 
-        # 3. Konfigurer og kald AI-modellen
-        ai_model_name = 'gemini-2.5-pro-preview-05-06'
-        model = genai.GenerativeModel(ai_model_name)
-        current_app.logger.info(f"AI Service: Anvender AI-model '{ai_model_name}' for Trin 2.")
+            generation_config_settings = {
+                "max_output_tokens": max_tokens_for_draft, "temperature": 0.6, "top_p": 0.95
+            }
+            gen_config = genai.types.GenerationConfig(**generation_config_settings)
 
-        safety_settings = {
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-        }
+            response = model.generate_content(
+                prompt_string,
+                generation_config=gen_config,
+                safety_settings=safety_settings
+            )
 
-        story_length_preference = original_user_inputs.get('length', 'mellem')
-        max_tokens_for_draft = 8192
-        if story_length_preference == 'kort':
-            max_tokens_for_draft = 2048
-        elif story_length_preference == 'mellem':
-            max_tokens_for_draft = 4096
-
-        generation_config_settings = {
-            "max_output_tokens": max_tokens_for_draft,
-            "temperature": 0.6,
-            "top_p": 0.95,
-        }
-        gen_config = genai.types.GenerationConfig(**generation_config_settings)
-
-        current_app.logger.info(
-            f"AI Service: Kalder Gemini for narrativt historieudkast (Max Tokens: {gen_config.max_output_tokens}, Temp: {gen_config.temperature}).")
-
-        response = model.generate_content(
-            prompt_string,
-            generation_config=gen_config,
-            safety_settings=safety_settings
-        )
-
-        # 4. Parse svaret fra AI'en
-        raw_response_text = ""
-        try:
             raw_response_text = response.text.strip()
             if not raw_response_text:
-                current_app.logger.warning("AI Service: Historieudkast (Trin 2) fra Gemini var tomt.")
-                story_content = "Fejl: AI returnerede et tomt historieudkast."
-                return story_title, story_content
-
-            current_app.logger.info("AI Service: Historieudkast (Trin 2) genereret succesfuldt.")
+                raise ValueError("AI returnerede et tomt historieudkast.")
 
             title_story_parts = raw_response_text.split('\n', 1)
-            if title_story_parts and title_story_parts[0].strip():
-                story_title = title_story_parts[0].strip()
-                story_content = title_story_parts[1].strip() if len(title_story_parts) > 1 and title_story_parts[
-                    1].strip() else ""
+            story_title = title_story_parts[0].strip() if title_story_parts and title_story_parts[
+                0].strip() else "Uden Titel"
+            story_content = title_story_parts[1].strip() if len(title_story_parts) > 1 and title_story_parts[
+                1].strip() else raw_response_text
+
+            current_app.logger.info(f"Succes på forsøg {attempt + 1}. Returnerer historie.")
+
+            return story_title, story_content
+
+        except InternalServerError as e:
+            current_app.logger.warning(f"Google returnerede en intern serverfejl på forsøg {attempt + 1}: {e}")
+            if attempt < max_retries - 1:
+                current_app.logger.info("Venter 2 sekunder og prøver igen...")
+                time.sleep(2)
             else:
-                story_title = "Uden Titel (Trin 2 - Parse Fejl)"
-                story_content = raw_response_text
+                current_app.logger.error("Alle genforsøg fejlede med InternalServerError. Kaster fejlen videre.")
+                raise e
 
-            if not story_content:
-                current_app.logger.warning("AI Service: Selve historieteksten er tom efter parsing.")
-                story_content = "Historien mangler indhold."
-
-        except ValueError as e_safety:
+        except Exception as e:
             current_app.logger.error(
-                f"AI Service: Svar til historieudkast (Trin 2) blokeret af sikkerhedsfilter: {e_safety}")
-            story_content = "Fejl: Indhold til historien blev blokeret af AI'en. Prøv at justere dine input."
-        except Exception as e_parse:
-            current_app.logger.error(
-                f"AI Service: Fejl ved parsing af AI-svar (Trin 2): {e_parse}\n{traceback.format_exc()}")
-            story_content = f"Fejl: Kunne ikke parse svaret fra AI. Rå output: {raw_response_text[:200]}..."
+                f"En ikke-genoprettelig fejl opstod under udarbejdelse af historieudkast: {e}\n{traceback.format_exc()}")
+            raise e
 
-    except Exception as e_general:
-        current_app.logger.error(
-            f"AI Service: Generel fejl under udarbejdelse af historieudkast (Trin 2): {e_general}\n{traceback.format_exc()}")
-        story_content = f"Fejl: Teknisk fejl i AI-tjenesten under udarbejdelse af historieudkast (Trin 2)."
-
-    return story_title, story_content
+    # Denne kode vil kun blive nået, hvis alle 'retries' fejler med InternalServerError.
+    # Den kaster en endelig fejl, som bliver fanget i narrative_routes.py.
+    raise InternalServerError("Kunne ikke generere historie efter flere forsøg på grund af interne fejl hos Google.")
 
 def generate_reflection_questions_step4(
         final_story_title: str,

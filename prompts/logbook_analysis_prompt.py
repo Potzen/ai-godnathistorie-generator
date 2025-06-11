@@ -3,11 +3,11 @@
 def build_logbook_analysis_prompt(story_content: str) -> str:
     """
     Bygger en prompt, der instruerer AI'en i at analysere en historie
-    og returnere strukturerede, narrative "guldkorn" som JSON.
+    og returnere strukturerede, narrative "guldkorn" samt en pædagogisk analyse som JSON.
     """
     prompt = f"""
 SYSTEM INSTRUKTION:
-Du er en specialiseret AI-assistent med dyb ekspertise i narrativ terapi for børn. Din opgave er at læse den vedlagte børnehistorie og identificere centrale terapeutiske elementer. Du skal eksternalisere problemet, finde "glimt" (unique outcomes), navngive den anvendte styrke, og identificere de værdier, barnet forsvarede.
+Du er en specialiseret AI-assistent med dyb ekspertise i narrativ terapi for børn. Din opgave er at læse den vedlagte børnehistorie og identificere centrale terapeutiske elementer.
 Dit output SKAL være en valid JSON-formateret streng, der følger den specificerede struktur NØJAGTIGT.
 
 HISTORIE TIL ANALYSE:
@@ -16,27 +16,35 @@ HISTORIE TIL ANALYSE:
 ---
 
 DIN OPGAVE:
-Analysér historien ovenfor og udfyld følgende JSON-struktur. Vær præcis, brug et positivt og styrkende sprog, og formuler indsigterne fra barnets perspektiv.
+Analysér historien ovenfor og udfyld følgende JSON-struktur. Vær præcis, brug et positivt og styrkende sprog.
 
 JSON-STRUKTUR (udfyld værdierne):
 {{
+  "ai_summary": "...",
   "problem_name": "...",
+  "problem_category": "...",
   "problem_influence": "...",
   "unique_outcome": "...",
   "discovered_method_name": "...",
+  "strength_type": "...",
   "discovered_method_steps": "...",
   "child_values": ["...", "..."],
   "support_system": ["...", "..."]
 }}
 
 VEJLEDNING TIL UDFYLDNING AF JSON-FELTER:
-1.  "problem_name": Identificer den eksternaliserede version af problemet i historien (f.eks. "Vrede-vulkanen", "Bekymrings-monsteret"). Værdien skal være en kort, navne-lignende streng.
-2.  "problem_influence": Beskriv kort, hvordan problemet påvirkede hovedpersonen. Hvad gjorde problemet? (f.eks. "Fik maven til at boble og hænderne til at knytte sig.").
-3.  "unique_outcome": Beskriv det specifikke vendepunkt, hvor hovedpersonen gjorde noget, der succesfuldt modstod problemet. Formuler det som en aktiv handling fra hovedpersonens side. (f.eks. "Da [Hovedperson] valgte at trække vejret dybt i stedet for at råbe, og mærkede at Vrede-vulkanen blev mindre.").
-4.  "discovered_method_name": Giv et fængende og positivt navn til den strategi eller "superkraft", der blev brugt i "unique_outcome". (f.eks. "Pause-knappen", "Spørge-om-hjælp-kraften", "Vejrtræknings-skjoldet").
-5.  "discovered_method_steps": Baseret på "discovered_method_name", skriv en kort, letforståelig trin-for-trin guide (2-3 trin) til, hvordan metoden kan bruges. Brug et handlingsorienteret sprog. Eksempel: "1. Stop op og mærk efter i maven. 2. Træk vejret dybt tre gange som en drage. 3. Pust al den varme luft ud og fortæl, hvad du har brug for.". Værdien skal være en enkelt streng, hvor du bruger '\\n' for linjeskift.
-6.  "child_values": Analysér temaet i historien og identificer 2-3 centrale værdier, som hovedpersonens handling forsvarede. Værdier kunne være "Mod", "Venskab", "Retfærdighed", "Ærlighed", "Omsorg". Returner som en liste af strenge.
-7.  "support_system": Identificer de karakterer (personer, dyr, magiske væsener), der hjalp eller støttede hovedpersonen. Returner som en liste af navne/beskrivelser.
+**KRITISK REGEL: Hvis du ikke kan finde information til et specifikt felt i historien, skal du returnere strengen "Ikke specificeret i historien" som feltets værdi.**
+
+1.  "ai_summary": Skriv en kort pædagogisk analyse/opsummering (2-3 sætninger), der beskriver, hvordan historien adresserer udfordringen.
+2.  "problem_name": Identificer den eksternaliserede version af problemet (f.eks. "Vrede-vulkanen").
+3.  "problem_category": **NYT FELT!** Kategoriser problemet med et enkelt eller få ord (f.eks. "Følelse", "Social Udfordring", "Vane", "Angst").
+4.  "problem_influence": Beskriv kort, hvordan problemet påvirkede hovedpersonen.
+5.  "unique_outcome": Beskriv det specifikke vendepunkt, hvor helten handlede anderledes og succesfuldt.
+6.  "discovered_method_name": Giv et fængende navn til den strategi/superkraft, der blev brugt.
+7.  "strength_type": **NYT FELT!** Kategoriser den type styrke, der blev brugt (f.eks. "Kreativitet", "Empati", "Logik", "Mod", "Social styrke").
+8.  "discovered_method_steps": Skriv en kort, letforståelig trin-for-trin guide til metoden (2-3 trin adskilt af '\\n').
+9.  "child_values": Identificer 2-3 centrale værdier, som heltens handling forsvarede (f.eks. "Mod", "Venskab"). Returner som en liste af strenge.
+10. "support_system": Identificer de karakterer, der hjalp eller støttede helten. Returner som en liste af navne/beskrivelser.
 
 Returner KUN den færdige JSON-streng, intet andet.
 """

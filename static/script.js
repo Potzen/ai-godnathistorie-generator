@@ -1,6 +1,6 @@
 // Fil: static/script.js
+import { initializeLogbook } from './logbook.js';
 import { generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generateNarrativeStoryApi, getGuidingQuestionsApi, generateAudioApi, generateLixStoryApi, analyzeStoryForLogbookApi, saveLogbookEntryApi, listContinuableStoriesApi } from './modules/api_client.js';
-import { fetchAndRenderLogbook } from './logbook.js';
 
 // Kør først koden, når hele HTML dokumentet er færdigindlæst og klar
 document.addEventListener('DOMContentLoaded', () => {
@@ -564,6 +564,11 @@ loadFontSizesFromLocalStorage();
         const historieOutput = document.getElementById('historie-output');
 
         const handleTabClick = (button) => {
+            // Undgå at gøre noget, hvis fanen allerede er aktiv
+            if (button.classList.contains('active')) {
+                return;
+            }
+
             tabButtons.forEach(btn => btn.classList.remove('active'));
             contentSections.forEach(section => section.classList.add('hidden'));
 
@@ -581,9 +586,10 @@ loadFontSizesFromLocalStorage();
                 if (historieOutput) historieOutput.classList.add('hidden');
             }
 
-            // NYT: Kald fetchAndRenderLogbook() når logbog-fanen aktiveres
+            // Kald initializeLogbook() NÅR logbog-fanen aktiveres
             if (targetId === '#logbook-module') {
-                fetchAndRenderLogbook(); //
+                console.log("[script.js] Logbogs-fane aktiveret. Kalder initializeLogbook.");
+                initializeLogbook();
             }
         };
 
@@ -591,19 +597,21 @@ loadFontSizesFromLocalStorage();
             button.addEventListener('click', () => handleTabClick(button));
         });
 
-        // Sørg for at den korrekte tilstand er sat ved sideindlæsning
+        // Håndter den fane, der er aktiv ved sideindlæsning
         const initiallyActiveButton = document.querySelector('.tab-button.active');
         if (initiallyActiveButton) {
-            handleTabClick(initiallyActiveButton);
-        } else {
-            // Hvis ingen fane er aktiv som standard, aktiver den første og kald dens handler
-            const firstTabButton = tabButtons[0];
-            if (firstTabButton) {
-                handleTabClick(firstTabButton);
+            // Sørg for at den korrekte sektion vises, men kald kun initializeLogbook, hvis det er logbogsfanen
+            const targetId = initiallyActiveButton.dataset.tabTarget;
+            const targetSection = document.querySelector(targetId);
+            if (targetSection) {
+                targetSection.classList.remove('hidden');
+            }
+            if (targetId === '#logbook-module') {
+                 console.log("[script.js] Logbogs-fane er aktiv ved start. Kalder initializeLogbook.");
+                 initializeLogbook();
             }
         }
     }
-
 // === SLUT PÅ NYT: Fane Navigation Funktionalitet ===
 
     // === NYT: Dropdown Funktionalitet for Narrativ Støtte ===
@@ -1529,137 +1537,187 @@ async function handleGenerateImageFromStoryClick() { // Bemærk navnet
     }
 }
 
-    // === Nulstil Funktion (Reset) ===
-    function handleResetClick(clearLocalStorageForListeners = true) {
-        console.log("Reset: Started. Clear LocalStorage for listeners:", clearLocalStorageForListeners);
-        if(generatorSection) {
-            generatorSection.querySelectorAll('input[type="text"], textarea').forEach(input => {
-                // Tjek om inputtet er inde i listener-containeren
-                if (!input.closest('#listener-container')) {
-                    input.value = ''; // Ryd kun hvis det IKKE er et lytter-input
-                }
-            });
+
+async function handleGenerateNarrativeImageClick() {
+    console.log("--> handleGenerateNarrativeImageClick startet");
+
+    const storyContentElement = document.getElementById('narrative-generated-story');
+    const imageSection = document.getElementById('narrative-billede-sektion');
+    const loadingIndicator = document.getElementById('narrative-image-loading-indicator');
+    const imageDisplay = document.getElementById('narrative-story-image-display');
+    const errorDisplay = document.getElementById('narrative-image-generation-error');
+    const generateButton = document.getElementById('narrative-generate-image-button');
+
+    if (!storyContentElement || !storyContentElement.textContent.trim()) {
+        if(errorDisplay) {
+            errorDisplay.textContent = "Generer venligst en narrativ historie først.";
+            if(imageSection) imageSection.classList.remove('hidden');
+            errorDisplay.classList.remove('hidden');
         }
-        if(interactiveCheckbox) interactiveCheckbox.checked = false;
-        // console.log("Reset: Cleared text inputs and textarea.");
+        return;
+    }
 
-        const removeExtraGroups = (containerId, groupSelector) => {
-            const container = document.getElementById(containerId);
-            if (container) {
-                const groups = container.querySelectorAll(groupSelector);
-                for (let i = groups.length - 1; i > 0; i--) { groups[i].remove(); }
-            }
-        };
-       if (clearLocalStorageForListeners) { // Kun fjern ekstra lytter-grupper hvis vi laver et "fuldt" reset
-            removeExtraGroups('listener-container', '.listener-group');
-        }
-        removeExtraGroups('karakter-container', '.character-group');
-        removeExtraGroups('sted-container', '.input-group');
-        removeExtraGroups('plot-container', '.input-group');
-        // console.log("Reset: Removed extra dynamic groups.");
+    const storyText = storyContentElement.textContent.trim();
 
-        if(storyDisplay) storyDisplay.textContent = '';
-        if(storySectionHeading) storySectionHeading.textContent = 'Jeres historie'; // Nulstil titel
-        if(resetButton && storyShareButtonsContainer) storyShareButtonsContainer.querySelector('#reset-button').style.display = 'none';
-        if (storyShareButtonsContainer) storyShareButtonsContainer.classList.add('hidden');
+    imageSection.classList.remove('hidden');
+    loadingIndicator.classList.remove('hidden');
+    imageDisplay.classList.add('hidden');
+    imageDisplay.src = '#';
+    errorDisplay.classList.add('hidden');
+    errorDisplay.textContent = '';
+    if (generateButton) generateButton.disabled = true;
 
-        // Nulstil lyd/billede
-        if(audioPlayer) { audioPlayer.pause(); audioPlayer.src = ''; audioPlayer.classList.add('hidden'); }
-        if(audioLoadingDiv) audioLoadingDiv.classList.add('hidden');
-        if(audioErrorDiv) { audioErrorDiv.textContent = ''; audioErrorDiv.classList.add('hidden'); }
-        if(loginPromptAudio) loginPromptAudio.classList.add('hidden');
-
-        if(laengdeSelect) laengdeSelect.value = 'kort';
-        if(moodSelect) moodSelect.value = 'neutral';
-        // console.log("Reset: Dropdowns reset.");
-
-        if (clearLocalStorageForListeners) {
-            try {
-                localStorage.removeItem('savedListeners');
-                console.log("Reset: Removed saved listeners from LocalStorage.");
-            } catch (e) {
-                console.error("Reset: Error removing listeners from LocalStorage:", e);
-            }
+    try {
+        const result = await generateImageApi(storyText);
+        if (result.image_url) {
+            imageDisplay.src = result.image_url;
+            imageDisplay.classList.remove('hidden');
         } else {
-            // console.log("Reset: Skipped clearing LocalStorage for listeners (likely due to autofill).");
+            throw new Error(result.error || "Uventet svar fra serveren under billedgenerering.");
         }
-        console.log("Reset: Finished.");
+    } catch (error) {
+        console.error("Fejl under generering af narrativt billede:", error);
+        errorDisplay.textContent = `Billed-fejl: ${error.message}`;
+        errorDisplay.classList.remove('hidden');
+        imageDisplay.classList.add('hidden');
+    } finally {
+        loadingIndicator.classList.add('hidden');
+        if (generateButton) generateButton.disabled = false;
+        console.log("--> handleGenerateNarrativeImageClick færdig");
     }
+}
 
-
-    // === Historie Dele Funktioner ===
-    if (shareStoryFacebookButton) {
-        shareStoryFacebookButton.addEventListener('click', () => {
-            const storyData = getStoryInputsForSharing(); // Henter titel, inputs etc.
-            const storyText = storyDisplay.textContent || "";
-            const appURL = window.location.origin; // F.eks. "https://readmeastory.dk"
-
-            let quoteParts = [];
-            quoteParts.push(`Jeg har lige lavet en historie: "${storyData.titel}"`);
-            if (storyData.karakterBeskrivelse) {
-                let karakter = storyData.karakterBeskrivelse;
-                if (storyData.karakterNavn) karakter += ` ved navn ${storyData.karakterNavn}`;
-                quoteParts.push(`Hovedperson: ${karakter}.`);
-            }
-            if (storyData.sted) quoteParts.push(`Sted: ${storyData.sted}.`);
-            // Begræns længden af uddrag for Facebook
-            const snippet = storyText.substring(0, 120) + (storyText.length > 120 ? "..." : "");
-            if (snippet) quoteParts.push(`Uddrag: "${snippet}"`);
-            quoteParts.push(`Prøv selv på Read Me A Story!`);
-
-            const quote = encodeURIComponent(quoteParts.join(' '));
-            const encodedAppURL = encodeURIComponent(appURL);
-            const facebookShareURL = `https://www.facebook.com/sharer/sharer.php?u=${encodedAppURL}&quote=${quote}&hashtag=%23ReadMeAStory`;
-
-            // console.log("Sharing to Facebook. URL:", facebookShareURL);
-            // console.log("Decoded Quote:", decodeURIComponent(quote));
-            window.open(facebookShareURL, '_blank', 'width=600,height=400,noopener,noreferrer');
-        });
-    }
-
-    if (copyStoryButton) {
-        copyStoryButton.addEventListener('click', async () => {
-            const storyData = getStoryInputsForSharing();
-            const storyText = storyDisplay.textContent || "";
-            const appURL = window.location.origin;
-
-            let textToCopyParts = [`Min Godnathistorie: "${storyData.titel}"`, "---"];
-            if (storyData.karakterBeskrivelse) {
-                let karakter = storyData.karakterBeskrivelse;
-                if (storyData.karakterNavn) karakter += ` ved navn ${storyData.karakterNavn}`;
-                textToCopyParts.push(`Hovedperson: ${karakter}`);
-            }
-            if (storyData.sted) textToCopyParts.push(`Sted: ${storyData.sted}`);
-            if (storyData.plot) textToCopyParts.push(`Plot/Morale: ${storyData.plot}`);
-            if (storyData.stemning && storyData.stemning !== "Neutral / Blandet") textToCopyParts.push(`Stemning: ${storyData.stemning}`);
-            textToCopyParts.push("---");
-
-            if (storyText) {
-                textToCopyParts.push("Historie:");
-                textToCopyParts.push(storyText);
-            }
-            textToCopyParts.push("---");
-            textToCopyParts.push(`Skabt med Read Me A Story (${appURL})`);
-
-            const textToCopy = textToCopyParts.join('\n\n'); // Dobbelt linjeskift mellem sektioner
-
-            try {
-                await navigator.clipboard.writeText(textToCopy);
-                const originalText = copyStoryButton.textContent;
-                copyStoryButton.textContent = 'Kopieret!';
-                copyStoryButton.disabled = true;
-                setTimeout(() => {
-                    copyStoryButton.textContent = originalText;
-                    copyStoryButton.disabled = false;
-                }, 2000);
-                // console.log('Story copied to clipboard');
-            } catch (err) {
-                console.error('Failed to copy story to clipboard: ', err);
-                // Overvej en mere brugervenlig fejlmeddelelse her, f.eks. en lille popup/modal
-                alert('Kunne ikke kopiere automatisk. Prøv evt. at markere og kopiere teksten manuelt.');
+// === Nulstil Funktion (Reset) ===
+function handleResetClick(clearLocalStorageForListeners = true) {
+    console.log("Reset: Started. Clear LocalStorage for listeners:", clearLocalStorageForListeners);
+    if(generatorSection) {
+        generatorSection.querySelectorAll('input[type="text"], textarea').forEach(input => {
+            // Tjek om inputtet er inde i listener-containeren
+            if (!input.closest('#listener-container')) {
+                input.value = ''; // Ryd kun hvis det IKKE er et lytter-input
             }
         });
     }
+    if(interactiveCheckbox) interactiveCheckbox.checked = false;
+    // console.log("Reset: Cleared text inputs and textarea.");
+
+    const removeExtraGroups = (containerId, groupSelector) => {
+        const container = document.getElementById(containerId);
+        if (container) {
+            const groups = container.querySelectorAll(groupSelector);
+            for (let i = groups.length - 1; i > 0; i--) { groups[i].remove(); }
+        }
+    };
+   if (clearLocalStorageForListeners) { // Kun fjern ekstra lytter-grupper hvis vi laver et "fuldt" reset
+        removeExtraGroups('listener-container', '.listener-group');
+    }
+    removeExtraGroups('karakter-container', '.character-group');
+    removeExtraGroups('sted-container', '.input-group');
+    removeExtraGroups('plot-container', '.input-group');
+    // console.log("Reset: Removed extra dynamic groups.");
+
+    if(storyDisplay) storyDisplay.textContent = '';
+    if(storySectionHeading) storySectionHeading.textContent = 'Jeres historie'; // Nulstil titel
+    if(resetButton && storyShareButtonsContainer) storyShareButtonsContainer.querySelector('#reset-button').style.display = 'none';
+    if (storyShareButtonsContainer) storyShareButtonsContainer.classList.add('hidden');
+
+    // Nulstil lyd/billede
+    if(audioPlayer) { audioPlayer.pause(); audioPlayer.src = ''; audioPlayer.classList.add('hidden'); }
+    if(audioLoadingDiv) audioLoadingDiv.classList.add('hidden');
+    if(audioErrorDiv) { audioErrorDiv.textContent = ''; audioErrorDiv.classList.add('hidden'); }
+    if(loginPromptAudio) loginPromptAudio.classList.add('hidden');
+
+    if(laengdeSelect) laengdeSelect.value = 'kort';
+    if(moodSelect) moodSelect.value = 'neutral';
+    // console.log("Reset: Dropdowns reset.");
+
+    if (clearLocalStorageForListeners) {
+        try {
+            localStorage.removeItem('savedListeners');
+            console.log("Reset: Removed saved listeners from LocalStorage.");
+        } catch (e) {
+            console.error("Reset: Error removing listeners from LocalStorage:", e);
+        }
+    } else {
+        // console.log("Reset: Skipped clearing LocalStorage for listeners (likely due to autofill).");
+    }
+    console.log("Reset: Finished.");
+}
+
+
+// === Historie Dele Funktioner ===
+if (shareStoryFacebookButton) {
+    shareStoryFacebookButton.addEventListener('click', () => {
+        const storyData = getStoryInputsForSharing(); // Henter titel, inputs etc.
+        const storyText = storyDisplay.textContent || "";
+        const appURL = window.location.origin; // F.eks. "https://readmeastory.dk"
+
+        let quoteParts = [];
+        quoteParts.push(`Jeg har lige lavet en historie: "${storyData.titel}"`);
+        if (storyData.karakterBeskrivelse) {
+            let karakter = storyData.karakterBeskrivelse;
+            if (storyData.karakterNavn) karakter += ` ved navn ${storyData.karakterNavn}`;
+            quoteParts.push(`Hovedperson: ${karakter}.`);
+        }
+        if (storyData.sted) quoteParts.push(`Sted: ${storyData.sted}.`);
+        // Begræns længden af uddrag for Facebook
+        const snippet = storyText.substring(0, 120) + (storyText.length > 120 ? "..." : "");
+        if (snippet) quoteParts.push(`Uddrag: "${snippet}"`);
+        quoteParts.push(`Prøv selv på Read Me A Story!`);
+
+        const quote = encodeURIComponent(quoteParts.join(' '));
+        const encodedAppURL = encodeURIComponent(appURL);
+        const facebookShareURL = `https://www.facebook.com/sharer/sharer.php?u=${encodedAppURL}&quote=${quote}&hashtag=%23ReadMeAStory`;
+
+        // console.log("Sharing to Facebook. URL:", facebookShareURL);
+        // console.log("Decoded Quote:", decodeURIComponent(quote));
+        window.open(facebookShareURL, '_blank', 'width=600,height=400,noopener,noreferrer');
+    });
+}
+
+if (copyStoryButton) {
+    copyStoryButton.addEventListener('click', async () => {
+        const storyData = getStoryInputsForSharing();
+        const storyText = storyDisplay.textContent || "";
+        const appURL = window.location.origin;
+
+        let textToCopyParts = [`Min Godnathistorie: "${storyData.titel}"`, "---"];
+        if (storyData.karakterBeskrivelse) {
+            let karakter = storyData.karakterBeskrivelse;
+            if (storyData.karakterNavn) karakter += ` ved navn ${storyData.karakterNavn}`;
+            textToCopyParts.push(`Hovedperson: ${karakter}`);
+        }
+        if (storyData.sted) textToCopyParts.push(`Sted: ${storyData.sted}`);
+        if (storyData.plot) textToCopyParts.push(`Plot/Morale: ${storyData.plot}`);
+        if (storyData.stemning && storyData.stemning !== "Neutral / Blandet") textToCopyParts.push(`Stemning: ${storyData.stemning}`);
+        textToCopyParts.push("---");
+
+        if (storyText) {
+            textToCopyParts.push("Historie:");
+            textToCopyParts.push(storyText);
+        }
+        textToCopyParts.push("---");
+        textToCopyParts.push(`Skabt med Read Me A Story (${appURL})`);
+
+        const textToCopy = textToCopyParts.join('\n\n'); // Dobbelt linjeskift mellem sektioner
+
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            const originalText = copyStoryButton.textContent;
+            copyStoryButton.textContent = 'Kopieret!';
+            copyStoryButton.disabled = true;
+            setTimeout(() => {
+                copyStoryButton.textContent = originalText;
+                copyStoryButton.disabled = false;
+            }, 2000);
+            // console.log('Story copied to clipboard');
+        } catch (err) {
+            console.error('Failed to copy story to clipboard: ', err);
+            // Overvej en mere brugervenlig fejlmeddelelse her, f.eks. en lille popup/modal
+            alert('Kunne ikke kopiere automatisk. Prøv evt. at markere og kopiere teksten manuelt.');
+        }
+    });
+}
 
     // === NYT: Sangtekst Funktionalitet ===
     async function loadSongs() {
@@ -1740,8 +1798,16 @@ async function handleGenerateImageFromStoryClick() { // Bemærk navnet
     }
 
     // Denne funktion håndterer selve API-kaldet og UI-opdatering
+    // Denne funktion håndterer selve API-kaldet og UI-opdatering
     async function executeNarrativeGeneration(dataToSend) {
-        console.log("executeNarrativeGeneration: Starter med data:", dataToSend);
+        const imageButton = document.getElementById('narrative-generate-image-button');
+
+        // Deaktiver knappen ved at tilføje klassen og attributten
+        if (imageButton) {
+            imageButton.disabled = true;
+            imageButton.classList.add('disabled-button');
+        }
+
         resetLogbookSection();
 
         const originalButtonText = narrativeGenerateStoryButton.textContent;
@@ -1755,12 +1821,17 @@ async function handleGenerateImageFromStoryClick() { // Bemærk navnet
 
         try {
             const result = await generateNarrativeStoryApi(dataToSend);
-            console.log("Svar modtaget fra server:", result);
             if (result.error) throw new Error(result.error);
 
             if (narrativeGeneratedTitle) narrativeGeneratedTitle.textContent = result.title;
             if (narrativeGeneratedStory) narrativeGeneratedStory.innerHTML = result.story.replace(/\n/g, '<br>');
             if (narrativeGeneratedStorySection) narrativeGeneratedStorySection.classList.remove('hidden');
+
+            // Aktiver knappen ved at fjerne klassen og attributten
+            if (imageButton) {
+                imageButton.disabled = false;
+                imageButton.classList.remove('disabled-button');
+            }
 
             if (result.story_id && result.story) {
                 triggerLogbookAnalysis(result.story_id, result.story);
@@ -1929,6 +2000,18 @@ async function handleGenerateImageFromStoryClick() { // Bemærk navnet
     } else {
         console.warn("Ingen knapper med klassen '.js-generate-image' blev fundet for event listeners.");
     }
+
+    // Denne logik sikrer, at kun den korrekte funktion kaldes for den knap, der klikkes på.
+    document.addEventListener('click', function(event) {
+        // Tjek om der blev klikket på den almindelige billedknap
+        if (event.target.matches('.js-generate-image:not(#narrative-generate-image-button)')) {
+            handleGenerateImageFromStoryClick();
+        }
+        // Tjek om der blev klikket på den narrative billedknap
+        if (event.target.matches('#narrative-generate-image-button')) {
+            handleGenerateNarrativeImageClick();
+        }
+    });
 
     // Generiske "Tilføj felt" knapper for historie (sted, plot)
     document.querySelectorAll('.add-button[data-container]').forEach(button => {
@@ -2194,44 +2277,67 @@ async function handleLaesehestGenerateClick() {
         if (logbookSection) logbookSection.classList.add('hidden');
         if (logbookLoader) logbookLoader.classList.add('hidden');
         if (logbookError) logbookError.classList.add('hidden');
+
         if (logbookForm) {
             logbookForm.classList.add('hidden');
-            logbookForm.reset(); // Nulstil alle felter
-            // Fjern 'ai-suggested-input' klassen fra alle input/textarea
+            logbookForm.reset();
+
             logbookForm.querySelectorAll('.ai-suggested-input').forEach(el => {
                 el.classList.remove('ai-suggested-input');
             });
-            // Nulstil også slider-værdiernes tekst
-            logbookForm.querySelectorAll('.progress-slider .range-value').forEach(span => {
-                const slider = span.previousElementSibling;
-                if(slider) span.textContent = slider.value;
+
+            logbookForm.querySelectorAll('.progress-slider').forEach(sliderGroup => {
+                const slider = sliderGroup.querySelector('input[type="range"]');
+                const valueSpan = sliderGroup.querySelector('.range-value');
+                if (slider && valueSpan) {
+                    valueSpan.textContent = slider.value;
+                }
             });
+
+            // --- OPDATERET LOGIK FOR AT NULSTILLE "GEM"-KNAPPEN ---
+            const saveButton = document.getElementById('save-logbook-entry-button');
+            if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.classList.remove('disabled-button'); // Fjerner "grå" stil
+                saveButton.textContent = 'Gem Historien i Logbog';
+                saveButton.style.backgroundColor = ''; // Nulstiller farven til default
+            }
         }
     }
 
     function populateLogbookForm(storyId, data) {
-        // Gem storyId i et skjult felt for senere at kunne gemme
         const storyIdField = document.getElementById('logbook-story-id');
         if(storyIdField) storyIdField.value = storyId;
 
-        // Funktion til at udfylde et felt og tilføje AI-klasse
         const fillField = (elementId, value) => {
             const element = document.getElementById(elementId);
             if (element && value) {
-                // Håndter både streng og liste af strenge
                 element.value = Array.isArray(value) ? value.join(', ') : value;
                 element.classList.add('ai-suggested-input');
-                // Tilføj event listener til at fjerne klassen ved bruger-input
                 element.addEventListener('input', () => {
                     element.classList.remove('ai-suggested-input');
                 }, { once: true });
             }
         };
 
-// ... (inde i populateLogbookForm)
+        fillField('logbook-ai-summary', data.ai_summary);
+
+        const originalStoryContainer = document.getElementById('logbook-original-story-container');
+        const originalStoryTitleField = document.getElementById('logbook-original-story-title');
+        if(originalStoryContainer && originalStoryTitleField && data.root_story_title) {
+            originalStoryTitleField.value = data.root_story_title;
+            originalStoryContainer.style.display = 'block';
+        } else if (originalStoryContainer) {
+            originalStoryContainer.style.display = 'none';
+        }
+
+        fillField('logbook-problem-name', data.problem_name);
+        fillField('logbook-problem-category', data.problem_category);
+        fillField('logbook-problem-influence', data.problem_influence);
         fillField('logbook-unique-outcome', data.unique_outcome);
         fillField('logbook-method-name', data.discovered_method_name);
-        fillField('logbook-method-steps', data.discovered_method_steps); // <-- TILFØJ DENNE LINJE
+        fillField('logbook-strength-type', data.strength_type);
+        fillField('logbook-method-steps', data.discovered_method_steps);
         fillField('logbook-child-values', data.child_values);
         fillField('logbook-support-system', data.support_system);
     }
@@ -2266,6 +2372,7 @@ async function handleLaesehestGenerateClick() {
 
             const formData = new FormData(logbookForm);
             const dataToSave = Object.fromEntries(formData.entries());
+            console.log(`[DEBUG] Forsøger at gemme logbog for story_id: '${storyId}'. Fuld data:`, dataToSave);
             console.log("Logbog: Sender data til server for at gemme:", dataToSave);
 
             try {
@@ -2275,6 +2382,9 @@ async function handleLaesehestGenerateClick() {
                 // Opdater UI for at vise succes
                 saveButton.textContent = 'Gemt i Logbog!';
                 saveButton.style.backgroundColor = '#28a745'; // Grøn succesfarve
+                saveButton.disabled = true;
+                saveButton.classList.add('disabled-button');
+
 
             } catch (error) {
                 console.error("Fejl ved gemning af logbogs-historie:", error);
@@ -2285,7 +2395,7 @@ async function handleLaesehestGenerateClick() {
         });
     }
 
-    async function triggerLogbookAnalysis(storyId, storyContent) {
+        async function triggerLogbookAnalysis(storyId, storyContent, rootStoryTitle) {
         console.log("Logbog: Starter analyse for story ID:", storyId);
         resetLogbookSection();
 
@@ -2299,11 +2409,9 @@ async function handleLaesehestGenerateClick() {
 
         try {
             const analysisData = await analyzeStoryForLogbookApi(storyContent);
-            console.log("Logbog: Analyse modtaget fra API:", analysisData);
+            if (analysisData.error) throw new Error(analysisData.error);
 
-            if (analysisData.error) {
-                throw new Error(analysisData.error);
-            }
+            analysisData.root_story_title = rootStoryTitle;
 
             populateLogbookForm(storyId, analysisData);
             logbookLoader.classList.add('hidden');
@@ -2314,6 +2422,44 @@ async function handleLaesehestGenerateClick() {
             logbookLoader.classList.add('hidden');
             logbookError.textContent = `Fejl under analyse: ${error.message}`;
             logbookError.classList.remove('hidden');
+        }
+    }
+
+    // ==========================================================
+    // START PÅ NY FUNKTION
+    // ==========================================================
+    async function triggerAndDisplayReflectionQuestions(storyTitle, storyContent, narrativeBrief, originalInputs) {
+        const reflectionSection = document.getElementById('narrative-reflection-section');
+        const questionList = document.getElementById('narrative-reflection-questions-list');
+
+        if (!reflectionSection || !questionList) {
+            console.error("Elementer til refleksionsspørgsmål ikke fundet.");
+            return;
+        }
+
+        // Gør sektionen klar og vis en "loader"
+        questionList.innerHTML = '<li>Genererer spørgsmål...</li>';
+        reflectionSection.classList.remove('hidden');
+
+        try {
+            const contextData = {
+                final_story_title: storyTitle,
+                final_story_content: storyContent,
+                narrative_brief: narrativeBrief,
+                original_user_inputs: originalInputs
+            };
+
+            const result = await getGuidingQuestionsApi(contextData);
+
+            if (result.reflection_questions && result.reflection_questions.length > 0) {
+                questionList.innerHTML = result.reflection_questions.map(q => `<li>${q}</li>`).join('');
+            } else {
+                questionList.innerHTML = '<li>Kunne ikke generere specifikke spørgsmål til denne historie.</li>';
+            }
+
+        } catch (error) {
+            console.error("Fejl under hentning af refleksionsspørgsmål:", error);
+            questionList.innerHTML = `<li>Fejl: Kunne ikke hente spørgsmål.</li>`;
         }
     }
 
@@ -2484,20 +2630,65 @@ async function handleLaesehestGenerateClick() {
         button.addEventListener('click', handleStrategyClick);
     });
 
-    // Vi omdøber den oprindelige funktion for at gøre koden mere læselig.
-    // Den skal nu kun tage imod data og køre API-kaldet.
     async function executeNarrativeGeneration(dataToSend) {
-        // Denne funktion indeholder den logik, der tidligere var i 'handleNarrativeGenerateClick'
-        // fra "Genererer..." og frem.
+        const imageButton = document.getElementById('narrative-generate-image-button');
 
-        console.log("executeNarrativeGeneration: Starter historiegenerering med data:", dataToSend);
+        if (imageButton) {
+            imageButton.disabled = true;
+            imageButton.classList.add('disabled-button');
+        }
+
         resetLogbookSection();
 
         const originalButtonText = narrativeGenerateStoryButton.textContent;
         narrativeGenerateStoryButton.disabled = true;
-        narrativeGenerateStoryButton.textContent = "Genererer...";
         strategyButtons.forEach(btn => btn.disabled = true);
-    }
+        narrativeGenerateStoryButton.textContent = "Genererer...";
 
+        narrativeErrorDisplay.classList.add('hidden');
+        narrativeGeneratedStorySection.classList.add('hidden');
+        narrativeLoadingIndicator.classList.remove('hidden');
+
+        try {
+            const result = await generateNarrativeStoryApi(dataToSend);
+            if (result.error) throw new Error(result.error);
+
+            if (narrativeGeneratedTitle) narrativeGeneratedTitle.textContent = result.title;
+            if (narrativeGeneratedStory) narrativeGeneratedStory.innerHTML = result.story.replace(/\n/g, '<br>');
+            if (narrativeGeneratedStorySection) narrativeGeneratedStorySection.classList.remove('hidden');
+
+            if (imageButton) {
+                imageButton.disabled = false;
+                imageButton.classList.remove('disabled-button');
+            }
+
+            if (result.story_id && result.story) {
+                triggerLogbookAnalysis(result.story_id, result.story, result.root_story_title);
+            } else {
+                throw new Error("Modtog ikke et validt story_id fra backend.");
+            }
+            if (result.title && result.story && result.narrative_brief_for_reference) {
+                triggerAndDisplayReflectionQuestions(
+                    result.title,
+                    result.story,
+                    result.narrative_brief_for_reference,
+                    dataToSend // 'dataToSend' indeholder de oprindelige brugerinput
+                );
+            }
+        } catch (error) {
+            console.error('Fejl under historiegenerering:', error);
+            if (narrativeErrorDisplay) narrativeErrorDisplay.textContent = `Ups! Noget gik galt: ${error.message}`;
+            narrativeErrorDisplay.classList.remove('hidden');
+        } finally {
+            if (narrativeLoadingIndicator) narrativeLoadingIndicator.classList.add('hidden');
+            narrativeGenerateStoryButton.disabled = false;
+            strategyButtons.forEach(btn => btn.disabled = false);
+            narrativeGenerateStoryButton.textContent = originalButtonText;
+
+            if (continueStorySwitch) continueStorySwitch.checked = false;
+            if (continuationOptions) continuationOptions.classList.add('hidden');
+            if (parentStorySelect) parentStorySelect.value = '';
+        }
+    }
 
 // Slut på DOMContentLoaded listener
