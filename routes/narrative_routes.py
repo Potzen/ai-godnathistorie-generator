@@ -2,7 +2,7 @@
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required, current_user
-from models import Story
+from models import Story, ChildProfile, ProfileAttribute, ProfileRelation
 from extensions import db
 from sqlalchemy import or_
 from services.ai_service import (
@@ -201,6 +201,7 @@ def analyze_for_logbook():
         current_app.logger.error(f"Route /analyze-for-logbook: Uventet fejl: {e}\n{traceback.format_exc()}")
         return jsonify({"error": "En uventet serverfejl opstod."}), 500
 
+
 @narrative_bp.route('/save-log-entry/<int:story_id>', methods=['POST'])
 @login_required
 def save_log_entry(story_id):
@@ -211,10 +212,8 @@ def save_log_entry(story_id):
     if current_user.role != 'premium':
         return jsonify({"error": "Adgang nægtet."}), 403
 
-    # Find den eksisterende historie, der blev oprettet ved generering
     story = Story.query.get_or_404(story_id)
 
-    # Sikkerhedstjek: Sørg for at brugeren ejer historien
     if story.user_id != current_user.id:
         current_app.logger.warning(
             f"Bruger {current_user.id} forsøgte at gemme logbogsdata for en andens historie (ID: {story_id}).")
@@ -237,19 +236,31 @@ def save_log_entry(story_id):
         story.support_system = data.get('support_system')
         story.user_notes = data.get('user_notes')
 
-        # Håndter tal-inputs, der kan være tomme strenge
+        # START PÅ RETTELSE: Sørg for at gemme ALLE relevante felter
+        story.problem_category = data.get('problem_category')
+        story.strength_type = data.get('strength_type')
+        if 'strategy_used' in data:
+            story.strategy_used = data.get('strategy_used')
+        # SLUT PÅ RETTELSE
+
         progress_before = data.get('progress_before')
         story.progress_before = int(progress_before) if progress_before and progress_before.isdigit() else None
 
         progress_after = data.get('progress_after')
         story.progress_after = int(progress_after) if progress_after and progress_after.isdigit() else None
 
-        # VIGTIGT: Markér historien som en logbogs-indtastning
         story.is_log_entry = True
 
+        # Sæt root_story_id korrekt (fra forrige løsning, stadig vigtig)
+        if story.parent_story_id and story.parent_story:
+            story.root_story_id = story.parent_story.root_story_id or story.parent_story.id
+        elif not story.parent_story_id:
+            story.root_story_id = story.id
+
         db.session.commit()
+        print(f"DEBUG SAVE: Historie {story.id} er nu gemt med is_log_entry = {story.is_log_entry}")
         current_app.logger.info(
-            f"Historie {story_id} er succesfuldt opdateret og markeret som logbogs-indtastning.")
+            f"Historie {story_id} er succesfuldt opdateret og markeret som logbogs-indtastning. Root ID: {story.root_story_id}")
 
         return jsonify({"success": True, "message": "Historien er gemt i din logbog."}), 200
 
@@ -302,6 +313,7 @@ def filter_logbook():
         query = query.order_by(Story.created_at.desc())
 
     results = query.all()
+    print(f"DEBUG FILTER: Forespørgslen fandt {len(results)} historier med is_log_entry=True for denne bruger.")
 
     stories_list = []
     for story, root_title in results:
@@ -431,3 +443,123 @@ def delete_story(story_id):
         db.session.rollback()
         current_app.logger.error(f"Fejl under sletning af historie {story_id}: {e}")
         return jsonify({"error": "En intern fejl opstod under sletning."}), 500
+
+    # potzen/ai-godnathistorie-generator/ai-godnathistorie-generator-5ffa7696e20a294c8648c9db4a2cb60980e2a54e/routes/narrative_routes.py
+
+
+# potzen/ai-godnathistorie-generator/ai-godnathistorie-generator-5ffa7696e20a294c8648c9db4a2cb60980e2a54e/routes/narrative_routes.py
+@narrative_bp.route('/api/profile/save', methods=['POST'])
+@login_required
+def save_child_profile():
+    """
+    API-endepunkt til at oprette eller opdatere en barneprofil.
+    """
+    if current_user.role != 'premium':
+        return jsonify({"error": "Adgang nægtet."}), 403
+
+    data = request.get_json()
+    if not data or not data.get('name'):
+        return jsonify({"error": "Profilnavn er påkrævet."}), 400
+
+    profile_id = data.get('id') if data.get('id') else None
+
+    try:
+        if profile_id:
+            profile = ChildProfile.query.get_or_404(profile_id)
+            if profile.user_id != current_user.id:
+                return jsonify({"error": "Uautoriseret adgang."}), 403
+
+            current_app.logger.info(f"Opdaterer profil ID: {profile_id} for bruger {current_user.id}")
+            profile.name = data.get('name')
+            profile.age = data.get('age')
+
+            # Ryd eksisterende attributter og relationer for at genindsætte dem
+            ProfileAttribute.query.filter_by(profile_id=profile_id).delete()
+            ProfileRelation.query.filter_by(profile_id=profile_id).delete()
+        else:
+            current_app.logger.info(f"Opretter ny profil for bruger {current_user.id}")
+            profile = ChildProfile(user_id=current_user.id, name=data.get('name'), age=data.get('age'))
+            db.session.add(profile)
+            db.session.flush()
+
+        # Opret og tilføj nye attributter
+        attribute_types = {
+            'strength': data.get('strengths', []),
+            'value': data.get('values', []),
+            'motivation': data.get('motivations', []),
+            'reaction': data.get('reactions', [])
+        }
+        for attr_type, contents in attribute_types.items():
+            for content in contents:
+                if content:
+                    attr = ProfileAttribute(profile_id=profile.id, type=attr_type, content=content)
+                    db.session.add(attr)
+
+        # Opret og tilføj nye relationer
+        for rel_data in data.get('relations', []):
+            if rel_data.get('name') or rel_data.get('type'):
+                relation = ProfileRelation(profile_id=profile.id, name=rel_data.get('name'),
+                                           relation_type=rel_data.get('type'))
+                db.session.add(relation)
+
+        db.session.commit()
+
+        return jsonify({"success": True, "message": "Profilen er gemt!", "profile_id": profile.id}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(
+            f"Fejl under lagring af profil for bruger {current_user.id}: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": "En intern fejl opstod under lagring."}), 500
+
+@narrative_bp.route('/api/profiles/list', methods=['GET'])
+@login_required
+def list_child_profiles():
+    """
+    API-endepunkt til at hente alle barneprofiler for den indloggede bruger.
+    """
+    if current_user.role != 'premium':
+        return jsonify({"error": "Adgang nægtet."}), 403
+
+    try:
+        profiles = ChildProfile.query.filter_by(user_id=current_user.id).order_by(
+            ChildProfile.created_at.desc()).all()
+
+        profiles_data = []
+        for profile in profiles:
+            profile_dict = {
+                "id": profile.id,
+                "name": profile.name,
+                "age": profile.age,
+                "strengths": [attr.content for attr in profile.strengths],
+                "values": [attr.content for attr in profile.values],
+                "motivations": [attr.content for attr in profile.motivations],
+                "reactions": [attr.content for attr in profile.reactions],
+                "relations": [{"name": rel.name, "type": rel.relation_type} for rel in profile.relations]
+            }
+            profiles_data.append(profile_dict)
+
+        return jsonify(profiles_data), 200
+
+    except Exception as e:
+        current_app.logger.error(
+            f"Fejl under hentning af profiler for bruger {current_user.id}: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": "En intern fejl opstod under hentning af profiler."}), 500
+
+@narrative_bp.route('/api/profile/delete/<int:profile_id>', methods=['DELETE'])
+@login_required
+def delete_child_profile(profile_id):
+    """ API-endepunkt til at slette en barneprofil. """
+    profile = ChildProfile.query.get_or_404(profile_id)
+    if profile.user_id != current_user.id:
+        return jsonify({"error": "Uautoriseret."}), 403
+
+    try:
+        db.session.delete(profile)
+        db.session.commit()
+        current_app.logger.info(f"Profil {profile_id} slettet for bruger {current_user.id}")
+        return jsonify({"success": True, "message": "Profilen er slettet."})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Fejl ved sletning af profil {profile_id}: {e}")
+        return jsonify({"error": "Intern fejl ved sletning."}), 500

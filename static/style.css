@@ -1691,6 +1691,7 @@ input:disabled + .slider-label:before {
     font-weight: 600; /* Lettere end fed, men stadig markeret */
     color: var(--color-text);
     margin-bottom: 2px;
+    text-align: left;
 }
 
 /* Styling for undertitel (Kilde, Dato) */
@@ -1699,6 +1700,7 @@ input:disabled + .slider-label:before {
     font-size: 0.8em;
     font-weight: normal;
     color: #6c757d; /* En afdæmpet grå farve */
+    text-align: left;
 }
 
 /* Generel styling for alle pile */

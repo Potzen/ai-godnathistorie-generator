@@ -366,3 +366,54 @@ export async function deleteStoryApi(storyId) {
 
     return await response.json();
 }
+
+// potzen/ai-godnathistorie-generator/ai-godnathistorie-generator-5ffa7696e20a294c8648c9db4a2cb60980e2a54e/static/modules/api_client.js
+export async function saveChildProfileApi(profileData) {
+    console.log("api_client.js: saveChildProfileApi called with data:", profileData);
+    const response = await fetch('/narrative/api/profile/save', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(profileData)
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved gemning af profil." }));
+        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+export async function listChildProfilesApi() {
+    console.log("api_client.js: listChildProfilesApi called.");
+    const response = await fetch('/narrative/api/profiles/list', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved hentning af profilliste." }));
+        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+// potzen/ai-godnathistorie-generator/ai-godnathistorie-generator-5ffa7696e20a294c8648c9db4a2cb60980e2a54e/static/modules/api_client.js
+export async function deleteChildProfileApi(profileId) {
+    console.log(`api_client.js: deleteChildProfileApi called for profile ID: ${profileId}`);
+    const response = await fetch(`/narrative/api/profile/delete/${profileId}`, {
+        method: 'DELETE',
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved sletning af profil." }));
+        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
+    }
+
+    return await response.json();
+}

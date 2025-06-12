@@ -15,7 +15,7 @@
     </script>
 </head>
 <body>
- {{ dette_er_en_test_for_at_se_om_denne_fil_bliver_loadet }}
+ {{ dette_er_en_test_for_at_se_om_denne_fil_bdasdasdasdasddwsaliver_loadet }}
     <header>
         <div class="logo-container">
             <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Read Me A Story Logo" id="app-logo">
@@ -460,6 +460,13 @@
                 <div class="narrative-info-dropdown">
                     <button type="button" class="dropdown-toggle">Beskriv Barnet <span class="dropdown-arrow">◀</span></button>
                     <div class="dropdown-content hidden" style="background-color: #fdfdff; padding-top: 20px; border-top: 1px solid var(--border-color);">
+
+                        <div id="narrative-profile-selector-container" class="input-category" style="display: none; background-color: #eef7ff; padding: 15px; border-radius: var(--border-radius); margin-bottom: 20px;">
+                            <label for="narrative-profile-select" style="font-weight: bold;">Vælg en gemt barneprofil (vil overskrive felterne nedenfor)</label>
+                            <select id="narrative-profile-select" name="narrative_profile_select">
+                                <option value="">-- Henter profiler... --</option>
+                            </select>
+                        </div>
                         <div class="input-category">
                             <label>Information om Barnet (Hovedperson):</label>
                             <div id="narrative-child-info-container">
@@ -627,6 +634,7 @@
                             Vent venligst, eller tryk "Generer Narrativ Historie"...
                         </div>
                     </div>
+                </section>
                 <section id="logbook-documentation-section" class="narrative-info-dropdown hidden">
                     <button type="button" class="dropdown-toggle">Dokumentation og Logbog <span class="dropdown-arrow">◀</span></button>
                     <div class="dropdown-content hidden">
@@ -772,6 +780,133 @@
                 {# --- SLUT: INDIKATOR FOR IKKE-PREMIUM/IKKE-LOGGET IND BRUGERE --- #}
             {% endif %} {# Dette er endif for den YDRE if current_user.is_authenticated and current_user.role == 'premium' #}
         </section>
+
+        <section id="logbook-module" class="content-section hidden">
+            <div class="logbook-container" style="padding: 0; background: none; box-shadow: none;">
+                <h1 style="text-align: center;">Min Logbog</h1>
+                <p style="text-align: center; margin-top: -10px; margin-bottom: 25px;">Et bibliotek af personlige sejre og opdagede styrker.</p>
+
+                <section id="profile-management-section" class="narrative-info-dropdown" style="margin-bottom: 30px; border: 1px solid var(--border-color); background-color: #fdfdff;">
+<button type="button" class="dropdown-toggle">
+                        Mine profiler
+                        <span class="dropdown-arrow">◀</span>
+                    </button>
+                    <div class="dropdown-content" style="padding: 15px 20px;">
+                        <div id="saved-profiles-list" style="margin-bottom: 20px;"></div>
+
+                        <h3 style="color: var(--color-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 5px; margin-bottom: 20px;">Opret Ny / Rediger Profil</h3>
+
+                        <form id="child-profile-form">
+                            <input type="hidden" id="profile-id" name="profile_id">
+
+                            <div class="input-category" style="display: flex; gap: 20px;">
+                                <div style="flex: 2;">
+                                    <label for="profile-name">Barnets Navn</label>
+                                    <input type="text" id="profile-name" name="profile_name" placeholder="F.eks. Luna" required>
+                                </div>
+                                <div style="flex: 1;">
+                                    <label for="profile-age">Barnets Alder</label>
+                                    <input type="text" id="profile-age" name="profile_age" placeholder="F.eks. 6">
+                                </div>
+                            </div>
+
+                            <hr style="margin: 25px 0;">
+
+                            <div class="input-category">
+                                <label>Barnets Karakteristika/Styrker</label>
+                                <div id="profile-strengths-container">
+                                    <div class="input-group">
+                                        <select name="profile_strength" class="dynamic-select" data-other-input-id="profile-strength-other-1">
+                                            <option value="">-- Vælg en styrke --</option><option value="Modig">Modig</option><option value="Klog">Klog</option><option value="Venlig">Venlig</option><option value="Kreativ">Kreativ</option><option value="Tålmodig">Tålmodig</option><option value="Nysgerrig">Nysgerrig</option><option value="Omsorgsfuld">Omsorgsfuld</option><option value="Sjov">Sjov</option><option value="Stærk">Stærk</option><option value="Fantasifuld">Fantasifuld</option><option value="Hjælpsom">Hjælpsom</option><option value="Vedholdende">Vedholdende</option><option value="other">Andet...</option>
+                                        </select>
+                                        <input type="text" name="profile_strength_other" id="profile-strength-other-1" class="hidden other-input" placeholder="Beskriv anden styrke">
+                                        <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+                                    </div>
+                                </div>
+                                <button type="button" class="add-button" id="add-profile-strength-button">+ Tilføj styrke</button>
+                            </div>
+
+                            <div class="input-category">
+                                <label>Barnets Værdier/Overbevisninger</label>
+                                <div id="profile-values-container">
+                                    <div class="input-group">
+                                        <select name="profile_value" class="dynamic-select" data-other-input-id="profile-value-other-1">
+                                            <option value="">-- Vælg en værdi --</option><option value="Retfærdighed">Retfærdighed</option><option value="Ærlighed">Ærlighed</option><option value="Empati">Empati</option><option value="Samarbejde">Samarbejde</option><option value="Frihed">Frihed</option><option value="Loyalitet">Loyalitet</option><option value="Omsorg">Omsorg</option><option value="At gøre sit bedste">At gøre sit bedste</option><option value="other">Andet...</option>
+                                        </select>
+                                        <input type="text" name="profile_value_other" id="profile-value-other-1" class="hidden other-input" placeholder="Beskriv anden værdi">
+                                        <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+                                    </div>
+                                </div>
+                                <button type="button" class="add-button" id="add-profile-value-button">+ Tilføj værdi</button>
+                            </div>
+
+                            <div class="input-category">
+                                <label>Barnets Motivation/Ønske</label>
+                                <div id="profile-motivations-container">
+                                    <div class="input-group"><input type="text" name="profile_motivation" placeholder="F.eks. Vil gerne lære at cykle"><button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button></div>
+                                </div>
+                                <button type="button" class="add-button" data-container="profile-motivations-container" data-name="profile_motivation" data-placeholder="F.eks. Ønsker sig en hundehvalp">+ Tilføj motivation</button>
+                            </div>
+
+                            <div class="input-category">
+                                <label>Barnets Typiske Adfærd/Reaktion på Udfordringer</label>
+                                <div id="profile-reactions-container">
+                                    <div class="input-group"><input type="text" name="profile_reaction" placeholder="F.eks. Bliver stille og trækker sig"><button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button></div>
+                                </div>
+                                <button type="button" class="add-button" data-container="profile-reactions-container" data-name="profile_reaction" data-placeholder="F.eks. Stiller mange spørgsmål">+ Tilføj reaktion</button>
+                            </div>
+
+                            <div class="input-category">
+                                <label>Vigtige Relationer for Barnet</label>
+                                <div id="profile-relations-container">
+                                    <div class="relation-group"><div class="input-pair"><input type="text" name="profile_relation_name" placeholder="Navn (f.eks. Bedstefar)"></div><div class="input-pair"><input type="text" name="profile_relation_type" placeholder="Relation (f.eks. Superhelt)"></div><button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button></div>
+                                </div>
+                                <button type="button" class="add-button" id="add-profile-relation-button">+ Tilføj relation</button>
+                            </div>
+
+                            <div style="display: flex; gap: 15px; margin-top: 25px;">
+                                <button type="submit" id="save-profile-button" class="primary-action-button" style="flex: 1;">Gem Profil</button>
+                                <button type="button" id="clear-profile-form-button" class="utility-button" style="flex: 1; background-color: var(--color-secondary);">Ryd Formular</button>
+                            </div>
+                            <div id="profile-save-feedback" class="flash-message" style="margin-top: 15px; display: none;"></div>
+                        </form>
+                    </div>
+                </section>
+
+                <div class="logbook-toolbar">
+                    <div class="filter-group">
+                        <label for="filter-source">Kilde</label>
+                        <select name="source" id="filter-source">
+                            <option value="all">Alle</option>
+                            <option value="Narrativ Støtte">Narrativ Støtte</option>
+                            <option value="Højtlæsning">Højtlæsning</option>
+                            <option value="Læsehesten">Læsehesten</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="sort-by">Sortér efter</label>
+                        <select name="sortBy" id="sort-by">
+                            <option value="newest">Dato (nyeste)</option>
+                            <option value="oldest">Dato (ældste)</option>
+                            <option value="title_asc">Titel (A-Å)</option>
+                            <option value="title_desc">Titel (Å-A)</option>
+                        </select>
+                    </div>
+                    <div class="filter-group filter-group-search">
+                        <label for="search-term">Søg i titel og indhold</label>
+                        <input type="search" id="search-term" name="searchTerm" placeholder="Søg her...">
+                    </div>
+                </div>
+                <div id="logbook-list-container">
+                    {% if stories %}
+                        <p>Henter historier...</p>
+                    {% else %}
+                        <p style="text-align: center;">Du har endnu ikke gemt nogen Historier.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
         <section id="historie-output">
             <div class="historie-header-controls">
                 <h2 id="story-section-heading">Jeres historie</h2>
@@ -864,46 +999,6 @@
             </div>
         </section>
 
-        <section id="logbook-module" class="content-section hidden">
-            <div class="logbook-container" style="padding: 0; background: none; box-shadow: none;">
-                <h1 style="text-align: center;">Min Logbog</h1>
-                <p style="text-align: center; margin-top: -10px; margin-bottom: 25px;">Et bibliotek af personlige sejre og opdagede styrker.</p>
-
-                <div class="logbook-toolbar">
-                    <div class="filter-group">
-                        <label for="filter-source">Kilde</label>
-                        <select name="source" id="filter-source">
-                            <option value="all">Alle</option>
-                            <option value="Narrativ Støtte">Narrativ Støtte</option>
-                            <option value="Højtlæsning">Højtlæsning</option>
-                            <option value="Læsehesten">Læsehesten</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label for="sort-by">Sortér efter</label>
-                        <select name="sortBy" id="sort-by">
-                            <option value="newest">Dato (nyeste)</option>
-                            <option value="oldest">Dato (ældste)</option>
-                            <option value="title_asc">Titel (A-Å)</option>
-                            <option value="title_desc">Titel (Å-A)</option>
-                        </select>
-                    </div>
-                    <div class="filter-group filter-group-search">
-                        <label for="search-term">Søg i titel og indhold</label>
-                        <input type="search" id="search-term" name="searchTerm" placeholder="Søg her...">
-                    </div>
-                </div>
-
-                <div id="logbook-list-container">
-                    {% if stories %}
-                        <p>Henter historier...</p>
-                    {% else %}
-                        <p style="text-align: center;">Du har endnu ikke gemt nogen Historier.</p>
-                    {% endif %}
-                </div>
-            </div>
-        </section>
-
         <section id="sangtekster-sektion" class="hidden">
             <h2>Godnatsange</h2>
             <div class="input-category">
@@ -929,9 +1024,9 @@
                     frameborder="0"
                     marginheight="0"
                     marginwidth="0">Indlæser…</iframe>
-             </div>
-        </section>
-    </main>
+         </div>
+    </section>
+</main>
 
     <div id="current-user-role-data" data-role="{{ current_user.role if current_user.is_authenticated else 'guest' }}" style="display: none;"></div>
 

@@ -93,3 +93,57 @@ class Story(db.Model):
 
     def __repr__(self):
         return f'<Story id={self.id} title="{self.title}" user_id={self.user_id} is_log_entry={self.is_log_entry}>'
+
+class ChildProfile(db.Model):
+    __tablename__ = 'child_profile'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    age = db.Column(db.String(20), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # potzen/ai-godnathistorie-generator/ai-godnathistorie-generator-5ffa7696e20a294c8648c9db4a2cb60980e2a54e/models.py
+    # One-to-Many relationer til profilens attributter
+    # Den første relation etablerer et backref, som de andre skal overlappe.
+    strengths = db.relationship('ProfileAttribute', lazy='dynamic', cascade="all, delete-orphan",
+                                backref='profile',
+                                primaryjoin="and_(ChildProfile.id==ProfileAttribute.profile_id, ProfileAttribute.type=='strength')")
+
+    # De følgende relationer overlapper den første for at undgå advarsler.
+    values = db.relationship('ProfileAttribute', lazy='dynamic', cascade="all, delete-orphan",
+                             primaryjoin="and_(ChildProfile.id==ProfileAttribute.profile_id, ProfileAttribute.type=='value')",
+                             overlaps="profile,strengths")
+
+    motivations = db.relationship('ProfileAttribute', lazy='dynamic', cascade="all, delete-orphan",
+                                  primaryjoin="and_(ChildProfile.id==ProfileAttribute.profile_id, ProfileAttribute.type=='motivation')",
+                                  overlaps="profile,strengths,values")
+
+    reactions = db.relationship('ProfileAttribute', lazy='dynamic', cascade="all, delete-orphan",
+                                primaryjoin="and_(ChildProfile.id==ProfileAttribute.profile_id, ProfileAttribute.type=='reaction')",
+                                overlaps="profile,strengths,values,motivations")
+
+    # Denne relation peger på en anden tabel ('profile_relation') og behøver derfor ikke overlaps.
+    relations = db.relationship('ProfileRelation', lazy='dynamic', cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f'<ChildProfile id={self.id} name="{self.name}" user_id={self.user_id}>'
+
+class ProfileAttribute(db.Model):
+    __tablename__ = 'profile_attribute'
+    id = db.Column(db.Integer, primary_key=True)
+    profile_id = db.Column(db.Integer, db.ForeignKey('child_profile.id'), nullable=False)
+    type = db.Column(db.String(50), nullable=False)  # 'strength', 'value', 'motivation', 'reaction'
+    content = db.Column(db.Text, nullable=False)
+
+    def __repr__(self):
+        return f'<ProfileAttribute id={self.id} type="{self.type}" content="{self.content[:30]}">'
+
+class ProfileRelation(db.Model):
+    __tablename__ = 'profile_relation'
+    id = db.Column(db.Integer, primary_key=True)
+    profile_id = db.Column(db.Integer, db.ForeignKey('child_profile.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=True)
+    relation_type = db.Column(db.String(100), nullable=True)
+
+    def __repr__(self):
+        return f'<ProfileRelation id={self.id} name="{self.name}" type="{self.relation_type}">'

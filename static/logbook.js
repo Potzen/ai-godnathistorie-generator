@@ -177,6 +177,18 @@ export async function initializeLogbook() {
         } else {
             logbookListContainer.innerHTML = stories.map(createStoryEntryHtml).join('');
             attachEventListeners();
+
+            // FORSØG PÅ AT ÅBNE DET FØRSTE ELEMENT (NY KODE HER)
+            const firstLogbookEntry = logbookListContainer.querySelector('.logbook-entry');
+            if (firstLogbookEntry) {
+                const firstToggle = firstLogbookEntry.querySelector('.logbook-accordion-toggle');
+                const firstContent = firstLogbookEntry.querySelector('.logbook-accordion-content');
+                if (firstToggle && firstContent) {
+                    firstToggle.classList.add('open');
+                    firstContent.classList.remove('hidden'); // Denne linje er afgørende
+                    console.log("[logbook.js] Åbnede automatisk første logbogsindgang.");
+                }
+            }
         }
     } catch (error) {
         console.error('[logbook.js] Fejl under hentning eller rendering af logbog:', error);

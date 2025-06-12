@@ -1,6 +1,6 @@
 // Fil: static/script.js
 import { initializeLogbook } from './logbook.js';
-import { generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generateNarrativeStoryApi, getGuidingQuestionsApi, generateAudioApi, generateLixStoryApi, analyzeStoryForLogbookApi, saveLogbookEntryApi, listContinuableStoriesApi, generateProblemImageApi } from './modules/api_client.js';
+import { generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generateNarrativeStoryApi, getGuidingQuestionsApi, generateAudioApi, generateLixStoryApi, analyzeStoryForLogbookApi, saveLogbookEntryApi, listContinuableStoriesApi, generateProblemImageApi, saveChildProfileApi, listChildProfilesApi, deleteChildProfileApi } from './modules/api_client.js';
 
 // Kør først koden, når hele HTML dokumentet er færdigindlæst og klar
 document.addEventListener('DOMContentLoaded', () => {
@@ -568,18 +568,17 @@ loadFontSizesFromLocalStorage();
     // For nu er det primært DOMContentLoaded, der styrer dette.
     // === SLUT: Kontrol af TTS stemmevalgsdropdown synlighed ===
 
-    // === NYT: Fane Navigation Funktionalitet ===
+    // === NYT: Fane Navigation Funktionalitet (Rettet Version) ===
     const tabButtons = document.querySelectorAll('.tab-button');
     const contentSections = document.querySelectorAll('.content-section');
 
     if (tabButtons.length > 0 && contentSections.length > 0) {
         const historieOutput = document.getElementById('historie-output');
+        // VIGTIGT: Hent imageSection her, så den er tilgængelig i handleTabClick
+        const imageSection = document.getElementById('billede-til-historien-sektion');
 
         const handleTabClick = (button) => {
-            // Undgå at gøre noget, hvis fanen allerede er aktiv
-            if (button.classList.contains('active')) {
-                return;
-            }
+            if (button.classList.contains('active')) return;
 
             tabButtons.forEach(btn => btn.classList.remove('active'));
             contentSections.forEach(section => section.classList.add('hidden'));
@@ -591,44 +590,28 @@ loadFontSizesFromLocalStorage();
                 targetSection.classList.remove('hidden');
             }
 
-            // Styr synlighed af den delte output sektion
-            if (targetId === '#generator' || targetId === '#laesehesten-module') {
-                if (historieOutput) historieOutput.classList.remove('hidden');
-            } else {
-                if (historieOutput) historieOutput.classList.add('hidden');
+            const historieOutput = document.getElementById('historie-output');
+            const imageSection = document.getElementById('billede-til-historien-sektion');
+            if (historieOutput) {
+                historieOutput.classList.toggle('hidden', targetId !== '#generator' && targetId !== '#laesehesten-module');
+            }
+            if (imageSection) {
+                imageSection.classList.add('hidden'); // Skjul altid billeder ved faneskift
             }
 
-            // Nulstil også synligheden af den delte billed-sektion
-            if (targetId === '#generator' || targetId === '#laesehesten-module') {
-                // Denne linje er valgfri, men sikrer at sektionen er synlig, hvis man navigerer tilbage.
-                // Det vigtigste er 'else'-delen.
-            } else {
-                // Skjul billed-sektionen når vi er på 'Narrativ Støtte' eller 'Logbog'
-                if (imageSection) imageSection.classList.add('hidden');
-            }
-
-            // Kald initializeLogbook() NÅR logbog-fanen aktiveres
-            if (targetId === '#logbook-module') {
-                console.log("[script.js] Logbogs-fane aktiveret. Kalder initializeLogbook.");
-                initializeLogbook();
-            }
+            const userRole = document.getElementById('current-user-role-data')?.dataset.role || 'guest';
 
             if (targetId === '#logbook-module') {
-                const currentUserRoleElement = document.getElementById('current-user-role-data');
-                const userRole = currentUserRoleElement ? currentUserRoleElement.dataset.role : 'guest';
-
                 if (userRole === 'guest') {
-                    console.log("Bruger er ikke logget ind. Viser besked i stedet for at hente logbog.");
-                    const logbookListContainer = document.getElementById('logbook-list-container');
-                    if (logbookListContainer) {
-                        logbookListContainer.innerHTML = `<p style="text-align: center; padding: 20px;">
-                            <a href="{{ url_for('auth.auth_login') }}">Log venligst ind</a> for at se din personlige logbog.
-                        </p>`;
-                    }
+                    document.getElementById('logbook-list-container').innerHTML = `<p style="text-align: center; padding: 20px;"><a href="/auth/login">Log venligst ind</a> for at bruge logbogen og profiler.</p>`;
                 } else {
-                    // Kun kald initializeLogbook hvis brugeren er logget ind
-                    console.log("[script.js] Logbogs-fane aktiveret. Kalder initializeLogbook.");
                     initializeLogbook();
+                    // Vi kalder nu kun initializeProfileFeature én gang når scriptet indlæses.
+                }
+            } else if (targetId === '#narrative-support-module') {
+                if (userRole === 'premium') {
+                    // Hent profiler til dropdown i narrativ fane
+                    listChildProfilesApi().then(populateNarrativeProfileSelector).catch(err => console.error(err));
                 }
             }
         };
@@ -640,18 +623,11 @@ loadFontSizesFromLocalStorage();
         // Håndter den fane, der er aktiv ved sideindlæsning
         const initiallyActiveButton = document.querySelector('.tab-button.active');
         if (initiallyActiveButton) {
-            // Sørg for at den korrekte sektion vises, men kald kun initializeLogbook, hvis det er logbogsfanen
-            const targetId = initiallyActiveButton.dataset.tabTarget;
-            const targetSection = document.querySelector(targetId);
-            if (targetSection) {
-                targetSection.classList.remove('hidden');
-            }
-            if (targetId === '#logbook-module') {
-                 console.log("[script.js] Logbogs-fane er aktiv ved start. Kalder initializeLogbook.");
-                 initializeLogbook();
-            }
+            // Vi kalder handleTabClick for at sikre, at den korrekte synlighed sættes ved start
+            handleTabClick(initiallyActiveButton);
         }
     }
+
 // === SLUT PÅ NYT: Fane Navigation Funktionalitet ===
 
     // === NYT: Dropdown Funktionalitet for Narrativ Støtte ===
@@ -1880,7 +1856,7 @@ if (copyStoryButton) {
     }
 
     // Generiske "Tilføj felt" knapper for historie (sted, plot)
-    document.querySelectorAll('.add-button[data-container]').forEach(button => {
+    document.querySelectorAll('#generator .add-button[data-container]').forEach(button => {
         button.addEventListener('click', () => {
             const containerId = button.dataset.container;
             const placeholder = button.dataset.placeholder;
@@ -1904,6 +1880,488 @@ if (copyStoryButton) {
     console.log("Script loaded and all initial event listeners attached, including for Narrative Support.");
 
     initializeInfoIcons(); // Kald funktionen for at aktivere infoknapperne
+
+ // potzen/ai-godnathistorie-generator/ai-godnathistorie-generator-5ffa7696e20a294c8648c9db4a2cb60980e2a54e/static/script.js
+
+    // ===================================================================
+    // START: ENDELIG LOGIK FOR BØRNEPROFILER (Version 5 - Inkl. alle rettelser)
+    // ===================================================================
+    let allProfilesData = []; // Cache for hentede profiler
+
+    /**
+     * Udfylder dropdown-menuen i "Narrativ Støtte"-fanen med profiler.
+     */
+    function populateNarrativeProfileSelector(profiles) {
+        const selectorContainer = document.getElementById('narrative-profile-selector-container');
+        const selector = document.getElementById('narrative-profile-select');
+        if (!selector || !selectorContainer) return;
+
+        selector.innerHTML = '<option value="">-- Vælg en gemt profil --</option>'; // Nulstil
+        if (profiles.length > 0) {
+            profiles.forEach(profile => {
+                const option = document.createElement('option');
+                option.value = profile.id;
+                option.textContent = profile.name;
+                selector.appendChild(option);
+            });
+            selectorContainer.style.display = 'block';
+        } else {
+            selectorContainer.style.display = 'none';
+        }
+    }
+
+    /**
+     * Viser de gemte profiler som en liste i "Logbog"-fanen med rediger- og slet-knapper.
+     */
+    function renderSavedProfilesForEditing(profiles) {
+        const listContainer = document.getElementById('saved-profiles-list');
+        if (!listContainer) return;
+        listContainer.innerHTML = (profiles.length === 0) ? `<p style="text-align: center; font-style: italic; margin-top:10px;">Du har endnu ikke oprettet nogen profiler.</p>` : '';
+
+        profiles.forEach(profile => {
+            const profileElement = document.createElement('div');
+            profileElement.className = 'logbook-entry-header';
+            profileElement.style.marginBottom = '10px';
+            profileElement.innerHTML = `
+                <button type="button" class="logbook-accordion-toggle edit-profile-button" data-profile-id="${profile.id}">
+                    <span class="logbook-title-container"><span class="logbook-title">${profile.name}</span><span class="logbook-subtitle">Alder: ${profile.age || 'N/A'}</span></span>
+                    <span>Rediger ✏️</span>
+                </button>
+                <button type="button" class="delete-profile-button" title="Slet Profil" data-profile-id="${profile.id}">🗑️</button>`;
+            listContainer.appendChild(profileElement);
+        });
+        attachProfileButtonListeners();
+    }
+
+   /** Udfylder en formular (enten profil eller narrativ) med data. */
+    function populateFormWithProfileData(profile, formType = 'profile') {
+        const isProfileForm = formType === 'profile';
+        const formSelector = isProfileForm ? '#child-profile-form' : '#narrative-support-module';
+        const form = document.querySelector(formSelector);
+        if (!form) return;
+
+        // Udfyld Navn og Alder
+        let nameInput, ageInput;
+        if(isProfileForm) {
+            nameInput = form.querySelector('#profile-name');
+            ageInput = form.querySelector('#profile-age');
+        } else {
+            nameInput = form.querySelector('#narrative-child-name-1');
+            ageInput = form.querySelector('#narrative-child-age-1');
+        }
+        if (nameInput) nameInput.value = profile.name || '';
+        if (ageInput) ageInput.value = profile.age || '';
+
+        // Udfyld simple tekst-lister (Motivation og Reaktion)
+        const motivationInput = document.getElementById('narrative-child-motivation');
+        const reactionTextarea = document.getElementById('narrative-child-reaction');
+        if(motivationInput) motivationInput.value = (profile.motivations || []).join(', ');
+        if(reactionTextarea) reactionTextarea.value = (profile.reactions || []).join(', ');
+
+        // Udfyld Relations-listen
+        const relationsContainer = document.getElementById('narrative-relations-container');
+        if(relationsContainer) {
+            relationsContainer.innerHTML = ''; // Ryd
+            const relations = profile.relations.length > 0 ? profile.relations : [{name: '', type: ''}];
+            relations.forEach(rel => {
+                const newGroup = document.createElement('div');
+                newGroup.className = 'relation-group';
+                newGroup.innerHTML = `
+                    <div class="input-pair"><input type="text" name="narrative_relation_name" value="${rel.name || ''}"></div>
+                    <div class="input-pair"><input type="text" name="narrative_relation_type" value="${rel.type || ''}"></div>
+                    <button type="button" class="remove-button">-</button>`;
+                newGroup.querySelector('.remove-button').addEventListener('click', () => newGroup.remove());
+                relationsContainer.appendChild(newGroup);
+            });
+        }
+    }
+
+  /** Opretter en komplet gruppe af felter (enten select+other, tekst eller relation) */
+    function createFieldGroup(container, type, value = '', relType = '') {
+        const newGroup = document.createElement('div');
+        const uniqueId = `other-${type}-${Date.now()}-${Math.random()}`; // Unikt ID for "other" felt
+
+        // Tjek om gruppen skal være for en select-dropdown
+        if (type === 'strength' || type === 'value') {
+            newGroup.className = 'input-group';
+            const select = createSelectWithOptions(`profile_${type}`, uniqueId, value);
+            newGroup.appendChild(select);
+
+            const otherInput = document.createElement('input');
+            otherInput.type = 'text';
+            otherInput.name = `profile_${type}_other`;
+            otherInput.id = uniqueId;
+            otherInput.className = 'other-input';
+            otherInput.placeholder = `Beskriv anden ${type}`;
+
+            // Hvis den gemte værdi ikke findes i standard-options, vælg "Andet..." og vis værdien
+            if (select.value === 'other') {
+                otherInput.value = value;
+            } else {
+                otherInput.classList.add('hidden');
+            }
+            newGroup.appendChild(otherInput);
+
+        } else if (type === 'relation') {
+            newGroup.className = 'relation-group';
+            newGroup.innerHTML = `<div class="input-pair"><input type="text" name="profile_relation_name" value="${value}" placeholder="Navn"></div><div class="input-pair"><input type="text" name="profile_relation_type" value="${relType}" placeholder="Relation"></div>`;
+        } else { // 'motivation', 'reaction'
+            newGroup.className = 'input-group';
+            newGroup.innerHTML = `<input type="text" name="profile_${type}" value="${value}" placeholder="Beskriv her...">`;
+        }
+
+        // Tilføj en funktionel "Fjern"-knap til alle typer grupper
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.textContent = '-';
+        removeButton.className = 'remove-button';
+        removeButton.addEventListener('click', () => newGroup.remove());
+        newGroup.appendChild(removeButton);
+
+        container.appendChild(newGroup);
+    }
+
+    /** Tilføjer listeners til rediger- og slet-knapper på den renderede profilliste */
+    function attachProfileButtonListeners() {
+        document.querySelectorAll('.edit-profile-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const profileId = button.dataset.profileId;
+                const profileData = allProfilesData.find(p => p.id == profileId);
+                if (profileData) {
+                    populateFormWithProfileData(profileData, 'profile');
+                }
+            });
+        });
+
+        document.querySelectorAll('.delete-profile-button').forEach(button => {
+            button.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const profileId = button.dataset.profileId;
+                const profile = allProfilesData.find(p => p.id == profileId);
+                if (window.confirm(`Er du sikker på, du vil slette profilen for "${profile.name}"?`)) {
+                    try {
+                        await deleteChildProfileApi(profileId);
+                        allProfilesData = allProfilesData.filter(p => p.id != profileId);
+                        renderSavedProfilesForEditing(allProfilesData);
+                        populateNarrativeProfileSelector(allProfilesData);
+                    } catch (error) {
+                        alert(`Fejl: ${error.message}`);
+                    }
+                }
+            });
+        });
+    }
+
+    /** Hoved-initialiseringsfunktion for hele featuren */
+    function initializeProfileFeature() {
+        const profileForm = document.getElementById('child-profile-form');
+        if (!profileForm || profileForm.dataset.initialized === 'true') return;
+        profileForm.dataset.initialized = 'true';
+
+        const saveProfileButton = document.getElementById('save-profile-button');
+        const clearProfileFormButton = document.getElementById('clear-profile-form-button');
+        const profileSaveFeedback = document.getElementById('profile-save-feedback');
+
+        // Hent og vis profiler
+        listChildProfilesApi().then(profiles => {
+            allProfilesData = profiles;
+            renderSavedProfilesForEditing(profiles);
+            populateNarrativeProfileSelector(profiles);
+        }).catch(err => console.error("Kunne ikke hente profiler:", err));
+
+        // Tilføj listeners til "Tilføj"-knapper i profil-formularen
+        profileForm.querySelectorAll('.add-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const container = document.getElementById(this.dataset.container);
+                if (container) {
+                    const isRelation = this.id.includes('relation');
+                    createFieldGroup(container, `profile_${this.dataset.name}`, '', isRelation, '');
+                }
+            });
+        });
+
+        // Ryd formular
+        clearProfileFormButton.addEventListener('click', () => {
+            profileForm.reset();
+            document.getElementById('profile-id').value = '';
+            // Nulstil dynamiske felter til kun én tom række
+            ['motivations', 'reactions', 'relations'].forEach(type => {
+                const container = document.getElementById(`profile-${type}-container`);
+                if(container) {
+                    container.innerHTML = '';
+                    createFieldGroup(container, `profile_${type}`, '', type==='relation');
+                }
+            });
+            profileSaveFeedback.style.display = 'none';
+        });
+
+   // Gem/Opdater profil (FORM SUBMIT)
+        profileForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const saveButton = document.getElementById('save-profile-button');
+            const profileSaveFeedback = document.getElementById('profile-save-feedback');
+            saveButton.disabled = true;
+            saveButton.textContent = 'Gemmer...';
+
+            // Indsamler data fra dropdowns for Styrker
+            const strengths = [];
+            document.querySelectorAll('#profile-strengths-container .input-group').forEach(group => {
+                const select = group.querySelector('select[name="profile_strength"]');
+                if (select.value === 'other') {
+                    const otherInput = group.querySelector('input[name="profile_strength_other"]');
+                    if (otherInput && otherInput.value.trim()) strengths.push(otherInput.value.trim());
+                } else if (select.value) {
+                    strengths.push(select.value);
+                }
+            });
+
+            // Indsamler data fra dropdowns for Værdier
+            const values = [];
+            document.querySelectorAll('#profile-values-container .input-group').forEach(group => {
+                const select = group.querySelector('select[name="profile_value"]');
+                if (select.value === 'other') {
+                    const otherInput = group.querySelector('input[name="profile_value_other"]');
+                    if (otherInput && otherInput.value.trim()) values.push(otherInput.value.trim());
+                } else if (select.value) {
+                    values.push(select.value);
+                }
+            });
+
+            const profileData = {
+                id: document.getElementById('profile-id').value,
+                name: document.getElementById('profile-name').value.trim(),
+                age: document.getElementById('profile-age').value.trim(),
+                strengths: strengths,
+                values: values,
+                motivations: Array.from(document.querySelectorAll('input[name="profile_motivation"]')).map(i => i.value.trim()).filter(Boolean),
+                reactions: Array.from(document.querySelectorAll('input[name="profile_reaction"]')).map(i => i.value.trim()).filter(Boolean),
+                relations: Array.from(document.querySelectorAll('#profile-relations-container .relation-group')).map(g => ({
+                    name: g.querySelector('input[name="profile_relation_name"]').value.trim(),
+                    type: g.querySelector('input[name="profile_relation_type"]').value.trim()
+                })).filter(r => r.name || r.type)
+            };
+
+            try {
+                const result = await saveChildProfileApi(profileData);
+                profileSaveFeedback.textContent = result.message;
+                profileSaveFeedback.className = 'flash-message flash-success';
+
+                const updatedProfiles = await listChildProfilesApi();
+                allProfilesData = updatedProfiles;
+                renderSavedProfilesForEditing(updatedProfiles);
+                populateNarrativeProfileSelector(updatedProfiles);
+
+                clearProfileForm();
+            } catch (error) {
+                profileSaveFeedback.textContent = `Fejl: ${error.message}`;
+                profileSaveFeedback.className = 'flash-message flash-error';
+            } finally {
+                profileSaveFeedback.style.display = 'block';
+                saveButton.disabled = false;
+                saveButton.textContent = 'Gem Profil';
+            }
+        });
+
+        // Håndter valg i Narrativ Støtte dropdown
+        const narrativeProfileSelector = document.getElementById('narrative-profile-select');
+        narrativeProfileSelector?.addEventListener('change', (event) => {
+            const selectedProfile = allProfilesData.find(p => p.id == event.target.value);
+            if (selectedProfile) {
+                populateFormWithProfileData(selectedProfile, 'narrative');
+            }
+        });
+    }
+
+    /**
+     * Generisk funktion, der kan udfylde BÅDE profil-formularen og narrativ-formularen.
+     */
+    function populateProfileForm(profileData, formType = 'profile') {
+        const p = (selector) => `${formType === 'profile' ? '#child-profile-form' : '#narrative-support-module'} ${selector}`;
+
+        // Simple felter
+        document.querySelector(p('input[name*="name"]')).value = profileData.name || '';
+        document.querySelector(p('input[name*="age"]')).value = profileData.age || '';
+
+        // Funktion til dynamisk at oprette og udfylde en liste af felter
+        const populateList = (containerSelector, dataList, name) => {
+            const container = document.querySelector(p(containerSelector));
+            if (!container) return;
+            container.innerHTML = ''; // Ryd eksisterende dynamiske felter
+
+            const items = dataList && dataList.length > 0 ? dataList : ['']; // Sørg for mindst ét tomt felt
+            items.forEach(itemValue => {
+                const newGroup = document.createElement('div');
+                if (name === 'relation') {
+                    newGroup.className = 'relation-group';
+                    newGroup.innerHTML = `
+                        <div class="input-pair"><input type="text" name="${formType}_relation_name" value="${itemValue.name || ''}"></div>
+                        <div class="input-pair"><input type="text" name="${formType}_relation_type" value="${itemValue.type || ''}"></div>
+                        <button type="button" class="remove-button">-</button>`;
+                } else {
+                    newGroup.className = 'input-group';
+                    newGroup.innerHTML = `<input type="text" name="${formType}_${name}" value="${itemValue || ''}"><button type="button" class="remove-button">-</button>`;
+                }
+                newGroup.querySelector('.remove-button').addEventListener('click', () => newGroup.remove());
+                container.appendChild(newGroup);
+            });
+        };
+
+        // Udfyld alle lister
+        populateList('#profile-strengths-container, #narrative-child-strengths-other-container', profileData.strengths, 'strength');
+        populateList('#profile-values-container, #narrative-child-values-other-container', profileData.values, 'value');
+        populateList('#profile-motivations-container, #narrative-child-motivation-container', profileData.motivations, 'motivation');
+        populateList('#profile-reactions-container, #narrative-child-reaction-container', profileData.reactions, 'reaction');
+        populateList('#profile-relations-container, #narrative-relations-container', profileData.relations, 'relation');
+
+        // Note: Denne simple version udfylder ikke dropdowns, men indsætter værdien i tekstfelter.
+        // Dette er en midlertidig, men funktionel løsning for at få det til at virke.
+        // En fuld løsning ville kræve mere kompleks logik til at matche værdier med dropdown-options.
+        // For nu fokuserer vi på tekstinput-delen.
+        if (formType === 'narrative') {
+             const motivationInput = document.getElementById('narrative-child-motivation');
+             const reactionTextarea = document.getElementById('narrative-child-reaction');
+             if(motivationInput) motivationInput.value = (profileData.motivations || []).join(', ');
+             if(reactionTextarea) reactionTextarea.value = (profileData.reactions || []).join(', ');
+        }
+    }
+
+    /**
+     * Hovedfunktionen der initialiserer al logik for profilstyring.
+     */
+    function initializeProfileFeature() {
+        const profileManagementSection = document.getElementById('profile-management-section');
+        if (!profileManagementSection) return; // Kør kun hvis vi er i den rigtige fane
+
+        const profileForm = document.getElementById('child-profile-form');
+        const saveProfileButton = document.getElementById('save-profile-button');
+        const clearProfileFormButton = document.getElementById('clear-profile-form-button');
+        const profileSaveFeedback = document.getElementById('profile-save-feedback');
+
+        // --- Hent og vis profiler ved start ---
+        listChildProfilesApi().then(profiles => {
+            allProfilesData = profiles;
+            renderSavedProfilesForEditing(profiles);
+            populateNarrativeProfileSelector(profiles);
+        }).catch(error => {
+            console.error("Kunne ikke indlæse profiler ved initialisering:", error);
+        });
+
+        // --- Generisk "Tilføj"-logik for simple tekst-inputs ---
+        profileManagementSection.querySelectorAll('.add-button[data-container]').forEach(button => {
+            button.addEventListener('click', function() {
+                const container = document.getElementById(this.dataset.container);
+                const inputName = this.dataset.name;
+                const placeholder = this.dataset.placeholder;
+
+                const newGroup = document.createElement('div');
+                newGroup.className = 'input-group';
+                newGroup.innerHTML = `
+                    <input type="text" name="${inputName}" placeholder="${placeholder}">
+                    <button type="button" class="remove-button">-</button>
+                `;
+                newGroup.querySelector('.remove-button').addEventListener('click', () => newGroup.remove());
+                container.appendChild(newGroup);
+            });
+        });
+
+        // --- Specifik "Tilføj"-logik for relationer (med 2 felter) ---
+        document.getElementById('add-profile-relation-button')?.addEventListener('click', () => {
+            const container = document.getElementById('profile-relations-container');
+            const newGroup = document.createElement('div');
+            newGroup.className = 'relation-group';
+            newGroup.innerHTML = `
+                <div class="input-pair"><input type="text" name="profile_relation_name" placeholder="Navn"></div>
+                <div class="input-pair"><input type="text" name="profile_relation_type" placeholder="Relation"></div>
+                <button type="button" class="remove-button">-</button>`;
+            newGroup.querySelector('.remove-button').addEventListener('click', () => newGroup.remove());
+            container.appendChild(newGroup);
+        });
+
+        // --- Ryd formular ---
+        clearProfileFormButton?.addEventListener('click', () => {
+            profileForm.reset();
+            document.getElementById('profile-id').value = '';
+            // Her kunne man tilføje logik til at fjerne ekstra felter, men reset er ofte nok for brugeren.
+            profileSaveFeedback.style.display = 'none';
+        });
+
+        // --- Håndter formular-afsendelse (Gem/Opdater) ---
+        profileForm?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            saveProfileButton.disabled = true;
+            saveProfileButton.textContent = 'Gemmer...';
+            profileSaveFeedback.style.display = 'none';
+
+            // Indsaml data fra alle felter
+            const profileData = {
+                id: document.getElementById('profile-id').value,
+                name: document.getElementById('profile-name').value.trim(),
+                age: document.getElementById('profile-age').value.trim(),
+                strengths: Array.from(document.querySelectorAll('input[name="profile_strength"]')).map(i => i.value.trim()).filter(Boolean),
+                values: Array.from(document.querySelectorAll('input[name="profile_value"]')).map(i => i.value.trim()).filter(Boolean),
+                motivations: Array.from(document.querySelectorAll('input[name="profile_motivation"]')).map(i => i.value.trim()).filter(Boolean),
+                reactions: Array.from(document.querySelectorAll('input[name="profile_reaction"]')).map(i => i.value.trim()).filter(Boolean),
+                relations: Array.from(document.querySelectorAll('#profile-relations-container .relation-group')).map(group => ({
+                    name: group.querySelector('input[name="profile_relation_name"]').value.trim(),
+                    type: group.querySelector('input[name="profile_relation_type"]').value.trim()
+                })).filter(r => r.name || r.type)
+            };
+
+            try {
+                const result = await saveChildProfileApi(profileData);
+                profileSaveFeedback.textContent = result.message;
+                profileSaveFeedback.className = 'flash-message flash-success';
+
+                // Opdater profillisten live
+                const updatedProfiles = await listChildProfilesApi();
+                allProfilesData = updatedProfiles;
+                renderSavedProfilesForEditing(updatedProfiles);
+                populateNarrativeProfileSelector(updatedProfiles);
+
+                clearProfileFormButton.click(); // Ryd formularen efter succes
+
+            } catch (error) {
+                profileSaveFeedback.textContent = `Fejl: ${error.message}`;
+                profileSaveFeedback.className = 'flash-message flash-error';
+            } finally {
+                profileSaveFeedback.style.display = 'block';
+                saveProfileButton.disabled = false;
+                saveProfileButton.textContent = 'Gem Profil';
+            }
+        });
+
+        // --- Håndter valg i Narrativ Støtte dropdown ---
+        const narrativeProfileSelector = document.getElementById('narrative-profile-select');
+        narrativeProfileSelector?.addEventListener('change', (event) => {
+            const selectedProfile = allProfilesData.find(p => p.id == event.target.value);
+            if (selectedProfile) {
+                // Her kalder vi en forsimplet version, der virker med de nuværende felter i narrativ støtte.
+                const narrativeNameInput = document.getElementById('narrative-child-name-1');
+                const narrativeAgeInput = document.getElementById('narrative-child-age-1');
+                if(narrativeNameInput) narrativeNameInput.value = selectedProfile.name || '';
+                if(narrativeAgeInput) narrativeAgeInput.value = selectedProfile.age || '';
+
+                // Vi kan senere udbygge dette til at auto-udfylde alle felter.
+                // For nu er navn og alder det vigtigste.
+            }
+        });
+
+         // --- Håndter dropdowns med "Andet..."-mulighed ---
+        const handleDynamicSelectChange = function() {
+            const otherInputId = this.dataset.otherInputId;
+            const otherInputElement = document.getElementById(otherInputId);
+            if (otherInputElement) {
+                otherInputElement.classList.toggle('hidden', this.value !== 'other');
+            }
+        };
+        document.querySelectorAll('.dynamic-select').forEach(sel => sel.addEventListener('change', handleDynamicSelectChange));
+    }
+
+    // Kald funktionen for at sætte alle listeners. Vi vil kalde den fra `handleTabClick`
+    // for at sikre, at den kun kører, når fanen er aktiv.
+    // ===================================================================
+    // SLUT: KOMPLET LOGIK FOR BØRNEPROFILER
+    // ===================================================================
 
 // --- FORBEDRET: Logik til at vise/skjule Godnatsange sektionen ---
     const sangteksterSektion = document.getElementById('sangtekster-sektion');
@@ -2189,6 +2647,8 @@ function populateLogbookForm(storyId, data) {
 
     // Udfyld alle felter med data fra AI-analysen
     fillField('logbook-problem-name', data.problem_name);
+    fillField('logbook-problem-category', data.problem_category);
+    fillField('logbook-strength-type', data.strength_type);
     fillField('logbook-problem-influence', data.problem_influence);
     fillField('logbook-unique-outcome', data.unique_outcome);
     fillField('logbook-method-name', data.discovered_method_name);
@@ -2585,7 +3045,7 @@ async function executeNarrativeGeneration(dataToSend) {
         narrativeGenerateStoryButton.textContent = originalButtonText;
     }
 }
-
+    initializeProfileFeature();
 });
 
 // Slut på DOMContentLoaded listener
