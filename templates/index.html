@@ -15,6 +15,7 @@
     </script>
 </head>
 <body>
+ {{ dette_er_en_test_for_at_se_om_denne_fil_bliver_loadet }}
     <header>
         <div class="logo-container">
             <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Read Me A Story Logo" id="app-logo">
@@ -38,7 +39,12 @@
                     <span class="icon-lock" title="Kræver Premium medlemskab">🔒</span>
                 {% endif %}
         </button>
-        <button type="button" class="tab-button" data-tab-target="#logbook-module">Logbog</button>
+        <button type="button" class="tab-button" data-tab-target="#logbook-module">
+            Logbog
+            {% if not current_user.is_authenticated %}
+                <span class="icon-lock" title="Log ind for at se din logbog">🔒</span>
+            {% endif %}
+        </button>
     </div>
     <main>
         {% with messages = get_flashed_messages(with_categories=true) %}

@@ -612,6 +612,25 @@ loadFontSizesFromLocalStorage();
                 console.log("[script.js] Logbogs-fane aktiveret. Kalder initializeLogbook.");
                 initializeLogbook();
             }
+
+            if (targetId === '#logbook-module') {
+                const currentUserRoleElement = document.getElementById('current-user-role-data');
+                const userRole = currentUserRoleElement ? currentUserRoleElement.dataset.role : 'guest';
+
+                if (userRole === 'guest') {
+                    console.log("Bruger er ikke logget ind. Viser besked i stedet for at hente logbog.");
+                    const logbookListContainer = document.getElementById('logbook-list-container');
+                    if (logbookListContainer) {
+                        logbookListContainer.innerHTML = `<p style="text-align: center; padding: 20px;">
+                            <a href="{{ url_for('auth.auth_login') }}">Log venligst ind</a> for at se din personlige logbog.
+                        </p>`;
+                    }
+                } else {
+                    // Kun kald initializeLogbook hvis brugeren er logget ind
+                    console.log("[script.js] Logbogs-fane aktiveret. Kalder initializeLogbook.");
+                    initializeLogbook();
+                }
+            }
         };
 
         tabButtons.forEach(button => {
