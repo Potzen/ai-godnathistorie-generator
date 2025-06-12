@@ -1811,3 +1811,66 @@ input:disabled + .slider-label:before {
     padding-bottom: 6px;
     resize: vertical; /* Tillad lodret udvidelse, men start småt */
 }
+
+/* Styling for ny billedsektion */
+#billede-til-historien-sektion {
+    display: flex;
+    gap: 25px;
+    flex-wrap: wrap;
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    margin-top: 25px;
+}
+
+.image-result-container {
+    flex: 1;
+    min-width: 320px;
+    background-color: var(--color-box-bg);
+    padding: 20px 25px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+}
+
+.image-result-container h2 {
+    margin-bottom: 20px;
+    font-size: 1.3em;
+}
+
+.image-loader {
+    padding: 40px 20px;
+    font-style: italic;
+    color: #555;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.image-display-wrapper {
+    min-height: 256px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+    background-color: #f8f9fa;
+    border-radius: var(--border-radius);
+    padding: 10px;
+    border: 1px solid var(--border-color);
+}
+
+#story-image-display,
+#problem-image-display {
+    max-width: 100%;
+    max-height: 512px;
+    height: auto;
+    border-radius: var(--border-radius);
+}
+
+#narrative-generate-images-button:disabled {
+    background-color: #d8d8d8 !important;
+    cursor: not-allowed;
+}

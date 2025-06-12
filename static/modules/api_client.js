@@ -334,3 +334,21 @@ export async function listContinuableStoriesApi() {
 
     return await response.json();
 }
+
+export async function generateProblemImageApi(narrativeData) {
+    console.log("api_client.js: generateProblemImageApi called.");
+    const response = await fetch('/narrative/generate_problem_image', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(narrativeData)
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved generering af problem-billede." }));
+        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
+    }
+
+    return await response.json();
+}

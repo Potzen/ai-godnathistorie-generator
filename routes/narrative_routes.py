@@ -11,7 +11,8 @@ from services.ai_service import (
     draft_narrative_story_with_rag,
     edit_narrative_story,
     generate_reflection_questions_step4,
-    analyze_story_for_logbook
+    analyze_story_for_logbook,
+    generate_problem_image
 )
 import traceback
 
@@ -381,3 +382,22 @@ def list_stories_for_continuation():
     except Exception as e:
         current_app.logger.error(f"Fejl under hentning af historieliste for bruger {current_user.id}: {e}")
         return jsonify({"error": "Intern fejl ved hentning af historieliste."}), 500
+
+@narrative_bp.route('/generate_problem_image', methods=['POST'])
+@login_required
+def generate_problem_image_route():
+    if current_user.role != 'premium':
+        return jsonify({"error": "Adgang nægtet."}), 403
+
+    narrative_data = request.get_json()
+    if not narrative_data:
+        return jsonify({"error": "Mangler narrative data."}), 400
+
+    try:
+        result = generate_problem_image(narrative_data)
+        if "error" in result:
+            return jsonify(result), 500
+        return jsonify(result), 200
+    except Exception as e:
+        current_app.logger.error(f"Fejl i /generate_problem_image route: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": "En uventet serverfejl opstod."}), 500

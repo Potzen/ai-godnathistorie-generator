@@ -598,7 +598,7 @@
 
                 <div class="narrative-actions" style="margin-top: 25px; display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
                     <button type="button" id="narrative-generate-story-button" class="primary-action-button" style="background-color: var(--color-primary); color: white; font-size: 1.1em; padding: 12px 20px;">Generer Narrativ Historie</button>
-                    <button type="button" class="utility-button image-button js-generate-image disabled-button" id="narrative-generate-image-button" disabled>Skab billede til historien</button>
+                     <button type="button" id="narrative-generate-images-button" class="utility-button" disabled title="Generer en historie først">Skab Billeder til Fortællingen</button>
                     <div class="font-size-controls" id="narrative-font-size-controls">
                         <button type="button" id="narrative-decrease-font-button" class="utility-button font-button" title="Gør teksten mindre">A-</button>
                         <button type="button" id="narrative-increase-font-button" class="utility-button font-button" title="Gør teksten større">A+</button>
@@ -803,7 +803,6 @@
             <div id="story-share-buttons" class="hidden">
                 <button type="button" id="share-story-facebook-button" class="utility-button">Del på Facebook</button>
                 <button type="button" id="copy-story-button" class="utility-button">Kopier Historie</button>
-                <button type="button" class="utility-button image-button js-generate-image" disabled>Skab billede</button>
                 <button id="reset-button" class="utility-button" style="display: none;">Prøv igen</button>
             </div>
 
@@ -845,15 +844,29 @@
         </section>
 
         <section id="billede-til-historien-sektion" class="hidden">
-            <h2>Billede til historien</h2>
-            <div id="image-loading-indicator" class="hidden" style="text-align: center; padding: 20px;">
-                <p>Billedet genereres... Vent venligst.</p>
-                <span class="spinner"></span>
+            <div id="story-image-container" class="image-result-container hidden">
+                <h2>Billede til Historien</h2>
+                <div id="story-image-loader" class="image-loader hidden">
+                    <p>Illustrerer historien...</p>
+                    <span class="spinner"></span>
+                </div>
+                <div class="image-display-wrapper">
+                    <img id="story-image-display" class="hidden" src="#" alt="Genereret billede der illustrerer en scene fra historien">
+                </div>
+                <div id="story-image-error" class="flash-message flash-error hidden"></div>
             </div>
-            <div style="text-align: center;">
-                 <img id="story-image-display" class="hidden" src="#" alt="Genereret billede til historien" style="max-width: 100%; border-radius: var(--border-radius); box-shadow: var(--box-shadow);">
+
+            <div id="problem-image-container" class="image-result-container hidden">
+                <h2>Billede af "Problem-karakteren"</h2>
+                <div id="problem-image-loader" class="image-loader hidden">
+                    <p>Visualiserer problemet...</p>
+                    <span class="spinner"></span>
+                </div>
+                <div class="image-display-wrapper">
+                    <img id="problem-image-display" class="hidden" src="#" alt="Genereret billede der symboliserer problem-karakteren">
+                </div>
+                <div id="problem-image-error" class="flash-message flash-error hidden"></div>
             </div>
-            <div id="image-generation-error" class="flash-message flash-error hidden" style="margin-top: 15px;"></div>
         </section>
         <section id="logbook-module" class="content-section hidden">
             <div class="logbook-container" style="padding: 0; background: none; box-shadow: none;">

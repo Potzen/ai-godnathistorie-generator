@@ -1,10 +1,23 @@
 // Fil: static/script.js
 import { initializeLogbook } from './logbook.js';
-import { generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generateNarrativeStoryApi, getGuidingQuestionsApi, generateAudioApi, generateLixStoryApi, analyzeStoryForLogbookApi, saveLogbookEntryApi, listContinuableStoriesApi } from './modules/api_client.js';
+import { generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generateNarrativeStoryApi, getGuidingQuestionsApi, generateAudioApi, generateLixStoryApi, analyzeStoryForLogbookApi, saveLogbookEntryApi, listContinuableStoriesApi, generateProblemImageApi } from './modules/api_client.js';
 
 // Kør først koden, når hele HTML dokumentet er færdigindlæst og klar
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOMContentLoaded event fired. Initializing Read Me A Story script.");
+
+console.log("DOMContentLoaded event fired. Initializing Read Me A Story script.");
+const imageSection = document.getElementById('billede-til-historien-sektion');
+const storyImageContainer = document.getElementById('story-image-container');
+const storyImageLoader = document.getElementById('story-image-loader');
+const storyImageDisplay = document.getElementById('story-image-display');
+const storyImageError = document.getElementById('story-image-error');
+const problemImageContainer = document.getElementById('problem-image-container');
+const problemImageLoader = document.getElementById('problem-image-loader');
+const problemImageDisplay = document.getElementById('problem-image-display');
+const problemImageError = document.getElementById('problem-image-error');
+const narrativeGenerateImagesButton = document.getElementById('narrative-generate-images-button');
+let currentNarrativeData = null; // Global variabel
+
 
 // === START: Tekster og Logik for Informationsikoner (Tooltips) ===
 const tooltipElement = document.getElementById('info-tooltip');
@@ -22,7 +35,7 @@ const tooltipTexts = {
     'interactive-info': "Når denne er slået til, vil AI'en forsøge at skrive historien med 1-2 indbyggede valgmuligheder for at engagere barnet. Funktionen virker bedst, når 'Lang' historielængde er valgt.",
     'bedtime-info': "Når denne er slået til, får AI'en en specifik instruktion om at gøre historien ekstra rolig, tryg og afdæmpet. Dette overtrumfer det generelle 'Stemning'-valg og er ideelt til at hjælpe et barn med at falde til ro ved sengetid."
 };
-const storyLoadingIndicator = document.getElementById('story-loading-indicator');
+
 
 function showTooltip(iconElement, text) {
     if (!tooltipElement || !tooltipTextElement) {
@@ -170,9 +183,7 @@ function trackGAEvent(action, category, label, value) {
     const resetButton = document.getElementById('reset-button'); // Bemærk: Denne er nu inde i story-share-buttons
 
     const generateImageButtons = document.querySelectorAll('.js-generate-image');
-    const imageSection = document.getElementById('billede-til-historien-sektion');
     const imageLoadingIndicator = document.getElementById('image-loading-indicator');
-    const storyImageDisplay = document.getElementById('story-image-display');
     const imageGenerationError = document.getElementById('image-generation-error');
     const storyDisplay = document.getElementById('story-display');
     const storySectionHeading = document.getElementById('story-section-heading'); // Til opdatering af historietitel
@@ -904,92 +915,6 @@ loadFontSizesFromLocalStorage();
     const examplePlots = [ "skulle finde en forsvundet stjerne", "byggede en fantastisk maskine", "holdt en overraskelsesfest", "mødte et dyr de aldrig havde set før", "lærte at trylle med farver", "'at dele er en god ting'", "'man skal være modig'", "'ærlighed varer længst'" ];
     // console.log("Example data for story autofill defined.");
 
-// === Funktion til at Indsamle Data fra Narrativ Støtte Inputfelter ===
-    function collectNarrativeData() {
-        const narrativeData = {};
-
-        // 1. Centrale Narrative Input
-        if (narrativeFocusInput) narrativeData.narrative_focus = narrativeFocusInput.value.trim();
-        if (narrativeGoalInput) narrativeData.story_goal = narrativeGoalInput.value.trim();
-
-        // 2. Information om Barnet
-        if (narrativeChildNameInput) narrativeData.child_name = narrativeChildNameInput.value.trim();
-        if (narrativeChildAgeInput) narrativeData.child_age = narrativeChildAgeInput.value.trim();
-
-        if (narrativeChildStrengthsSelect) {
-            if (narrativeChildStrengthsSelect.value === 'other' && narrativeChildStrengthsOther) {
-                narrativeData.child_strengths = narrativeChildStrengthsOther.value.trim() ? [narrativeChildStrengthsOther.value.trim()] : [];
-            } else if (narrativeChildStrengthsSelect.value) {
-                narrativeData.child_strengths = [narrativeChildStrengthsSelect.value];
-            } else {
-                narrativeData.child_strengths = [];
-            }
-        }
-
-        if (narrativeChildValuesSelect) {
-            if (narrativeChildValuesSelect.value === 'other' && narrativeChildValuesOther) {
-                narrativeData.child_values = narrativeChildValuesOther.value.trim() ? [narrativeChildValuesOther.value.trim()] : [];
-            } else if (narrativeChildValuesSelect.value) {
-                narrativeData.child_values = [narrativeChildValuesSelect.value];
-            } else {
-                narrativeData.child_values = [];
-            }
-        }
-
-        if (narrativeChildMotivationInput) narrativeData.child_motivation = narrativeChildMotivationInput.value.trim();
-        if (narrativeChildReactionTextarea) narrativeData.child_typical_reaction = narrativeChildReactionTextarea.value.trim();
-
-        // Vigtige Relationer
-        narrativeData.important_relations = [];
-        if (narrativeRelationsContainer) {
-            narrativeRelationsContainer.querySelectorAll('.relation-group').forEach(group => {
-                const nameInput = group.querySelector('input[name="narrative_relation_name"]');
-                const typeInput = group.querySelector('input[name="narrative_relation_type"]');
-                const name = nameInput ? nameInput.value.trim() : '';
-                const type = typeInput ? typeInput.value.trim() : '';
-                if (name || type) { // Gem kun hvis mindst et felt er udfyldt
-                    narrativeData.important_relations.push({ name: name, type: type });
-                }
-            });
-        }
-
-        // 3. Generelle Historieelementer (Narrativ Støtte sektion)
-        narrativeData.main_characters = [];
-        if (narrativeMainCharactersContainer) {
-            narrativeMainCharactersContainer.querySelectorAll('.character-group').forEach(group => {
-                const descInput = group.querySelector('input[name="narrative_main_char_desc"]');
-                const nameInput = group.querySelector('input[name="narrative_main_char_name"]');
-                const description = descInput ? descInput.value.trim() : '';
-                const name = nameInput ? nameInput.value.trim() : '';
-                if (description || name) {
-                    narrativeData.main_characters.push({ description: description, name: name });
-                }
-            });
-        }
-
-        narrativeData.places = [];
-        if (narrativePlacesContainer) {
-            narrativePlacesContainer.querySelectorAll('.input-group input[name="narrative_place"]').forEach(input => {
-                const value = input.value.trim();
-                if (value) narrativeData.places.push(value);
-            });
-        }
-
-        narrativeData.plot_elements = [];
-        if (narrativePlotContainer) {
-            narrativePlotContainer.querySelectorAll('.input-group input[name="narrative_plot"]').forEach(input => {
-                const value = input.value.trim();
-                if (value) narrativeData.plot_elements.push(value);
-            });
-        }
-
-        if (narrativeNegativePromptInput) narrativeData.negative_prompt = narrativeNegativePromptInput.value.trim();
-        if (narrativeLengthSelect) narrativeData.length = narrativeLengthSelect.value;
-        if (narrativeMoodSelect) narrativeData.mood = narrativeMoodSelect.value;
-
-        console.log("Collected Narrative Data:", narrativeData);
-        return narrativeData;
-    }
 
 
     // === Logik for Cookie Consent Banner ===
@@ -1463,129 +1388,98 @@ async function handleReadAloudClick() {
     }
 }
 
-async function handleGenerateImageFromStoryClick() { // Bemærk navnet
-    console.log("--> handleGenerateImageFromStoryClick startet");
+async function handleGenerateImageFromStoryClick() {
+    console.log("--> handleGenerateImageFromStoryClick (FOR HØJTLÆSNING) startet");
 
-    // Sørg for at disse referencer er defineret øverst i din script.js fil:
-    // const storyDisplay = document.getElementById('story-display');
-    // const imageSection = document.getElementById('billede-til-historien-sektion');
-    // const imageLoadingIndicator = document.getElementById('image-loading-indicator');
-    // const storyImageDisplay = document.getElementById('story-image-display');
-    // const imageGenerationError = document.getElementById('image-generation-error');
-    // const generateImageButton = document.getElementById('generate-image-button');
-
-    if (!storyDisplay || !storyDisplay.textContent.trim()) {
-        // Vis en mere brugervenlig besked, hvis muligt, i stedet for alert
-        if(imageGenerationError) {
-            imageGenerationError.textContent = "Generer venligst en historie først, før du prøver at lave et billede.";
-            if(imageSection) imageSection.classList.remove('hidden'); // Vis sektionen for at vise fejlen
-            imageGenerationError.classList.remove('hidden');
-        } else {
-            alert("Generer venligst en historie først, før du prøver at lave et billede.");
-        }
+    const currentStoryText = storyTextContent.textContent.trim();
+    if (!currentStoryText) {
+        alert("Generer venligst en historie først.");
         return;
     }
 
-    const currentStoryText = storyDisplay.textContent.trim();
-
-    // Vis UI elementer for billedgenerering
-    if (imageSection) imageSection.classList.remove('hidden');
-    if (imageLoadingIndicator) imageLoadingIndicator.classList.remove('hidden');
-    if (storyImageDisplay) {
-        storyImageDisplay.classList.add('hidden'); // Skjul evt. gammelt billede
-        storyImageDisplay.src = '#';
-    }
-    if (imageGenerationError) {
-        imageGenerationError.textContent = ''; // Ryd gamle fejl
-        imageGenerationError.classList.add('hidden'); // Skjul fejlbesked initialt
-    }
-    if (generateImageButtons.length > 0) generateImageButtons.forEach(button => button.disabled = true); // Deaktiver knapper under kørsel
-
-    try {
-    // Kald den nye API funktion og vent på resultatet
-        const result = await generateImageApi(currentStoryText);
-        // console.log("Image Generation: Result received from generateImageApi:", result); // God til debugging
-
-        if (result.image_url) {
-            if (storyImageDisplay) {
-                storyImageDisplay.src = result.image_url;
-                storyImageDisplay.classList.remove('hidden');
-            }
-        } else if (result.message && result.status === "Under udvikling") {
-            if (imageGenerationError) {
-                imageGenerationError.textContent = result.message; // Viser kun hovedbeskeden fra backend
-                imageGenerationError.classList.remove('hidden');
-            }
-            console.log("Billedgenerering er under udvikling, som forventet fra stub.");
-        } else if (result.error) {
-            throw new Error(result.error);
-        } else {
-            throw new Error("Uventet svar fra serveren under billedgenerering.");
-        }
-
-    } catch (error) {
-        console.error("Fejl under billedgenerering (catch):", error);
-        if (imageGenerationError) {
-            imageGenerationError.textContent = `Fejl: ${error.message}`;
-            imageGenerationError.classList.remove('hidden');
-        }
-        if (storyImageDisplay) storyImageDisplay.classList.add('hidden');
-    } finally {
-        if (imageLoadingIndicator) imageLoadingIndicator.classList.add('hidden');
-        if (generateImageButtons.length > 0) generateImageButtons.forEach(button => button.disabled = false);
-        console.log("--> handleGenerateImageFromStoryClick færdig");
-    }
-}
-
-
-async function handleGenerateNarrativeImageClick() {
-    console.log("--> handleGenerateNarrativeImageClick startet");
-
-    const storyContentElement = document.getElementById('narrative-generated-story');
-    const imageSection = document.getElementById('narrative-billede-sektion');
-    const loadingIndicator = document.getElementById('narrative-image-loading-indicator');
-    const imageDisplay = document.getElementById('narrative-story-image-display');
-    const errorDisplay = document.getElementById('narrative-image-generation-error');
-    const generateButton = document.getElementById('narrative-generate-image-button');
-
-    if (!storyContentElement || !storyContentElement.textContent.trim()) {
-        if(errorDisplay) {
-            errorDisplay.textContent = "Generer venligst en narrativ historie først.";
-            if(imageSection) imageSection.classList.remove('hidden');
-            errorDisplay.classList.remove('hidden');
-        }
-        return;
-    }
-
-    const storyText = storyContentElement.textContent.trim();
-
+    // Nulstil og vis UI for KUN ét billede
     imageSection.classList.remove('hidden');
-    loadingIndicator.classList.remove('hidden');
-    imageDisplay.classList.add('hidden');
-    imageDisplay.src = '#';
-    errorDisplay.classList.add('hidden');
-    errorDisplay.textContent = '';
-    if (generateButton) generateButton.disabled = true;
+    storyImageContainer.classList.remove('hidden');
+    problemImageContainer.classList.add('hidden'); // Vigtigt: Skjul problem-containeren
+
+    storyImageLoader.classList.remove('hidden');
+    storyImageDisplay.classList.add('hidden');
+    storyImageError.classList.add('hidden');
+    generateImageButtons.forEach(button => button.disabled = true);
 
     try {
-        const result = await generateImageApi(storyText);
+        const result = await generateImageApi(currentStoryText);
         if (result.image_url) {
-            imageDisplay.src = result.image_url;
-            imageDisplay.classList.remove('hidden');
+            storyImageDisplay.src = result.image_url;
+            storyImageDisplay.classList.remove('hidden');
         } else {
-            throw new Error(result.error || "Uventet svar fra serveren under billedgenerering.");
+            throw new Error(result.error || "Uventet svar fra serveren.");
         }
     } catch (error) {
-        console.error("Fejl under generering af narrativt billede:", error);
-        errorDisplay.textContent = `Billed-fejl: ${error.message}`;
-        errorDisplay.classList.remove('hidden');
-        imageDisplay.classList.add('hidden');
+        storyImageError.textContent = `Fejl: ${error.message}`;
+        storyImageError.classList.remove('hidden');
     } finally {
-        loadingIndicator.classList.add('hidden');
-        if (generateButton) generateButton.disabled = false;
-        console.log("--> handleGenerateNarrativeImageClick færdig");
+        storyImageLoader.classList.add('hidden');
+        generateImageButtons.forEach(button => button.disabled = false);
     }
 }
+
+async function handleGenerateNarrativeImagesClick() {
+        if (!currentNarrativeData || !currentNarrativeData.storyContent) {
+            alert("Fejl: Der er ingen genereret historie at skabe billeder fra.");
+            return;
+        }
+
+        narrativeGenerateImagesButton.disabled = true;
+        narrativeGenerateImagesButton.textContent = "Genererer...";
+
+        // Nulstil og vis UI for BEGGE billeder
+        imageSection.classList.remove('hidden');
+        storyImageContainer.classList.remove('hidden');
+        problemImageContainer.classList.remove('hidden');
+        storyImageLoader.classList.remove('hidden');
+        problemImageLoader.classList.remove('hidden');
+        [storyImageDisplay, problemImageDisplay, storyImageError, problemImageError].forEach(el => el.classList.add('hidden'));
+
+        const storyImagePromise = generateImageApi(currentNarrativeData.storyContent);
+        const problemImagePromise = generateProblemImageApi(currentNarrativeData);
+
+        // Håndter resultater individuelt
+        storyImagePromise
+            .then(result => {
+                if (result.image_url) {
+                    storyImageDisplay.src = result.image_url;
+                    storyImageDisplay.classList.remove('hidden');
+                } else throw new Error(result.error || "Ukendt fejl");
+            })
+            .catch(error => {
+                storyImageError.textContent = `Fejl: ${error.message}`;
+                storyImageError.classList.remove('hidden');
+            })
+            .finally(() => {
+                storyImageLoader.classList.add('hidden');
+            });
+
+        problemImagePromise
+            .then(result => {
+                if (result.image_url) {
+                    problemImageDisplay.src = result.image_url;
+                    problemImageDisplay.classList.remove('hidden');
+                } else throw new Error(result.error || "Ukendt fejl");
+            })
+            .catch(error => {
+                problemImageError.textContent = `Fejl: ${error.message}`;
+                problemImageError.classList.remove('hidden');
+            })
+            .finally(() => {
+                problemImageLoader.classList.add('hidden');
+            });
+
+        // Vent på at begge er færdige for at gen-aktivere knappen
+        await Promise.allSettled([storyImagePromise, problemImagePromise]);
+        narrativeGenerateImagesButton.disabled = false;
+        narrativeGenerateImagesButton.textContent = "Skab Billeder til Fortællingen";
+    }
 
 // === Nulstil Funktion (Reset) ===
 function handleResetClick(clearLocalStorageForListeners = true) {
@@ -1798,7 +1692,6 @@ if (copyStoryButton) {
     }
 
     // Denne funktion håndterer selve API-kaldet og UI-opdatering
-    // Denne funktion håndterer selve API-kaldet og UI-opdatering
     async function executeNarrativeGeneration(dataToSend) {
         const imageButton = document.getElementById('narrative-generate-image-button');
 
@@ -1819,6 +1712,9 @@ if (copyStoryButton) {
         narrativeGeneratedStorySection.classList.add('hidden');
         narrativeLoadingIndicator.classList.remove('hidden');
 
+        if (imageSection) imageSection.classList.add('hidden');
+        if (narrativeGenerateImagesButton) narrativeGenerateImagesButton.disabled = true;
+
         try {
             const result = await generateNarrativeStoryApi(dataToSend);
             if (result.error) throw new Error(result.error);
@@ -1831,6 +1727,14 @@ if (copyStoryButton) {
             if (imageButton) {
                 imageButton.disabled = false;
                 imageButton.classList.remove('disabled-button');
+            }
+
+                        // GEM DATA OG AKTIVER KNAPPEN
+            currentNarrativeData = dataToSend;
+            currentNarrativeData.storyContent = result.story;
+            if (narrativeGenerateImagesButton) {
+                narrativeGenerateImagesButton.disabled = false;
+                narrativeGenerateImagesButton.removeAttribute('title');
             }
 
             if (result.story_id && result.story) {
@@ -1854,12 +1758,6 @@ if (copyStoryButton) {
     if (narrativeGenerateStoryButton) {
         narrativeGenerateStoryButton.addEventListener('click', () => startNarrativeGeneration(null));
     }
-
-    // Strategi-knapperne kalder start-funktionen MED en strategi
-    const strategyButtons = document.querySelectorAll('[name="continuation_strategy"]');
-    strategyButtons.forEach(button => {
-        button.addEventListener('click', (event) => startNarrativeGeneration(event.target.value));
-    });
 
     // === Tilknyt Event Listeners ===
     // Indlæs gemte lyttere for historie-sektionen
@@ -2001,6 +1899,10 @@ if (copyStoryButton) {
         console.warn("Ingen knapper med klassen '.js-generate-image' blev fundet for event listeners.");
     }
 
+    if (narrativeGenerateImagesButton) {
+    narrativeGenerateImagesButton.addEventListener('click', handleGenerateNarrativeImagesClick);
+    }
+
     // Denne logik sikrer, at kun den korrekte funktion kaldes for den knap, der klikkes på.
     document.addEventListener('click', function(event) {
         // Tjek om der blev klikket på den almindelige billedknap
@@ -2061,7 +1963,7 @@ if (copyStoryButton) {
     // KALD FUNKTIONEN ÉN GANG MED DET SAMME, NÅR SIDEN LOADER:
     // Dette er den vigtige linje, der sikrer, at sektionen er skjult fra start.
     updateSongSectionVisibility();
-});
+
 // ===================================================================
 // START: FUNKTIONER TIL LÆSEHESTEN MODUL
 // ===================================================================
@@ -2305,49 +2207,48 @@ async function handleLaesehestGenerateClick() {
         }
     }
 
-    function populateLogbookForm(storyId, data) {
-        const storyIdField = document.getElementById('logbook-story-id');
-        if(storyIdField) storyIdField.value = storyId;
+// Denne funktion udfylder selve formularen
+function populateLogbookForm(storyId, data) {
+    const storyIdField = document.getElementById('logbook-story-id');
+    if(storyIdField) storyIdField.value = storyId;
 
-        const fillField = (elementId, value) => {
-            const element = document.getElementById(elementId);
-            if (element && value) {
-                element.value = Array.isArray(value) ? value.join(', ') : value;
-                element.classList.add('ai-suggested-input');
-                element.addEventListener('input', () => {
-                    element.classList.remove('ai-suggested-input');
-                }, { once: true });
-            }
-        };
+    const fillField = (elementId, value) => {
+        const element = document.getElementById(elementId);
+        if (element && value) {
+            element.value = Array.isArray(value) ? value.join(', ') : value;
+            element.classList.add('ai-suggested-input');
+            element.addEventListener('input', () => {
+                element.classList.remove('ai-suggested-input');
+            }, { once: true });
+        }
+    };
 
-        fillField('logbook-problem-name', data.problem_name);
-        fillField('logbook-problem-category', data.problem_category);
-        fillField('logbook-problem-influence', data.problem_influence);
-        fillField('logbook-unique-outcome', data.unique_outcome);
-        fillField('logbook-method-name', data.discovered_method_name);
-        fillField('logbook-strength-type', data.strength_type);
-        fillField('logbook-method-steps', data.discovered_method_steps);
-        fillField('logbook-child-values', data.child_values);
-        fillField('logbook-support-system', data.support_system);
+    // Udfyld alle felter med data fra AI-analysen
+    fillField('logbook-problem-name', data.problem_name);
+    fillField('logbook-problem-influence', data.problem_influence);
+    fillField('logbook-unique-outcome', data.unique_outcome);
+    fillField('logbook-method-name', data.discovered_method_name);
+    fillField('logbook-method-steps', data.discovered_method_steps);
+    fillField('logbook-child-values', data.child_values);
+    fillField('logbook-support-system', data.support_system);
 
-         if (data.ai_summary) {
+    if (data.ai_summary) {
         fillField('logbook-ai-summary', data.ai_summary);
-        }
-
-        const originalStoryContainer = document.getElementById('logbook-original-story-container');
-        const originalStoryTitleField = document.getElementById('logbook-original-story-title');
-
-        if (originalStoryContainer && originalStoryTitleField && data.root_story_title) {
-            // Hvis der er data, indsæt titlen og vis containeren
-            originalStoryTitleField.value = data.root_story_title;
-            originalStoryContainer.style.display = 'block'; // Gør den synlig
-            console.log("Viser 'Original Historie' med titlen:", data.root_story_title);
-        } else if (originalStoryContainer) {
-            // Hvis der ikke er data, sørg for at containeren er skjult
-            originalStoryContainer.style.display = 'none';
-        }
-
     }
+
+    // RETTELSE: Logik til at finde og vise containeren for "Original Historie".
+    const originalStoryContainer = document.getElementById('logbook-original-story-container');
+    const originalStoryTitleField = document.getElementById('logbook-original-story-title');
+
+    if (originalStoryContainer && originalStoryTitleField && data.root_story_title) {
+        // Hvis der er data, indsæt titlen og vis containeren
+        originalStoryTitleField.value = data.root_story_title;
+        originalStoryContainer.style.display = 'block';
+    } else if (originalStoryContainer) {
+        // Hvis der ikke er data, sørg for at containeren er skjult
+        originalStoryContainer.style.display = 'none';
+    }
+}
 
     // Tilføj event listeners til progress sliders
     document.querySelectorAll('.progress-slider input[type="range"]').forEach(slider => {
@@ -2402,46 +2303,43 @@ async function handleLaesehestGenerateClick() {
         });
     }
 
-        // Denne funktion kalder analyse-API'en
-    // --- START PÅ RETTELSE: Tilføj 'rootStoryTitle' som parameter ---
-    async function triggerLogbookAnalysis(storyId, storyContent, rootStoryTitle) {
-    // --- SLUT PÅ RETTELSE ---
-        console.log("Logbog: Starter analyse for story ID:", storyId);
-        resetLogbookSection();
+    // RETTELSE: Funktionen accepterer nu 'rootStoryTitle' som en tredje parameter.
+async function triggerLogbookAnalysis(storyId, storyContent, rootStoryTitle) {
+    console.log("Logbog: Starter analyse for story ID:", storyId);
+    resetLogbookSection();
 
-        if (!logbookSection || !logbookLoader || !logbookError || !logbookForm) {
-            console.error("Logbog: Kritiske HTML-elementer til dokumentation mangler.");
-            return;
-        }
-
-        logbookSection.classList.remove('hidden');
-        logbookLoader.classList.remove('hidden');
-
-        try {
-            const analysisData = await analyzeStoryForLogbookApi(storyContent);
-            console.log("Logbog: Analyse modtaget fra API:", analysisData);
-
-            if (analysisData.error) {
-                throw new Error(analysisData.error);
-            }
-
-            // --- START PÅ RETTELSE: Føj titlen til de data, der sendes til formularen ---
-            if (rootStoryTitle) {
-                analysisData.root_story_title = rootStoryTitle;
-            }
-            // --- SLUT PÅ RETTELSE ---
-
-            populateLogbookForm(storyId, analysisData);
-            logbookLoader.classList.add('hidden');
-            logbookForm.classList.remove('hidden');
-
-        } catch (error) {
-            console.error("Logbog: Fejl under analyse-workflow:", error);
-            logbookLoader.classList.add('hidden');
-            logbookError.textContent = `Fejl under analyse: ${error.message}`;
-            logbookError.classList.remove('hidden');
-        }
+    if (!logbookSection || !logbookLoader || !logbookError || !logbookForm) {
+        console.error("Logbog: Kritiske HTML-elementer til dokumentation mangler.");
+        return;
     }
+
+    logbookSection.classList.remove('hidden');
+    logbookLoader.classList.remove('hidden');
+
+    try {
+        const analysisData = await analyzeStoryForLogbookApi(storyContent);
+        console.log("Logbog: Analyse modtaget fra API:", analysisData);
+
+        if (analysisData.error) {
+            throw new Error(analysisData.error);
+        }
+
+        // RETTELSE: Hvis 'rootStoryTitle' blev modtaget, føjes den til de data, der skal vises i formularen.
+        if (rootStoryTitle) {
+            analysisData.root_story_title = rootStoryTitle;
+        }
+
+        populateLogbookForm(storyId, analysisData);
+        logbookLoader.classList.add('hidden');
+        logbookForm.classList.remove('hidden');
+
+    } catch (error) {
+        console.error("Logbog: Fejl under analyse-workflow:", error);
+        logbookLoader.classList.add('hidden');
+        logbookError.textContent = `Fejl under analyse: ${error.message}`;
+        logbookError.classList.remove('hidden');
+    }
+}
 
     // ==========================================================
     // START PÅ NY FUNKTION
@@ -2481,79 +2379,107 @@ async function handleLaesehestGenerateClick() {
         }
     }
 
-    function collectNarrativeData() {
-        const childStrengths = [];
-        if (narrativeChildStrengthsSelect) {
-            if (narrativeChildStrengthsSelect.value && narrativeChildStrengthsSelect.value !== 'other' && narrativeChildStrengthsSelect.value !== '') {
-                childStrengths.push(narrativeChildStrengthsSelect.value);
-            }
-            if (narrativeChildStrengthsSelect.value === 'other' && narrativeChildStrengthsOther && narrativeChildStrengthsOther.value.trim()) {
-                childStrengths.push(narrativeChildStrengthsOther.value.trim());
-            }
-        }
-        const childValues = [];
-        if (narrativeChildValuesSelect) {
-            if (narrativeChildValuesSelect.value && narrativeChildValuesSelect.value !== 'other' && narrativeChildValuesSelect.value !== '') {
-                childValues.push(narrativeChildValuesSelect.value);
-            }
-            if (narrativeChildValuesSelect.value === 'other' && narrativeChildValuesOther && narrativeChildValuesOther.value.trim()) {
-                childValues.push(narrativeChildValuesOther.value.trim());
-            }
-        }
-        const importantRelations = [];
-        if (document.getElementById('narrative-relations-container')) {
-            document.querySelectorAll('#narrative-relations-container .relation-group').forEach(group => {
-                const nameInput = group.querySelector('input[name="narrative_relation_name"]');
-                const typeInput = group.querySelector('input[name="narrative_relation_type"]');
-                const name = nameInput ? nameInput.value.trim() : '';
-                const type = typeInput ? typeInput.value.trim() : '';
-                if (name || type) importantRelations.push({ name: name, type: type });
-            });
-        }
-        const mainCharacters = [];
-        if (document.getElementById('narrative-main-characters-container')) {
-            document.querySelectorAll('#narrative-main-characters-container .character-group').forEach(group => {
-                const descInput = group.querySelector('input[name="narrative_main_char_desc"]');
-                const nameInput = group.querySelector('input[name="narrative_main_char_name"]');
-                const description = descInput ? descInput.value.trim() : '';
-                const name = nameInput ? nameInput.value.trim() : '';
-                if (description) mainCharacters.push({ description: description, name: name });
-            });
-        }
-        const places = [];
-        if (document.getElementById('narrative-places-container')) {
-            document.querySelectorAll('#narrative-places-container .input-group input[name="narrative_place"]').forEach(input => {
-                const value = input.value.trim();
-                if (value) places.push(value);
-            });
-        }
-        const plotElements = [];
-        if (document.getElementById('narrative-plot-container')) {
-            document.querySelectorAll('#narrative-plot-container .input-group input[name="narrative_plot"]').forEach(input => {
-                const value = input.value.trim();
-                if (value) plotElements.push(value);
-            });
-        }
+    // === Funktion til at Indsamle Data fra Narrativ Støtte Inputfelter (Samlet og korrigeret version) ===
+function collectNarrativeData() {
+    const data = {};
 
-        const dataToSend = {
-            narrative_focus: narrativeFocusInput ? narrativeFocusInput.value.trim() : '',
-            story_goal: narrativeGoalInput ? narrativeGoalInput.value.trim() : '',
-            child_name: narrativeChildNameInput ? narrativeChildNameInput.value.trim() : '',
-            child_age: narrativeChildAgeInput ? narrativeChildAgeInput.value.trim() : '',
-            child_strengths: childStrengths,
-            child_values: childValues,
-            child_motivation: narrativeChildMotivationInput ? narrativeChildMotivationInput.value.trim() : '',
-            child_typical_reaction: narrativeChildReactionTextarea ? narrativeChildReactionTextarea.value.trim() : '',
-            important_relations: importantRelations,
-            main_characters: mainCharacters,
-            places: places,
-            plot_elements: plotElements,
-            negative_prompt: narrativeNegativePromptInput ? narrativeNegativePromptInput.value.trim() : '',
-            length: narrativeLengthSelect ? narrativeLengthSelect.value : 'mellem',
-            mood: narrativeMoodSelect ? narrativeMoodSelect.value : 'neutral'
-        };
-        return dataToSend;
+    // 1. Centrale Narrative Input
+    if (narrativeFocusInput) data.narrative_focus = narrativeFocusInput.value.trim();
+    if (narrativeGoalInput) data.story_goal = narrativeGoalInput.value.trim();
+
+    // 2. Information om Barnet
+    if (narrativeChildNameInput) data.child_name = narrativeChildNameInput.value.trim();
+    if (narrativeChildAgeInput) data.child_age = narrativeChildAgeInput.value.trim();
+
+    // Barnets styrker (håndterer "Andet...")
+    const strengths = [];
+    if (narrativeChildStrengthsSelect) {
+        const selectedValue = narrativeChildStrengthsSelect.value;
+        if (selectedValue === 'other' && narrativeChildStrengthsOther?.value.trim()) {
+            strengths.push(narrativeChildStrengthsOther.value.trim());
+        } else if (selectedValue && selectedValue !== 'other') {
+            strengths.push(selectedValue);
+        }
     }
+    data.child_strengths = strengths;
+
+    // Barnets værdier (håndterer "Andet...")
+    const values = [];
+    if (narrativeChildValuesSelect) {
+        const selectedValue = narrativeChildValuesSelect.value;
+        if (selectedValue === 'other' && narrativeChildValuesOther?.value.trim()) {
+            values.push(narrativeChildValuesOther.value.trim());
+        } else if (selectedValue && selectedValue !== 'other') {
+            values.push(selectedValue);
+        }
+    }
+    data.child_values = values;
+
+    if (narrativeChildMotivationInput) data.child_motivation = narrativeChildMotivationInput.value.trim();
+    if (narrativeChildReactionTextarea) data.child_typical_reaction = narrativeChildReactionTextarea.value.trim();
+
+    // 3. Problem-karakter (Brugerens eksternalisering)
+    if (narrativeProblemIdentityNameInput) data.narrative_problem_identity_name = narrativeProblemIdentityNameInput.value.trim();
+    if (narrativeProblemRoleFunctionInput) data.narrative_problem_role_function = narrativeProblemRoleFunctionInput.value.trim();
+    if (narrativeProblemPurposeIntentionInput) data.narrative_problem_purpose_intention = narrativeProblemPurposeIntentionInput.value.trim();
+    if (narrativeProblemBehaviorActionInput) data.narrative_problem_behavior_action = narrativeProblemBehaviorActionInput.value.trim();
+    if (narrativeProblemInfluenceInput) data.narrative_problem_influence = narrativeProblemInfluenceInput.value.trim();
+
+    // 4. Dynamiske lister (Relationer, Karakterer, Steder, Plot)
+    // Vigtige Relationer
+    data.important_relations = [];
+    if (narrativeRelationsContainer) {
+        narrativeRelationsContainer.querySelectorAll('.relation-group').forEach(group => {
+            const nameInput = group.querySelector('input[name="narrative_relation_name"]');
+            const typeInput = group.querySelector('input[name="narrative_relation_type"]');
+            const name = nameInput ? nameInput.value.trim() : '';
+            const type = typeInput ? typeInput.value.trim() : '';
+            if (name || type) { // Gem kun hvis mindst et felt er udfyldt
+                data.important_relations.push({ name: name, type: type });
+            }
+        });
+    }
+
+    // Hovedkarakterer
+    data.main_characters = [];
+    if (narrativeMainCharactersContainer) {
+        narrativeMainCharactersContainer.querySelectorAll('.character-group').forEach(group => {
+            const descInput = group.querySelector('input[name="narrative_main_char_desc"]');
+            const nameInput = group.querySelector('input[name="narrative_main_char_name"]');
+            const description = descInput ? descInput.value.trim() : '';
+            const name = nameInput ? nameInput.value.trim() : '';
+            if (description || name) {
+                data.main_characters.push({ description: description, name: name });
+            }
+        });
+    }
+
+    // Steder
+    data.places = [];
+    if (narrativePlacesContainer) {
+        narrativePlacesContainer.querySelectorAll('.input-group input[name="narrative_place"]').forEach(input => {
+            const value = input.value.trim();
+            if (value) data.places.push(value);
+        });
+    }
+
+    // Plot elementer
+    data.plot_elements = [];
+    if (narrativePlotContainer) {
+        narrativePlotContainer.querySelectorAll('.input-group input[name="narrative_plot"]').forEach(input => {
+            const value = input.value.trim();
+            if (value) data.plot_elements.push(value);
+        });
+    }
+
+    // 5. Generelle rammer
+    if (narrativeNegativePromptInput) data.negative_prompt = narrativeNegativePromptInput.value.trim();
+    if (narrativeLengthSelect) data.length = narrativeLengthSelect.value;
+    if (narrativeMoodSelect) data.mood = narrativeMoodSelect.value;
+
+    console.log("Collected All Narrative Data:", data);
+    return data;
+}
 
     // === SLUT: Logbog Dokumentations-Workflow ===idste afsluttende parentes og semikolon for DOMContentLoaded.
 
@@ -2648,7 +2574,7 @@ async function handleLaesehestGenerateClick() {
         button.addEventListener('click', handleStrategyClick);
     });
 
-    // Denne funktion starter hele processen, når en narrativ historie genereres
+// Denne funktion starter hele processen, når en narrativ historie genereres
 async function executeNarrativeGeneration(dataToSend) {
     console.log("executeNarrativeGeneration: Starter med data:", dataToSend);
     resetLogbookSection();
@@ -2672,11 +2598,8 @@ async function executeNarrativeGeneration(dataToSend) {
         if (narrativeGeneratedStorySection) narrativeGeneratedStorySection.classList.remove('hidden');
 
         if (result.story_id && result.story) {
-            // --- START PÅ RETTELSE ---
-            // Send `result.root_story_title` med til næste funktion.
-            // Hvis den er `undefined` (fordi det ikke var en fortsættelse), bliver den sendt som `undefined`, hvilket er fint.
+            // RETTELSE: `result.root_story_title` sendes nu med til næste funktion.
             triggerLogbookAnalysis(result.story_id, result.story, result.root_story_title);
-            // --- SLUT PÅ RETTELSE ---
         } else {
             throw new Error("Modtog ikke et validt story_id fra backend.");
         }
@@ -2692,5 +2615,6 @@ async function executeNarrativeGeneration(dataToSend) {
     }
 }
 
+});
 
 // Slut på DOMContentLoaded listener

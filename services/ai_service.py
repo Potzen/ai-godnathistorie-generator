@@ -27,6 +27,7 @@ from google.cloud.texttospeech_v1 import TextToSpeechClient, SynthesisInput, Voi
 from prompts.logbook_analysis_prompt import build_logbook_analysis_prompt
 from google.api_core.exceptions import InternalServerError
 import time
+from prompts.problem_image_prompt import build_problem_image_prompt
 
 # Definerede stemmer til Google Text-to-Speech (Engelske Gemini TTS-modeller)
 # Zephyr virker. Gacrux, Sadachbia, Zubenelgenubi forventes IKKE at virke med denne klient/model.
@@ -1101,3 +1102,23 @@ def analyze_story_for_logbook(story_content: str) -> dict:
     except Exception as e:
         current_app.logger.error(f"AI Service: Generel fejl ved analyse af historie: {e}\n{traceback.format_exc()}")
         return {"error": f"En teknisk fejl opstod under analysen: {e}"}
+
+def generate_problem_image(narrative_data: dict):
+    """
+    Orkestrerer genereringen af et billede, der visualiserer et problem.
+    """
+    current_app.logger.info("ai_service: Starter generering af 'problem-billede'.")
+    try:
+        prompt_for_imagen_prompt = build_problem_image_prompt(narrative_data)
+        imagen_prompt = generate_image_prompt_from_gemini(prompt_for_imagen_prompt)
+        image_data_url = generate_image_with_vertexai(imagen_prompt)
+
+        if image_data_url:
+            return {"image_url": image_data_url, "image_prompt_used": imagen_prompt}
+        else:
+            return {"error": "Kunne ikke generere problem-billede med Vertex AI."}
+
+    except Exception as e:
+        current_app.logger.error(f"Fejl i generate_problem_image: {e}\n{traceback.format_exc()}")
+        return {"error": f"Intern fejl under generering af problem-billede: {e}"}
+
