@@ -22,11 +22,11 @@ JSON-STRUKTUR (udfyld værdierne):
 {{
   "ai_summary": "...",
   "problem_name": "...",
-  "problem_category": "...",
+  "problem_category": "Følelse",
   "problem_influence": "...",
   "unique_outcome": "...",
   "discovered_method_name": "...",
-  "strength_type": "...",
+  "strength_type": "Mod",
   "discovered_method_steps": "...",
   "child_values": ["...", "..."],
   "support_system": ["...", "..."]
@@ -37,11 +37,11 @@ VEJLEDNING TIL UDFYLDNING AF JSON-FELTER:
 
 1.  "ai_summary": Skriv en kort pædagogisk analyse/opsummering (2-3 sætninger), der beskriver, hvordan historien adresserer udfordringen.
 2.  "problem_name": Identificer den eksternaliserede version af problemet (f.eks. "Vrede-vulkanen").
-3.  "problem_category": **NYT FELT!** Kategoriser problemet med et enkelt eller få ord (f.eks. "Følelse", "Social Udfordring", "Vane", "Angst").
+3.  "problem_category": **VIGTIGT - Udfyld dette felt:** Kategoriser problemet med et enkelt eller få ord (f.eks. "Følelse", "Social Udfordring", "Vane", "Angst").
 4.  "problem_influence": Beskriv kort, hvordan problemet påvirkede hovedpersonen.
 5.  "unique_outcome": Beskriv det specifikke vendepunkt, hvor helten handlede anderledes og succesfuldt.
 6.  "discovered_method_name": Giv et fængende navn til den strategi/superkraft, der blev brugt.
-7.  "strength_type": **NYT FELT!** Kategoriser den type styrke, der blev brugt (f.eks. "Kreativitet", "Empati", "Logik", "Mod", "Social styrke").
+7.  "strength_type": **VIGTIGT - Udfyld dette felt:** Kategoriser den type styrke, der blev brugt (f.eks. "Kreativitet", "Empati", "Logik", "Mod", "Social styrke").
 8.  "discovered_method_steps": Skriv en kort, letforståelig trin-for-trin guide til metoden (2-3 trin adskilt af '\\n').
 9.  "child_values": Identificer 2-3 centrale værdier, som heltens handling forsvarede (f.eks. "Mod", "Venskab"). Returner som en liste af strenge.
 10. "support_system": Identificer de karakterer, der hjalp eller støttede helten. Returner som en liste af navne/beskrivelser.

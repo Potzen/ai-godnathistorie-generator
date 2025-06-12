@@ -1,68 +1,46 @@
-// Fil: static/logbook.js (Endelig, robust version)
-import { filterLogbookApi, updateNoteApi } from './modules/api_client.js';
+// Fil: static/logbook.js (Endelig, Komplet Version)
+import { filterLogbookApi, updateNoteApi, deleteStoryApi } from './modules/api_client.js';
 
-// Hent referencer til elementer én gang for effektivitet
 const logbookListContainer = document.getElementById('logbook-list-container');
 const filterControls = document.querySelectorAll('.logbook-toolbar select, .logbook-toolbar input');
 
-// --- Private hjælpefunktioner i dette modul ---
-
 const createStoryEntryHtml = (story) => {
-        const title = story.title || 'Uden Titel';
-        const content = story.content || 'Intet indhold.';
-        const source = story.source || 'Ikke specificeret';
-        const createdAt = story.created_at || 'Ukendt dato';
+    const title = story.title || 'Uden Titel';
+    const content = story.content || 'Intet indhold.';
+    const source = story.source || 'Ikke specificeret';
+    const createdAt = story.created_at || 'Ukendt dato';
 
-        // --- NY LOGIK TIL AT BYGGE UNDERTITEL ---
-
-        // Del 1: Information om serien (første linje)
-        let seriesInfoParts = [];
-        if (story.root_story_title) {
-            seriesInfoParts.push(`Original: "${story.root_story_title}"`);
-            seriesInfoParts.push(`Del ${story.series_part}`);
-
-            // Rettelse 1: Oversæt "strategy_used"
-            if (story.strategy_used) {
-                let strategyText = story.strategy_used; // Default
-                if (story.strategy_used.toLowerCase() === 'deepen') {
-                    strategyText = 'Dyk';
-                } else if (story.strategy_used.toLowerCase() === 'generalize') {
-                    strategyText = 'Flyv';
-                }
-                seriesInfoParts.push(strategyText);
-            }
+    let seriesInfoParts = [];
+    if (story.root_story_title) {
+        seriesInfoParts.push(`Original: "${story.root_story_title}"`);
+        seriesInfoParts.push(`Del ${story.series_part}`);
+        if (story.strategy_used) {
+            let strategyText = story.strategy_used.toLowerCase() === 'deepen' ? 'Dyk' : (story.strategy_used.toLowerCase() === 'generalize' ? 'Flyv' : story.strategy_used);
+            seriesInfoParts.push(strategyText);
         }
+    }
 
-        // Del 2: Generel information (anden linje)
-        let generalInfoParts = [];
-        generalInfoParts.push(`Kilde: ${source}`);
-        generalInfoParts.push(`Dato: ${createdAt}`);
+    let generalInfoParts = [`Kilde: ${source}`, `Dato: ${createdAt}`];
+    let subtitleHtml = '';
+    if (seriesInfoParts.length > 0) {
+        subtitleHtml += seriesInfoParts.join(' | ') + '<br>';
+    }
+    subtitleHtml += generalInfoParts.join(' | ');
 
-        // Sammensæt den endelige HTML med et linjeskift
-        let subtitleHtml = '';
-        if (seriesInfoParts.length > 0) {
-            subtitleHtml += seriesInfoParts.join(' | ');
-            // Rettelse 2: Tilføj linjeskift før kilde/dato, HVIS der er serie-information
-            subtitleHtml += '<br>';
-        }
-        subtitleHtml += generalInfoParts.join(' | ');
+    const finalSubtitleHtml = `<span class="logbook-subtitle">${subtitleHtml}</span>`;
 
-        // Pak det hele ind i den ydre span
-        const finalSubtitleHtml = `<span class="logbook-subtitle">${subtitleHtml}</span>`;
+    const problemName = story.problem_name || 'Ikke angivet';
+    const problemInfluence = story.problem_influence || 'Ikke angivet';
+    const uniqueOutcome = story.unique_outcome || 'Ikke angivet';
+    const discoveredMethodName = story.discovered_method_name || 'Ikke angivet';
+    const discoveredMethodSteps = story.discovered_method_steps || 'Ikke angivet';
+    const childValues = story.child_values || 'Ikke angivet';
+    const supportSystem = story.support_system || 'Ikke angivet';
+    const userNotes = story.user_notes || '';
 
-        // ------------------------------------------
-
-        const problemName = story.problem_name || 'Ikke angivet';
-        const problemInfluence = story.problem_influence || 'Ikke angivet';
-        const uniqueOutcome = story.unique_outcome || 'Ikke angivet';
-        const discoveredMethodName = story.discovered_method_name || 'Ikke angivet';
-        const discoveredMethodSteps = story.discovered_method_steps || 'Ikke angivet';
-        const childValues = story.child_values || 'Ikke angivet';
-        const supportSystem = story.support_system || 'Ikke angivet';
-        const userNotes = story.user_notes || '';
-
-        return `
-            <div class="logbook-entry" data-story-id="${story.id}">
+    return `
+        <div class="logbook-entry" data-story-id="${story.id}">
+            <div class="logbook-entry-header">
                 <button type="button" class="logbook-accordion-toggle">
                     <span class="logbook-title-container">
                         <span class="logbook-title">${title}</span>
@@ -70,60 +48,71 @@ const createStoryEntryHtml = (story) => {
                     </span>
                     <span class="arrow">◀</span>
                 </button>
-                <div class="logbook-accordion-content hidden">
-                    <div class="logbook-inner-entry">
-                        <button type="button" class="logbook-accordion-toggle nested-accordion-toggle">Læs Historien <span class="arrow">◀</span></button>
-                        <div class="logbook-accordion-content nested-accordion-content hidden">
-                            <p style="white-space: pre-wrap;">${content}</p>
-                        </div>
-                    </div>
-                    <div class="logbook-inner-entry">
-                        <button type="button" class="logbook-accordion-toggle nested-accordion-toggle">Se Dokumentation <span class="arrow">◀</span></button>
-                        <div class="logbook-accordion-content nested-accordion-content hidden">
-                            <h4>Analyse af Historien</h4>
-                            <div class="logbook-doc-item"><strong>Problemets Navn:</strong> <span>${problemName}</span></div>
-                            <div class="logbook-doc-item"><strong>Problemets Indflydelse:</strong> <span>${problemInfluence}</span></div>
-                            <div class="logbook-doc-item"><strong>Helten i Aktion ("Glimtet"):</strong> <span>${uniqueOutcome}</span></div>
-                            <div class="logbook-doc-item"><strong>Opdaget Metode/Styrke:</strong> <span>${discoveredMethodName}</span></div>
-                            <div class="logbook-doc-item"><strong>Fra Historie til Handling:</strong> <p style="white-space: pre-wrap;">${discoveredMethodSteps}</p></div>
-                            <div class="logbook-doc-item"><strong>Barnets Værdier (f.eks. Mod, Venskab):</strong> <span>${childValues}</span></div>
-                            <div class="logbook-doc-item"><strong>Støttesystem ("Vidner"):</strong> <span>${supportSystem}</span></div>
-                        </div>
-                    </div>
-                    <div class="logbook-inner-entry">
-                        <button type="button" class="logbook-accordion-toggle nested-accordion-toggle">Mine Noter <span class="arrow">◀</span></button>
-                        <div class="logbook-accordion-content nested-accordion-content hidden">
-                            <textarea class="user-notes-textarea" rows="6" style="width: 100%;" placeholder="Tilføj dine egne noter her...">${userNotes}</textarea>
-                            <button type="button" class="utility-button note-save-button" style="margin-top: 10px;">Gem ændringer i noter</button>
-                            <span class="note-save-feedback hidden" id="note-feedback-${story.id}"></span>
-                        </div>
+                <button type="button" class="delete-story-button" title="Slet denne historie permanent" data-story-id="${story.id}">
+                    🗑️
+                </button>
+            </div>
+            <div class="logbook-accordion-content hidden">
+                <div class="logbook-inner-entry">
+                    <button type="button" class="nested-accordion-toggle">Læs Historien <span class="arrow">◀</span></button>
+                    <div class="nested-accordion-content hidden">
+                        <p style="white-space: pre-wrap;">${content}</p>
                     </div>
                 </div>
-            </div>`;
-    };
+                <div class="logbook-inner-entry">
+                    <button type="button" class="nested-accordion-toggle">Se Dokumentation <span class="arrow">◀</span></button>
+                    <div class="nested-accordion-content hidden">
+                        <h4>Analyse af Historien</h4>
+                        <div class="logbook-doc-item"><strong>Problemets Navn:</strong> <span>${problemName}</span></div>
+                        <div class="logbook-doc-item"><strong>Problemets Indflydelse:</strong> <span>${problemInfluence}</span></div>
+                        <div class="logbook-doc-item"><strong>Helten i Aktion ("Glimtet"):</strong> <span>${uniqueOutcome}</span></div>
+                        <div class="logbook-doc-item"><strong>Opdaget Metode/Styrke:</strong> <span>${discoveredMethodName}</span></div>
+                        <div class="logbook-doc-item"><strong>Fra Historie til Handling:</strong> <p style="white-space: pre-wrap;">${discoveredMethodSteps}</p></div>
+                        <div class="logbook-doc-item"><strong>Barnets Værdier (f.eks. Mod, Venskab):</strong> <span>${childValues}</span></div>
+                        <div class="logbook-doc-item"><strong>Støttesystem ("Vidner"):</strong> <span>${supportSystem}</span></div>
+                    </div>
+                </div>
+                <div class="logbook-inner-entry">
+                    <button type="button" class="nested-accordion-toggle">Mine Noter <span class="arrow">◀</span></button>
+                    <div class="nested-accordion-content hidden">
+                        <textarea class="user-notes-textarea" rows="6" style="width: 100%;" placeholder="Tilføj dine egne noter her...">${userNotes}</textarea>
+                        <button type="button" class="utility-button note-save-button" style="margin-top: 10px;">Gem ændringer i noter</button>
+                        <span class="note-save-feedback hidden" id="note-feedback-${story.id}"></span>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+};
 
 const attachEventListeners = () => {
-    const toggles = logbookListContainer.querySelectorAll('.logbook-accordion-toggle');
-    console.log(`[logbook.js] Tilknytter listeners til ${toggles.length} harmonika-knapper.`);
+    // Event listeners for at åbne/lukke indholdet
+    const toggles = logbookListContainer.querySelectorAll('.logbook-accordion-toggle, .nested-accordion-toggle');
     toggles.forEach(toggle => {
-        toggle.addEventListener('click', (event) => {
-            event.stopPropagation();
-            const content = toggle.nextElementSibling;
-            if (content && content.classList.contains('logbook-accordion-content')) {
+        toggle.addEventListener('click', () => {
+            let content;
+            if (toggle.classList.contains('nested-accordion-toggle')) {
+                // For nested toggles, content is the next sibling
+                content = toggle.nextElementSibling;
+            } else {
+                // For the main toggle, content is the next sibling of its parent header
+                content = toggle.parentElement.nextElementSibling;
+            }
+
+            if (content && (content.classList.contains('logbook-accordion-content') || content.classList.contains('nested-accordion-content'))) {
                 toggle.classList.toggle('open');
                 content.classList.toggle('hidden');
             }
         });
     });
 
+    // Event listeners for 'Gem note'-knapper
     const saveButtons = logbookListContainer.querySelectorAll('.note-save-button');
-    console.log(`[logbook.js] Tilknytter listeners til ${saveButtons.length} 'Gem note'-knapper.`);
     saveButtons.forEach(button => {
         button.addEventListener('click', async () => {
             const entryDiv = button.closest('.logbook-entry');
             const storyId = entryDiv.dataset.storyId;
             const textarea = entryDiv.querySelector('.user-notes-textarea');
-            const feedbackSpan = document.getElementById(`note-feedback-${storyId}`);
+            const feedbackSpan = document.getElementById(`note-feedback-${story.id}`);
             button.disabled = true;
             button.textContent = 'Gemmer...';
             try {
@@ -141,9 +130,29 @@ const attachEventListeners = () => {
             }
         });
     });
-};
 
-// --- Hovedfunktion, der eksporteres ---
+    // Event listeners for 'Slet historie'-knapper
+    const deleteButtons = logbookListContainer.querySelectorAll('.delete-story-button');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', async (event) => {
+            event.stopPropagation();
+            const storyId = button.dataset.storyId;
+            const entryElement = button.closest('.logbook-entry');
+            const storyTitle = entryElement.querySelector('.logbook-title').textContent;
+
+            if (window.confirm(`Er du sikker på, at du vil slette historien "${storyTitle}" permanent?`)) {
+                try {
+                    await deleteStoryApi(storyId);
+                    entryElement.style.transition = 'opacity 0.5s ease';
+                    entryElement.style.opacity = '0';
+                    setTimeout(() => entryElement.remove(), 500);
+                } catch (error) {
+                    alert(`Fejl: Kunne ikke slette historien. ${error.message}`);
+                }
+            }
+        });
+    });
+};
 
 export async function initializeLogbook() {
     console.log('[logbook.js] initializeLogbook kaldes.');
@@ -175,7 +184,6 @@ export async function initializeLogbook() {
     }
 }
 
-// --- Tilknyt listeners til filter-kontrollerne med det samme ---
 let searchTimeout;
 filterControls.forEach(control => {
     const eventType = control.type === 'search' ? 'input' : 'change';

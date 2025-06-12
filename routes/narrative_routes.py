@@ -401,3 +401,33 @@ def generate_problem_image_route():
     except Exception as e:
         current_app.logger.error(f"Fejl i /generate_problem_image route: {e}\n{traceback.format_exc()}")
         return jsonify({"error": "En uventet serverfejl opstod."}), 500
+
+@narrative_bp.route('/api/delete/<int:story_id>', methods=['DELETE'])
+@login_required
+def delete_story(story_id):
+    """
+    API-endepunkt til at slette en specifik historie.
+    """
+    story_to_delete = Story.query.get_or_404(story_id)
+
+    if story_to_delete.user_id != current_user.id:
+        current_app.logger.warning(
+            f"Bruger {current_user.id} forsøgte uautoriseret sletning af historie {story_id}."
+        )
+        return jsonify({"error": "Du har ikke tilladelse til at slette denne historie."}), 403
+
+    try:
+        children = Story.query.filter_by(parent_story_id=story_id).all()
+        for child in children:
+            child.parent_story_id = None
+
+        db.session.delete(story_to_delete)
+        db.session.commit()
+
+        current_app.logger.info(f"Historie {story_id} blev slettet af bruger {current_user.id}.")
+        return jsonify({"success": True, "message": "Historien er blevet slettet."})
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Fejl under sletning af historie {story_id}: {e}")
+        return jsonify({"error": "En intern fejl opstod under sletning."}), 500

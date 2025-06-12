@@ -1109,8 +1109,13 @@ def generate_problem_image(narrative_data: dict):
     """
     current_app.logger.info("ai_service: Starter generering af 'problem-billede'.")
     try:
+        # Byg en prompt til at generere den endelige billed-prompt
         prompt_for_imagen_prompt = build_problem_image_prompt(narrative_data)
+
+        # Brug Gemini til at skabe den endelige, engelske billed-prompt
         imagen_prompt = generate_image_prompt_from_gemini(prompt_for_imagen_prompt)
+
+        # Brug Vertex AI til at generere selve billedet
         image_data_url = generate_image_with_vertexai(imagen_prompt)
 
         if image_data_url:
@@ -1119,6 +1124,6 @@ def generate_problem_image(narrative_data: dict):
             return {"error": "Kunne ikke generere problem-billede med Vertex AI."}
 
     except Exception as e:
-        current_app.logger.error(f"Fejl i generate_problem_image: {e}\n{traceback.format_exc()}")
+        current_app.logger.error(f"Fejl i generate_problem_image: {e}\\n{traceback.format_exc()}")
         return {"error": f"Intern fejl under generering af problem-billede: {e}"}
 

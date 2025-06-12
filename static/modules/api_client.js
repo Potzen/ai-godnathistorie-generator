@@ -352,3 +352,17 @@ export async function generateProblemImageApi(narrativeData) {
 
     return await response.json();
 }
+
+export async function deleteStoryApi(storyId) {
+    console.log(`api_client.js: deleteStoryApi called for story ID: ${storyId}`);
+    const response = await fetch(`/narrative/api/delete/${storyId}`, {
+        method: 'DELETE',
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved sletning." }));
+        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
+    }
+
+    return await response.json();
+}

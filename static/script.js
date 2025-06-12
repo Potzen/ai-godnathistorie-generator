@@ -187,6 +187,7 @@ function trackGAEvent(action, category, label, value) {
     const imageGenerationError = document.getElementById('image-generation-error');
     const storyDisplay = document.getElementById('story-display');
     const storySectionHeading = document.getElementById('story-section-heading'); // Til opdatering af historietitel
+    const storyLoadingIndicator = document.getElementById('story-loading-indicator');
     const generatorSection = document.getElementById('generator');
     const laengdeSelect = document.getElementById('laengde-select');
     const moodSelect = document.getElementById('mood-select');
@@ -595,6 +596,15 @@ loadFontSizesFromLocalStorage();
                 if (historieOutput) historieOutput.classList.remove('hidden');
             } else {
                 if (historieOutput) historieOutput.classList.add('hidden');
+            }
+
+            // Nulstil også synligheden af den delte billed-sektion
+            if (targetId === '#generator' || targetId === '#laesehesten-module') {
+                // Denne linje er valgfri, men sikrer at sektionen er synlig, hvis man navigerer tilbage.
+                // Det vigtigste er 'else'-delen.
+            } else {
+                // Skjul billed-sektionen når vi er på 'Narrativ Støtte' eller 'Logbog'
+                if (imageSection) imageSection.classList.add('hidden');
             }
 
             // Kald initializeLogbook() NÅR logbog-fanen aktiveres
@@ -1425,61 +1435,71 @@ async function handleGenerateImageFromStoryClick() {
 }
 
 async function handleGenerateNarrativeImagesClick() {
-        if (!currentNarrativeData || !currentNarrativeData.storyContent) {
-            alert("Fejl: Der er ingen genereret historie at skabe billeder fra.");
-            return;
-        }
-
-        narrativeGenerateImagesButton.disabled = true;
-        narrativeGenerateImagesButton.textContent = "Genererer...";
-
-        // Nulstil og vis UI for BEGGE billeder
-        imageSection.classList.remove('hidden');
-        storyImageContainer.classList.remove('hidden');
-        problemImageContainer.classList.remove('hidden');
-        storyImageLoader.classList.remove('hidden');
-        problemImageLoader.classList.remove('hidden');
-        [storyImageDisplay, problemImageDisplay, storyImageError, problemImageError].forEach(el => el.classList.add('hidden'));
-
-        const storyImagePromise = generateImageApi(currentNarrativeData.storyContent);
-        const problemImagePromise = generateProblemImageApi(currentNarrativeData);
-
-        // Håndter resultater individuelt
-        storyImagePromise
-            .then(result => {
-                if (result.image_url) {
-                    storyImageDisplay.src = result.image_url;
-                    storyImageDisplay.classList.remove('hidden');
-                } else throw new Error(result.error || "Ukendt fejl");
-            })
-            .catch(error => {
-                storyImageError.textContent = `Fejl: ${error.message}`;
-                storyImageError.classList.remove('hidden');
-            })
-            .finally(() => {
-                storyImageLoader.classList.add('hidden');
-            });
-
-        problemImagePromise
-            .then(result => {
-                if (result.image_url) {
-                    problemImageDisplay.src = result.image_url;
-                    problemImageDisplay.classList.remove('hidden');
-                } else throw new Error(result.error || "Ukendt fejl");
-            })
-            .catch(error => {
-                problemImageError.textContent = `Fejl: ${error.message}`;
-                problemImageError.classList.remove('hidden');
-            })
-            .finally(() => {
-                problemImageLoader.classList.add('hidden');
-            });
-
-        // Vent på at begge er færdige for at gen-aktivere knappen
-        await Promise.allSettled([storyImagePromise, problemImagePromise]);
-        narrativeGenerateImagesButton.disabled = false;
-        narrativeGenerateImagesButton.textContent = "Skab Billeder til Fortællingen";
+    if (!currentNarrativeData || !currentNarrativeData.storyContent) {
+        alert("Fejl: Der er ingen genereret historie at skabe billeder fra.");
+        return;
     }
+
+    narrativeGenerateImagesButton.disabled = true;
+    narrativeGenerateImagesButton.textContent = "Genererer billeder...";
+
+    // Nulstil og vis UI for BEGGE billed-containere
+    imageSection.classList.remove('hidden');
+    storyImageContainer.classList.remove('hidden');
+    problemImageContainer.classList.remove('hidden');
+    storyImageLoader.classList.remove('hidden');
+    problemImageLoader.classList.remove('hidden');
+    [storyImageDisplay, problemImageDisplay, storyImageError, problemImageError].forEach(el => el.classList.add('hidden'));
+    storyImageError.textContent = '';
+    problemImageError.textContent = '';
+
+    // Start begge API-kald samtidigt
+    const storyImagePromise = generateImageApi(currentNarrativeData.storyContent);
+    const problemImagePromise = generateProblemImageApi(currentNarrativeData);
+
+    // Håndter resultatet for historie-billedet
+    storyImagePromise
+        .then(result => {
+            if (result.image_url) {
+                storyImageDisplay.src = result.image_url;
+                storyImageDisplay.classList.remove('hidden');
+            } else {
+                throw new Error(result.error || "Ukendt fejl fra serveren.");
+            }
+        })
+        .catch(error => {
+            storyImageError.textContent = `Fejl (Historie): ${error.message}`;
+            storyImageError.classList.remove('hidden');
+        })
+        .finally(() => {
+            storyImageLoader.classList.add('hidden');
+        });
+
+    // Håndter resultatet for problem-billedet
+    problemImagePromise
+        .then(result => {
+            if (result.image_url) {
+                problemImageDisplay.src = result.image_url;
+                problemImageDisplay.classList.remove('hidden');
+            } else {
+                throw new Error(result.error || "Ukendt fejl fra serveren.");
+            }
+        })
+        .catch(error => {
+            problemImageError.textContent = `Fejl (Problem): ${error.message}`;
+            problemImageError.classList.remove('hidden');
+        })
+        .finally(() => {
+            problemImageLoader.classList.add('hidden');
+        });
+
+    // Vent på at begge kald er færdige (enten succes eller fejl)
+    await Promise.allSettled([storyImagePromise, problemImagePromise]);
+
+    // Gen-aktiver knappen
+    narrativeGenerateImagesButton.disabled = false;
+    narrativeGenerateImagesButton.textContent = "Skab Billeder til Fortællingen";
+}
 
 // === Nulstil Funktion (Reset) ===
 function handleResetClick(clearLocalStorageForListeners = true) {
@@ -1691,69 +1711,6 @@ if (copyStoryButton) {
         executeNarrativeGeneration(narrativeData);
     }
 
-    // Denne funktion håndterer selve API-kaldet og UI-opdatering
-    async function executeNarrativeGeneration(dataToSend) {
-        const imageButton = document.getElementById('narrative-generate-image-button');
-
-        // Deaktiver knappen ved at tilføje klassen og attributten
-        if (imageButton) {
-            imageButton.disabled = true;
-            imageButton.classList.add('disabled-button');
-        }
-
-        resetLogbookSection();
-
-        const originalButtonText = narrativeGenerateStoryButton.textContent;
-        narrativeGenerateStoryButton.disabled = true;
-        strategyButtons.forEach(btn => btn.disabled = true);
-        narrativeGenerateStoryButton.textContent = "Genererer...";
-
-        narrativeErrorDisplay.classList.add('hidden');
-        narrativeGeneratedStorySection.classList.add('hidden');
-        narrativeLoadingIndicator.classList.remove('hidden');
-
-        if (imageSection) imageSection.classList.add('hidden');
-        if (narrativeGenerateImagesButton) narrativeGenerateImagesButton.disabled = true;
-
-        try {
-            const result = await generateNarrativeStoryApi(dataToSend);
-            if (result.error) throw new Error(result.error);
-
-            if (narrativeGeneratedTitle) narrativeGeneratedTitle.textContent = result.title;
-            if (narrativeGeneratedStory) narrativeGeneratedStory.innerHTML = result.story.replace(/\n/g, '<br>');
-            if (narrativeGeneratedStorySection) narrativeGeneratedStorySection.classList.remove('hidden');
-
-            // Aktiver knappen ved at fjerne klassen og attributten
-            if (imageButton) {
-                imageButton.disabled = false;
-                imageButton.classList.remove('disabled-button');
-            }
-
-                        // GEM DATA OG AKTIVER KNAPPEN
-            currentNarrativeData = dataToSend;
-            currentNarrativeData.storyContent = result.story;
-            if (narrativeGenerateImagesButton) {
-                narrativeGenerateImagesButton.disabled = false;
-                narrativeGenerateImagesButton.removeAttribute('title');
-            }
-
-            if (result.story_id && result.story) {
-                triggerLogbookAnalysis(result.story_id, result.story);
-            } else {
-                throw new Error("Modtog ikke et validt story_id fra backend.");
-            }
-        } catch (error) {
-            console.error('Fejl under historiegenerering:', error);
-            if (narrativeErrorDisplay) narrativeErrorDisplay.textContent = `Ups! Noget gik galt: ${error.message}`;
-            narrativeErrorDisplay.classList.remove('hidden');
-        } finally {
-            if (narrativeLoadingIndicator) narrativeLoadingIndicator.classList.add('hidden');
-            narrativeGenerateStoryButton.disabled = false;
-            strategyButtons.forEach(btn => btn.disabled = false);
-            narrativeGenerateStoryButton.textContent = originalButtonText;
-        }
-    }
-
 // Den almindelige "Generer"-knap kalder nu start-funktionen uden strategi
     if (narrativeGenerateStoryButton) {
         narrativeGenerateStoryButton.addEventListener('click', () => startNarrativeGeneration(null));
@@ -1902,18 +1859,6 @@ if (copyStoryButton) {
     if (narrativeGenerateImagesButton) {
     narrativeGenerateImagesButton.addEventListener('click', handleGenerateNarrativeImagesClick);
     }
-
-    // Denne logik sikrer, at kun den korrekte funktion kaldes for den knap, der klikkes på.
-    document.addEventListener('click', function(event) {
-        // Tjek om der blev klikket på den almindelige billedknap
-        if (event.target.matches('.js-generate-image:not(#narrative-generate-image-button)')) {
-            handleGenerateImageFromStoryClick();
-        }
-        // Tjek om der blev klikket på den narrative billedknap
-        if (event.target.matches('#narrative-generate-image-button')) {
-            handleGenerateNarrativeImageClick();
-        }
-    });
 
     // Generiske "Tilføj felt" knapper for historie (sted, plot)
     document.querySelectorAll('.add-button[data-container]').forEach(button => {
@@ -2596,6 +2541,13 @@ async function executeNarrativeGeneration(dataToSend) {
         if (narrativeGeneratedTitle) narrativeGeneratedTitle.textContent = result.title;
         if (narrativeGeneratedStory) narrativeGeneratedStory.innerHTML = result.story.replace(/\n/g, '<br>');
         if (narrativeGeneratedStorySection) narrativeGeneratedStorySection.classList.remove('hidden');
+
+        currentNarrativeData = dataToSend;
+        currentNarrativeData.storyContent = result.story;
+        if (narrativeGenerateImagesButton) {
+            narrativeGenerateImagesButton.disabled = false;
+            narrativeGenerateImagesButton.removeAttribute('title');
+        }
 
         if (result.story_id && result.story) {
             // RETTELSE: `result.root_story_title` sendes nu med til næste funktion.

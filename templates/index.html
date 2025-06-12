@@ -621,9 +621,9 @@
                             Vent venligst, eller tryk "Generer Narrativ Historie"...
                         </div>
                     </div>
-                    <div id="logbook-documentation-section" class="hidden" style="margin-top: 30px;">
-                        <hr>
-                         <h3 style="color: var(--color-primary); margin-top: 25px;">Gør Eventyret til Indsigt: Udforsk Historiens Styrker</h3>
+                <section id="logbook-documentation-section" class="narrative-info-dropdown hidden">
+                    <button type="button" class="dropdown-toggle">Dokumentation og Logbog <span class="dropdown-arrow">◀</span></button>
+                    <div class="dropdown-content hidden">
 
                         <div id="logbook-analysis-loader" class="narrative-loading-spinner hidden" style="padding: 20px 0;">
                             Analyserer historiens guldkorn... <span class="spinner"></span>
@@ -631,7 +631,7 @@
 
                         <div id="logbook-analysis-error" class="flash-message flash-error hidden"></div>
 
-                        <form id="logbook-entry-form" class="hidden">
+                        <form id="logbook-entry-form" class="hidden" style="margin-top: 0; padding-top: 10px; border: none; background: none;">
                             <input type="hidden" id="logbook-story-id" name="story_id">
 
                             <div class="logbook-form-grid">
@@ -719,17 +719,6 @@
                 <section id="narrative-debug-section" class="narrative-output-section narrative-info-dropdown hidden">
                     </section>
 
-                <section id="narrative-billede-sektion" class="hidden" style="margin-top: 25px;">
-                    <h2>Billede til den Narrative Historie</h2>
-                    <div id="narrative-image-loading-indicator" class="hidden" style="text-align: center; padding: 20px;">
-                        <p>Billedet genereres... Vent venligst.</p>
-                        <span class="spinner"></span>
-                    </div>
-                    <div style="text-align: center;">
-                         <img id="narrative-story-image-display" class="hidden" src="#" alt="Genereret billede til den narrative historie" style="max-width: 100%; border-radius: var(--border-radius); box-shadow: var(--box-shadow);">
-                    </div>
-                    <div id="narrative-image-generation-error" class="flash-message flash-error hidden" style="margin-top: 15px;"></div>
-                </section>
                 {# --- SLUT: FULD BRUGERFLADE FOR PREMIUM BRUGERE --- #}
             {% else %}
                 {# --- START: INDIKATOR FOR IKKE-PREMIUM/IKKE-LOGGET IND BRUGERE --- #}
@@ -846,28 +835,29 @@
         <section id="billede-til-historien-sektion" class="hidden">
             <div id="story-image-container" class="image-result-container hidden">
                 <h2>Billede til Historien</h2>
-                <div id="story-image-loader" class="image-loader hidden">
-                    <p>Illustrerer historien...</p>
-                    <span class="spinner"></span>
-                </div>
                 <div class="image-display-wrapper">
+                    <div id="story-image-loader" class="image-loader hidden">
+                        <p>Visualiserer historien...</p>
+                        <span class="spinner"></span>
+                    </div>
                     <img id="story-image-display" class="hidden" src="#" alt="Genereret billede der illustrerer en scene fra historien">
                 </div>
                 <div id="story-image-error" class="flash-message flash-error hidden"></div>
             </div>
 
             <div id="problem-image-container" class="image-result-container hidden">
-                <h2>Billede af "Problem-karakteren"</h2>
-                <div id="problem-image-loader" class="image-loader hidden">
-                    <p>Visualiserer problemet...</p>
-                    <span class="spinner"></span>
-                </div>
+                <h2>Billede af Problemet</h2>
                 <div class="image-display-wrapper">
+                    <div id="problem-image-loader" class="image-loader hidden">
+                        <p>Visualiserer problemet...</p>
+                        <span class="spinner"></span>
+                    </div>
                     <img id="problem-image-display" class="hidden" src="#" alt="Genereret billede der symboliserer problem-karakteren">
                 </div>
                 <div id="problem-image-error" class="flash-message flash-error hidden"></div>
             </div>
         </section>
+
         <section id="logbook-module" class="content-section hidden">
             <div class="logbook-container" style="padding: 0; background: none; box-shadow: none;">
                 <h1 style="text-align: center;">Min Logbog</h1>
@@ -892,7 +882,7 @@
                             <option value="title_desc">Titel (Å-A)</option>
                         </select>
                     </div>
-                    <div class="filter-group filter-group-search"> {# Tilføjet en specifik klasse her #}
+                    <div class="filter-group filter-group-search">
                         <label for="search-term">Søg i titel og indhold</label>
                         <input type="search" id="search-term" name="searchTerm" placeholder="Søg her...">
                     </div>
@@ -900,20 +890,7 @@
 
                 <div id="logbook-list-container">
                     {% if stories %}
-                        {% for story in stories %}
-                        <div class="logbook-entry" data-story-id="{{ story.id }}">
-                            <button type="button" class="logbook-accordion-toggle">
-                                <span>
-                                    <strong>{{ story.title }}</strong>
-                                    <small style="display: inline; color: #555; font-weight: normal; margin-left: 10px;">
-                                        (Kilde: {{ story.source or 'Ukendt' }} - Del {{ story.series_part }})
-                                    </small>
-                                </span>
-                                <span class="arrow">◀</span> </button>
-                            <div class="logbook-accordion-content hidden">
-                                </div>
-                        </div>
-                        {% endfor %}
+                        <p>Henter historier...</p>
                     {% else %}
                         <p style="text-align: center;">Du har endnu ikke gemt nogen Historier.</p>
                     {% endif %}

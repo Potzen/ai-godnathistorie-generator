@@ -1874,3 +1874,75 @@ input:disabled + .slider-label:before {
     background-color: #d8d8d8 !important;
     cursor: not-allowed;
 }
+
+/* Styling for Logbog Handlinger (Slet-knap) */
+.logbook-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    padding-left: 15px;
+}
+
+.delete-story-button {
+    background: transparent;
+    border: none;
+    padding: 5px;
+    cursor: pointer;
+    font-size: 1.2em;
+    line-height: 1;
+    opacity: 0.6;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.delete-story-button:hover {
+    opacity: 1;
+    transform: scale(1.1);
+    background-color: transparent;
+}
+
+.logbook-accordion-toggle .arrow {
+    padding-left: 0;
+}
+
+/* --- Endelig, korrekt styling for Logbog Header --- */
+.logbook-entry-header {
+    display: flex;
+    align-items: stretch; /* Får knapperne til at have samme højde */
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--color-box-bg, #f8f9fa);
+    transition: background-color 0.2s;
+}
+
+.logbook-entry-header:hover {
+    background-color: #eef7ff;
+}
+
+.logbook-entry-header .logbook-accordion-toggle {
+    flex-grow: 1; /* Gør at titel-knappen fylder alt ledigt plads */
+    border-bottom: none;
+    background-color: transparent;
+    padding: 12px 15px;
+    display: flex; /* Sørger for at pilen er centreret korrekt */
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logbook-entry-header .delete-story-button {
+    background: transparent;
+    border: none;
+    border-left: 1px solid var(--border-color); /* Tilføjer en fin skillelinje */
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 1.2em;
+    line-height: 1;
+    opacity: 0.5;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.logbook-entry-header .delete-story-button:hover {
+    opacity: 1;
+    background-color: #f8d7da; /* Giver en rødlig hover-effekt */
+    color: #721c24;
+}
