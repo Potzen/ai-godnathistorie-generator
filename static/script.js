@@ -1934,46 +1934,127 @@ if (copyStoryButton) {
     }
 
    /** Udfylder en formular (enten profil eller narrativ) med data. */
-    function populateFormWithProfileData(profile, formType = 'profile') {
-        const isProfileForm = formType === 'profile';
-        const formSelector = isProfileForm ? '#child-profile-form' : '#narrative-support-module';
-        const form = document.querySelector(formSelector);
-        if (!form) return;
+    // INDSÆT DENNE NYE FUNKTION (f.eks. omkring linje 1075)
 
-        // Udfyld Navn og Alder
-        let nameInput, ageInput;
-        if(isProfileForm) {
-            nameInput = form.querySelector('#profile-name');
-            ageInput = form.querySelector('#profile-age');
-        } else {
-            nameInput = form.querySelector('#narrative-child-name-1');
-            ageInput = form.querySelector('#narrative-child-age-1');
+/**
+ * Udfylder profil-formularen med data fra et valgt profil-objekt.
+ * @param {object} profileData - Objektet der indeholder den valgte profils data.
+ */
+    function populateFormWithProfileData(profileData) {
+        const profileForm = document.getElementById('child-profile-form');
+        if (!profileForm || !profileData) {
+            console.error("Kunne ikke udfylde profilformular: Formular eller data mangler.");
+            return;
         }
-        if (nameInput) nameInput.value = profile.name || '';
-        if (ageInput) ageInput.value = profile.age || '';
 
-        // Udfyld simple tekst-lister (Motivation og Reaktion)
-        const motivationInput = document.getElementById('narrative-child-motivation');
-        const reactionTextarea = document.getElementById('narrative-child-reaction');
-        if(motivationInput) motivationInput.value = (profile.motivations || []).join(', ');
-        if(reactionTextarea) reactionTextarea.value = (profile.reactions || []).join(', ');
+        // Nulstil formularen først for at fjerne gamle data
+        profileForm.reset();
+        document.querySelectorAll('.other-input').forEach(input => input.classList.add('hidden'));
 
-        // Udfyld Relations-listen
-        const relationsContainer = document.getElementById('narrative-relations-container');
-        if(relationsContainer) {
-            relationsContainer.innerHTML = ''; // Ryd
-            const relations = profile.relations.length > 0 ? profile.relations : [{name: '', type: ''}];
-            relations.forEach(rel => {
-                const newGroup = document.createElement('div');
-                newGroup.className = 'relation-group';
-                newGroup.innerHTML = `
-                    <div class="input-pair"><input type="text" name="narrative_relation_name" value="${rel.name || ''}"></div>
-                    <div class="input-pair"><input type="text" name="narrative_relation_type" value="${rel.type || ''}"></div>
-                    <button type="button" class="remove-button">-</button>`;
-                newGroup.querySelector('.remove-button').addEventListener('click', () => newGroup.remove());
-                relationsContainer.appendChild(newGroup);
+        // Udfyld de simple felter
+        document.getElementById('profile-id').value = profileData.id || '';
+        document.getElementById('profile-name').value = profileData.name || '';
+        document.getElementById('profile-age').value = profileData.age || '';
+
+        // Funktion til at håndtere dynamiske lister (styrker, værdier, etc.)
+        const populateList = (containerId, items, selectName, otherInputName) => {
+            const container = document.getElementById(containerId);
+            container.innerHTML = ''; // Ryd eksisterende felter
+
+            if (!items || items.length === 0) {
+                // Hvis der ingen items er, tilføj et enkelt tomt felt
+                createFieldGroup(container, selectName.replace('profile_', ''), '', otherInputName);
+                return;
+            }
+
+            items.forEach(itemValue => {
+                createFieldGroup(container, selectName.replace('profile_', ''), itemValue, otherInputName);
             });
-        }
+        };
+
+        // Hjælpefunktion til at oprette et select-felt (genbrugt fra din fil)
+        const createSelectWithOptions = (name, otherId, selectedValue) => {
+            const select = document.createElement('select');
+            select.name = name;
+            select.className = 'dynamic-select';
+            select.dataset.otherInputId = otherId;
+
+            const options = {
+                'profile_strength': ['Modig', 'Klog', 'Venlig', 'Kreativ', 'Tålmodig', 'Nysgerrig', 'Omsorgsfuld', 'Sjov', 'Stærk', 'Fantasifuld', 'Hjælpsom', 'Vedholdende'],
+                'profile_value': ['Retfærdighed', 'Ærlighed', 'Empati', 'Samarbejde', 'Frihed', 'Loyalitet', 'Omsorg', 'At gøre sit bedste']
+            };
+
+            const optionList = options[name] || [];
+            select.innerHTML = `<option value="">-- Vælg --</option>` + optionList.map(opt => `<option value="${opt}" ${selectedValue === opt ? 'selected' : ''}>${opt}</option>`).join('') + `<option value="other">Andet...</option>`;
+
+            // Hvis den gemte værdi ikke er en standard-option, vælg "Andet..."
+            if (selectedValue && !optionList.includes(selectedValue)) {
+                select.value = 'other';
+            }
+
+            select.addEventListener('change', function() {
+                const otherInput = document.getElementById(this.dataset.otherInputId);
+                if(otherInput) {
+                    otherInput.classList.toggle('hidden', this.value !== 'other');
+                }
+            });
+
+            return select;
+        };
+
+        // Hjælpefunktion til at oprette en hel gruppe af felter (genbrugt fra din fil)
+        const createFieldGroup = (container, type, value = '', relType = '') => {
+            const newGroup = document.createElement('div');
+            const uniqueId = `other-${type}-${Date.now()}-${Math.random()}`;
+
+            if (type === 'strength' || type === 'value') {
+                newGroup.className = 'input-group';
+                const select = createSelectWithOptions(`profile_${type}`, uniqueId, value);
+                newGroup.appendChild(select);
+
+                const otherInput = document.createElement('input');
+                otherInput.type = 'text';
+                otherInput.name = `profile_${type}_other`;
+                otherInput.id = uniqueId;
+                otherInput.className = 'other-input';
+                otherInput.placeholder = `Beskriv anden ${type}`;
+
+                if (select.value === 'other') {
+                    otherInput.value = value;
+                } else {
+                    otherInput.classList.add('hidden');
+                }
+                newGroup.appendChild(otherInput);
+
+            } else if (type === 'relation') {
+                newGroup.className = 'relation-group';
+                newGroup.innerHTML = `<div class="input-pair"><input type="text" name="profile_relation_name" value="${value}" placeholder="Navn"></div><div class="input-pair"><input type="text" name="profile_relation_type" value="${relType}" placeholder="Relation"></div>`;
+            } else {
+                newGroup.className = 'input-group';
+                newGroup.innerHTML = `<input type="text" name="profile_${type}" value="${value}" placeholder="Beskriv her...">`;
+            }
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.textContent = '-';
+            removeButton.className = 'remove-button';
+            removeButton.addEventListener('click', () => newGroup.remove());
+            newGroup.appendChild(removeButton);
+
+            container.appendChild(newGroup);
+        };
+
+        // Kald populateList for alle dynamiske felter
+        populateList('profile-strengths-container', profileData.strengths, 'profile_strength');
+        populateList('profile-values-container', profileData.values, 'profile_value');
+        populateList('profile-motivations-container', profileData.motivations, 'profile_motivation');
+        populateList('profile-reactions-container', profileData.reactions, 'profile_reaction');
+
+        // Håndter relationer separat, da de har to felter
+        const relationsContainer = document.getElementById('profile-relations-container');
+        relationsContainer.innerHTML = '';
+        const relations = profileData.relations.length > 0 ? profileData.relations : [{ name: '', type: '' }];
+        relations.forEach(rel => createFieldGroup(relationsContainer, 'relation', rel.name, rel.type));
     }
 
   /** Opretter en komplet gruppe af felter (enten select+other, tekst eller relation) */
@@ -2095,13 +2176,18 @@ if (copyStoryButton) {
             profileSaveFeedback.style.display = 'none';
         });
 
-   // Gem/Opdater profil (FORM SUBMIT)
+
+
+        // Gem/Opdater profil (FORM SUBMIT)
         profileForm.addEventListener('submit', async (event) => {
             event.preventDefault();
             const saveButton = document.getElementById('save-profile-button');
             const profileSaveFeedback = document.getElementById('profile-save-feedback');
             saveButton.disabled = true;
             saveButton.textContent = 'Gemmer...';
+
+            // Gem ID før kald, så vi ved om det er en opdatering
+            const profileIdBeforeSave = document.getElementById('profile-id').value;
 
             // Indsamler data fra dropdowns for Styrker
             const strengths = [];
@@ -2151,7 +2237,20 @@ if (copyStoryButton) {
                 renderSavedProfilesForEditing(updatedProfiles);
                 populateNarrativeProfileSelector(updatedProfiles);
 
-                clearProfileForm();
+                if (profileIdBeforeSave) {
+                    // DETTE VAR EN OPDATERING - gør intet for at rydde formen.
+                    console.log(`Profil ${profileIdBeforeSave} opdateret.`);
+                    // Sørg for at den korrekte profil er valgt og vist
+                    const updatedProfileData = allProfilesData.find(p => p.id == profileIdBeforeSave);
+                    if(updatedProfileData) {
+                        populateFormWithProfileData(updatedProfileData);
+                    }
+                } else {
+                    // DETTE VAR EN NY PROFIL - ryd formularen.
+                    clearProfileFormButton.click();
+                    console.log("Ny profil oprettet, formularen er ryddet.");
+                }
+
             } catch (error) {
                 profileSaveFeedback.textContent = `Fejl: ${error.message}`;
                 profileSaveFeedback.className = 'flash-message flash-error';
@@ -2162,13 +2261,114 @@ if (copyStoryButton) {
             }
         });
 
-        // Håndter valg i Narrativ Støtte dropdown
+        // --- Håndter valg i Narrativ Støtte dropdown ---
         const narrativeProfileSelector = document.getElementById('narrative-profile-select');
         narrativeProfileSelector?.addEventListener('change', (event) => {
-            const selectedProfile = allProfilesData.find(p => p.id == event.target.value);
-            if (selectedProfile) {
-                populateFormWithProfileData(selectedProfile, 'narrative');
+            const selectedProfileId = event.target.value;
+            const selectedProfile = allProfilesData.find(p => p.id == selectedProfileId);
+
+            // Funktion til at rydde/nulstille alle felter i den narrative formular
+            const clearNarrativeForm = () => {
+                document.getElementById('narrative-child-name-1').value = '';
+                document.getElementById('narrative-child-age-1').value = '';
+
+                // Nulstil 'styrker' dropdown og skjul 'andet' felt
+                const strengthsSelect = document.getElementById('narrative-child-strengths-select');
+                strengthsSelect.value = '';
+                const strengthsOther = document.getElementById('narrative-child-strengths-other');
+                strengthsOther.value = '';
+                strengthsOther.classList.add('hidden');
+
+                // Nulstil 'værdier' dropdown og skjul 'andet' felt
+                const valuesSelect = document.getElementById('narrative-child-values-select');
+                valuesSelect.value = '';
+                const valuesOther = document.getElementById('narrative-child-values-other');
+                valuesOther.value = '';
+                valuesOther.classList.add('hidden');
+
+                document.getElementById('narrative-child-motivation').value = '';
+                document.getElementById('narrative-child-reaction').value = '';
+
+                // Ryd og tilføj en enkelt tom relations-gruppe
+                const relationsContainer = document.getElementById('narrative-relations-container');
+                relationsContainer.innerHTML = `
+                    <div class="relation-group">
+                        <div class="input-pair">
+                            <label for="narrative-relation-name-1" class="sr-only">Relations Navn</label>
+                            <input type="text" name="narrative_relation_name" id="narrative-relation-name-1" placeholder="Navn (f.eks. Bedstemor Anna)">
+                        </div>
+                        <div class="input-pair">
+                            <label for="narrative-relation-type-1" class="sr-only">Relationstype</label>
+                            <input type="text" name="narrative_relation_type" id="narrative-relation-type-1" placeholder="Relation (f.eks. Bedste ven, Kæledyr)">
+                        </div>
+                        <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+                    </div>`;
+            };
+
+            if (!selectedProfile) {
+                // Hvis brugeren vælger den tomme "-- Vælg en gemt profil --"
+                clearNarrativeForm();
+                return;
             }
+
+            // -- UDFYLD FELTERNE MED DEN VALGTE PROFIL --
+
+            // 1. Udfyld simple tekstfelter
+            document.getElementById('narrative-child-name-1').value = selectedProfile.name || '';
+            document.getElementById('narrative-child-age-1').value = selectedProfile.age || '';
+            document.getElementById('narrative-child-motivation').value = (selectedProfile.motivations || []).join(', ');
+            document.getElementById('narrative-child-reaction').value = (selectedProfile.reactions || []).join(', ');
+
+            // 2. Håndter dropdowns med "Andet..."-mulighed (Styrker og Værdier)
+            const populateSelectWithOther = (selectId, otherId, values) => {
+                const selectElement = document.getElementById(selectId);
+                const otherElement = document.getElementById(otherId);
+                const options = Array.from(selectElement.options).map(opt => opt.value);
+
+                // Tag kun den første værdi fra profilen til dette simple felt
+                const valueToSet = values && values.length > 0 ? values[0] : '';
+
+                if (valueToSet && options.includes(valueToSet)) {
+                    selectElement.value = valueToSet;
+                    otherElement.value = '';
+                    otherElement.classList.add('hidden');
+                } else if (valueToSet) {
+                    selectElement.value = 'other';
+                    otherElement.value = valueToSet;
+                    otherElement.classList.remove('hidden');
+                } else {
+                    selectElement.value = '';
+                    otherElement.value = '';
+                    otherElement.classList.add('hidden');
+                }
+            };
+
+            populateSelectWithOther('narrative-child-strengths-select', 'narrative-child-strengths-other', selectedProfile.strengths);
+            populateSelectWithOther('narrative-child-values-select', 'narrative-child-values-other', selectedProfile.values);
+
+            // 3. Håndter den dynamiske liste af relationer
+            const relationsContainer = document.getElementById('narrative-relations-container');
+            relationsContainer.innerHTML = ''; // Ryd eksisterende felter
+
+            const relations = selectedProfile.relations && selectedProfile.relations.length > 0 ? selectedProfile.relations : [{ name: '', type: '' }];
+            let relCounter = 0;
+            relations.forEach(rel => {
+                relCounter++;
+                const newGroup = document.createElement('div');
+                newGroup.className = 'relation-group';
+                newGroup.innerHTML = `
+                    <div class="input-pair">
+                        <input type="text" name="narrative_relation_name" id="narrative-relation-name-${relCounter}" placeholder="Navn" value="${rel.name || ''}">
+                    </div>
+                    <div class="input-pair">
+                        <input type="text" name="narrative_relation_type" id="narrative-relation-type-${relCounter}" placeholder="Relation" value="${rel.relation_type || ''}">
+                    </div>
+                    <button type="button" class="remove-button">-</button>`;
+
+                // Tilføj event listener til den nye remove-knap
+                newGroup.querySelector('.remove-button').addEventListener('click', () => newGroup.remove());
+                relationsContainer.appendChild(newGroup);
+            });
         });
     }
 
@@ -2225,137 +2425,7 @@ if (copyStoryButton) {
         }
     }
 
-    /**
-     * Hovedfunktionen der initialiserer al logik for profilstyring.
-     */
-    function initializeProfileFeature() {
-        const profileManagementSection = document.getElementById('profile-management-section');
-        if (!profileManagementSection) return; // Kør kun hvis vi er i den rigtige fane
 
-        const profileForm = document.getElementById('child-profile-form');
-        const saveProfileButton = document.getElementById('save-profile-button');
-        const clearProfileFormButton = document.getElementById('clear-profile-form-button');
-        const profileSaveFeedback = document.getElementById('profile-save-feedback');
-
-        // --- Hent og vis profiler ved start ---
-        listChildProfilesApi().then(profiles => {
-            allProfilesData = profiles;
-            renderSavedProfilesForEditing(profiles);
-            populateNarrativeProfileSelector(profiles);
-        }).catch(error => {
-            console.error("Kunne ikke indlæse profiler ved initialisering:", error);
-        });
-
-        // --- Generisk "Tilføj"-logik for simple tekst-inputs ---
-        profileManagementSection.querySelectorAll('.add-button[data-container]').forEach(button => {
-            button.addEventListener('click', function() {
-                const container = document.getElementById(this.dataset.container);
-                const inputName = this.dataset.name;
-                const placeholder = this.dataset.placeholder;
-
-                const newGroup = document.createElement('div');
-                newGroup.className = 'input-group';
-                newGroup.innerHTML = `
-                    <input type="text" name="${inputName}" placeholder="${placeholder}">
-                    <button type="button" class="remove-button">-</button>
-                `;
-                newGroup.querySelector('.remove-button').addEventListener('click', () => newGroup.remove());
-                container.appendChild(newGroup);
-            });
-        });
-
-        // --- Specifik "Tilføj"-logik for relationer (med 2 felter) ---
-        document.getElementById('add-profile-relation-button')?.addEventListener('click', () => {
-            const container = document.getElementById('profile-relations-container');
-            const newGroup = document.createElement('div');
-            newGroup.className = 'relation-group';
-            newGroup.innerHTML = `
-                <div class="input-pair"><input type="text" name="profile_relation_name" placeholder="Navn"></div>
-                <div class="input-pair"><input type="text" name="profile_relation_type" placeholder="Relation"></div>
-                <button type="button" class="remove-button">-</button>`;
-            newGroup.querySelector('.remove-button').addEventListener('click', () => newGroup.remove());
-            container.appendChild(newGroup);
-        });
-
-        // --- Ryd formular ---
-        clearProfileFormButton?.addEventListener('click', () => {
-            profileForm.reset();
-            document.getElementById('profile-id').value = '';
-            // Her kunne man tilføje logik til at fjerne ekstra felter, men reset er ofte nok for brugeren.
-            profileSaveFeedback.style.display = 'none';
-        });
-
-        // --- Håndter formular-afsendelse (Gem/Opdater) ---
-        profileForm?.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            saveProfileButton.disabled = true;
-            saveProfileButton.textContent = 'Gemmer...';
-            profileSaveFeedback.style.display = 'none';
-
-            // Indsaml data fra alle felter
-            const profileData = {
-                id: document.getElementById('profile-id').value,
-                name: document.getElementById('profile-name').value.trim(),
-                age: document.getElementById('profile-age').value.trim(),
-                strengths: Array.from(document.querySelectorAll('input[name="profile_strength"]')).map(i => i.value.trim()).filter(Boolean),
-                values: Array.from(document.querySelectorAll('input[name="profile_value"]')).map(i => i.value.trim()).filter(Boolean),
-                motivations: Array.from(document.querySelectorAll('input[name="profile_motivation"]')).map(i => i.value.trim()).filter(Boolean),
-                reactions: Array.from(document.querySelectorAll('input[name="profile_reaction"]')).map(i => i.value.trim()).filter(Boolean),
-                relations: Array.from(document.querySelectorAll('#profile-relations-container .relation-group')).map(group => ({
-                    name: group.querySelector('input[name="profile_relation_name"]').value.trim(),
-                    type: group.querySelector('input[name="profile_relation_type"]').value.trim()
-                })).filter(r => r.name || r.type)
-            };
-
-            try {
-                const result = await saveChildProfileApi(profileData);
-                profileSaveFeedback.textContent = result.message;
-                profileSaveFeedback.className = 'flash-message flash-success';
-
-                // Opdater profillisten live
-                const updatedProfiles = await listChildProfilesApi();
-                allProfilesData = updatedProfiles;
-                renderSavedProfilesForEditing(updatedProfiles);
-                populateNarrativeProfileSelector(updatedProfiles);
-
-                clearProfileFormButton.click(); // Ryd formularen efter succes
-
-            } catch (error) {
-                profileSaveFeedback.textContent = `Fejl: ${error.message}`;
-                profileSaveFeedback.className = 'flash-message flash-error';
-            } finally {
-                profileSaveFeedback.style.display = 'block';
-                saveProfileButton.disabled = false;
-                saveProfileButton.textContent = 'Gem Profil';
-            }
-        });
-
-        // --- Håndter valg i Narrativ Støtte dropdown ---
-        const narrativeProfileSelector = document.getElementById('narrative-profile-select');
-        narrativeProfileSelector?.addEventListener('change', (event) => {
-            const selectedProfile = allProfilesData.find(p => p.id == event.target.value);
-            if (selectedProfile) {
-                // Her kalder vi en forsimplet version, der virker med de nuværende felter i narrativ støtte.
-                const narrativeNameInput = document.getElementById('narrative-child-name-1');
-                const narrativeAgeInput = document.getElementById('narrative-child-age-1');
-                if(narrativeNameInput) narrativeNameInput.value = selectedProfile.name || '';
-                if(narrativeAgeInput) narrativeAgeInput.value = selectedProfile.age || '';
-
-                // Vi kan senere udbygge dette til at auto-udfylde alle felter.
-                // For nu er navn og alder det vigtigste.
-            }
-        });
-
-         // --- Håndter dropdowns med "Andet..."-mulighed ---
-        const handleDynamicSelectChange = function() {
-            const otherInputId = this.dataset.otherInputId;
-            const otherInputElement = document.getElementById(otherInputId);
-            if (otherInputElement) {
-                otherInputElement.classList.toggle('hidden', this.value !== 'other');
-            }
-        };
-        document.querySelectorAll('.dynamic-select').forEach(sel => sel.addEventListener('change', handleDynamicSelectChange));
-    }
 
     // Kald funktionen for at sætte alle listeners. Vi vil kalde den fra `handleTabClick`
     // for at sikre, at den kun kører, når fanen er aktiv.
