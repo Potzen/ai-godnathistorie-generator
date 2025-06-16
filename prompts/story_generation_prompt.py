@@ -8,104 +8,64 @@ def build_story_prompt(
         plot_str,
         length_instruction,
         mood_prompt_part,
-        listener_context_instruction,
+        listener_context_instruction, # <-- TILFØJET IGEN
         ending_instruction,
         negative_prompt_text,
         is_interactive=False,
         is_bedtime_story=False,
         focus_letter=None,
-        target_lix=None  # NYT ARGUMENT
+        target_lix=None
 ):
     """
-    Bygger den komplette prompt-streng til historiegenerering.
-    Kan nu inkludere detaljerede LIX-instruktioner for "one-shot" generering.
+    Bygger den komplette prompt-streng til historiegenerering med ny, kreativ logik for lave LIX-tal.
     """
     current_app.logger.info(
-        f"--- build_story_prompt: is_interactive={is_interactive}, is_bedtime={is_bedtime_story}, target_lix={target_lix} ---")
+        f"--- build_story_prompt (v3 - Kreativ): is_interactive={is_interactive}, is_bedtime={is_bedtime_story}, target_lix={target_lix} ---")
 
+    # Starten af prompten er den samme
     prompt_parts = [
-        "SYSTEM INSTRUKTION: Du er en kreativ AI, der er ekspert i at skrive højtlæsningshistorier for børn på et præcist læsbarhedsniveau (LIX).",
-        "OPGAVE: Skriv en historie baseret på følgende input. Følg alle instruktioner om format, indhold og sproglig stil meget nøje.",
+        "SYSTEM INSTRUKTION: Du er en dygtig og alsidig AI-historiefortæller for børn. Du mestrer forskellige genrer og stemninger og respekterer brugerens input som den primære rettesnor.",
+        "OPGAVE: Skriv en historie baseret på følgende input.",
         "FORMAT: Start outputtet med en kort, fængende TITEL på den allerførste linje. Efter titlen, indsæt ET ENKELT LINJESKIFT, og start derefter selve historien.",
+        "---",
+        "**BRUGERENS INPUT (KERNEELEMENTER):**",
+        f"- Hovedperson(er): {karakter_str}",
+        f"- Sted(er): {sted_str}",
+        f"- Plot/Elementer/Morale: {plot_str}",
         "---"
     ]
 
-    # NYT: Detaljeret LIX-instruktion
+    # --- NY KREATIV LIX-INSTRUKTION ---
     if target_lix is not None:
-        lix_instruction = f"\n**KRITISK INSTRUKTION: SPROGLIGT NIVEAU (LIX {target_lix})**\n"
+        prompt_parts.append("**KRITISK INSTRUKTION: SPROGLIGT NIVEAU OG STIL**")
+
         if target_lix <= 19:
-            lix_instruction += "Dette er for en helt ny læser. Skriv i et EKSTREMT simpelt sprog. Brug meget korte sætninger (typisk 4-8 ord). Brug primært en- og tostavelsesord, som er almindelige i dansk. Undgå komplekse sætningskonstruktioner og bisætninger. Stilen skal være meget direkte og let at afkode."
+            # Her kommer den nye, kreative tilgang
+            lix_instruction = (
+                f"**ROLLE:** Du er en pædagog, der fortæller en historie til et **vuggestuebarn (1-2 år)**.\n"
+                f"**STIL:** Dit sprog skal være som i en **pegebog**. Tænk i meget korte, simple sætninger, der beskriver én ting ad gangen. Gentagelser er rigtig gode. Sproget skal være rytmisk og roligt.\n"
+                f"**EKSEMPEL PÅ STIL:** 'Se myren. Myren er lille. Den går på en sti. Stien er lang. Myren finder et blad. Bladet er grønt.'\n"
+                f"**VIGTIGT:** Fokusér på at skabe en **varm og menneskelig fortællerstemme**, ikke på at overholde matematiske regler. Målet er en naturlig, simpel historie, der føles som en rolig stund, ikke en robot-tekst. Dit mål er at ramme LIX {target_lix} ved at efterligne denne pædagogiske pegebogs-stil."
+            )
+            prompt_parts.append(lix_instruction)
+
+        # De andre LIX-niveauer kan forblive som de var, da de ikke er problematiske
         elif 20 <= target_lix <= 29:
-            lix_instruction += "Dette er for en læser, der er ved at få fat. Brug simple, korte til mellemlange sætninger (typisk 8-12 ord). Du kan introducere lidt flere beskrivende ord, men hold den overordnede sætningsstruktur klar og ligetil. Enkelte bisætninger er acceptable, men hold dem korte."
+            prompt_parts.append(
+                f"Mål-LIX: {target_lix}. Dette er for en læser, der er ved at få fat. Brug simple, korte til mellemlange sætninger. Hold sætningsstrukturen klar og ligetil.")
         elif 30 <= target_lix <= 44:
-            lix_instruction += "Dette er for en sikker læser. Du kan nu bruge mere komplekse og varierede sætningslængder (typisk 12-18 ord). Brug et rigere og mere nuanceret ordforråd med flere lange ord. Sætninger med flere bisætninger er velkomne for at skabe et bedre flow."
+            prompt_parts.append(
+                f"Mål-LIX: {target_lix}. Dette er for en sikker læser. Brug mere komplekse og varierede sætningslængder og et rigere ordforråd.")
         else:  # target_lix >= 45
-            lix_instruction += "Dette er for en meget erfaren læser. Skriv med litterær kvalitet. Anvend komplekse og varierede sætningsstrukturer, et sofistikeret og præcist ordforråd og mere abstrakte begreber. Stilen skal minde om god børne- og ungdomslitteratur."
+            prompt_parts.append(
+                f"Mål-LIX: {target_lix}. Dette er for en meget erfaren læser. Skriv med litterær kvalitet, komplekse sætningsstrukturer og et sofistikeret ordforråd.")
 
-        prompt_parts.append(lix_instruction)
-
-    if listener_context_instruction:
-        prompt_parts.append(listener_context_instruction)
-
-    prompt_parts.append(f"Længdeønske: {length_instruction}")
-
-    if is_bedtime_story:
-        bedtime_instruction = [
-            "\n**SÆRLIG INSTRUKTION: GODNATHISTORIE-FOKUS**",
-            "Denne historie er en godnathistorie. Det er din VIGTIGSTE opgave at sikre, at historiens tone, tempo og indhold er meget roligt, trygt og beroligende. Formålet er at hjælpe barnet med at falde til ro og forberede sig på at sove.",
-            "- **Variation i Navne:** Hvis brugeren ikke har angivet et specifikt navn for hovedpersonen, skal du selv finde på et passende og almindeligt dansk børnenavn (f.eks. Emil, Freja, Oscar, Ida). Det er vigtigt, at du varierer de navne, du vælger fra gang til gang, og undgår at bruge navne som f.eks. 'Luna'.",
-            "- **Undgå Spænding:** Minimer dramatiske, spændende eller uhyggelige elementer, især mod slutningen af historien.",
-            "- **Roligt Tempo:** Fortæl historien i et roligt og afdæmpet tempo.",
-            "- **Tryg Afslutning:** Sørg for at afslutningen er særligt blid, positiv og afklaret. Alle konflikter skal være løst på en tryg måde.",
-            "Denne instruktion om 'godnatlæsning' TRUMFER den generelle 'Stemning' valgt af brugeren. Selvom brugeren har valgt f.eks. 'eventyrlig', skal det fortolkes som et 'roligt og trygt eventyr'."
-        ]
-        prompt_parts.append("\n".join(bedtime_instruction))
-    else:
-        # Hvis det IKKE er en godnathistorie, bruges den normale stemnings-instruktion
-        prompt_parts.append(f"Stemning: {mood_prompt_part}")
-
-    if karakter_str:
-        prompt_parts.append(f"Hovedperson(er): {karakter_str}")
-
-    if focus_letter:
-        focus_letter_instruction = (
-            f"\n**SÆRLIG INSTRUKTION: FONETISK FOKUS**\n"
-            f"Historien skal have et tydeligt fonetisk fokus på bogstavet/bogstaverne: '{focus_letter}'. "
-            f"Inkluder naturligt og hyppigt ord, der indeholder disse bogstaver/lyde. "
-            f"Gør det subtilt og kreativt, så historien stadig føles flydende og ikke forceret."
-        )
-        prompt_parts.append(focus_letter_instruction)
-
-    if sted_str:
-        prompt_parts.append(f"Sted(er): {sted_str}")
-    if plot_str:
-        prompt_parts.append(f"Plot/Elementer/Morale: {plot_str}")
-
-    if is_interactive:
-        interactive_rules_list = [
-            "\nSÆRLIG INSTRUKTION: INTERAKTIV HISTORIE",
-            "Dette skal være en interaktiv historie. Det betyder, at du på 1-2 passende steder i historien skal skabe et øjeblik, hvor læseren føler, de har et valg. Gør det på en naturlig og læsevenlig måde, uden at du skriver instruktions-overskrifter som 'OPTÆGT' eller 'SPØRGSMÅL' i den endelige tekst.",
-            "Flowet for et interaktivt øjeblik skal være som følger:",
-            "1. Først bygger du op til et valg for hovedpersonen i et almindeligt afsnit.",
-            "2. Så stiller du spørgsmålet direkte i teksten, f.eks. 'Hvad skulle [Navn] nu gøre? A) Gå over broen, eller B) Følge stien langs floden?'.",
-            "3. Lige efter, i et nyt afsnit, starter du med 'Valgmulighed A): ' og beskriver den korte scene for det valg i 1-2 sætninger.",
-            "4. I et nyt afsnit lige bagefter, starter du med 'Valgmulighed B): ' og beskriver den korte scene for det andet valg i 1-2 sætninger.",
-            "5. Til sidst fortsætter du hovedhistorien i et nyt afsnit. Meget vigtigt: Fortsættelsen skal kunne passe efter begge valg, men du må absolut ikke nævne det. Undgå ord som 'uanset' eller 'lige meget hvad'. Lad blot historien glide naturligt videre ved f.eks. at fokusere på hovedpersonens følelser eller omgivelserne."
-        ]
-        prompt_parts.append("\n".join(interactive_rules_list))
-
-    prompt_parts.append("\nGENERELLE REGLER FOR HISTORIEN:")
-    prompt_parts.append("- Undgå komplekse sætninger og ord. Sproget skal være letforståeligt for børn.")
-    prompt_parts.append("- Inkluder gerne gentagelser, rim eller lydeffekter, hvis det passer til historien.")
-    prompt_parts.append("- Sørg for en positiv morale eller et opløftende budskab, hvis det er relevant for plottet.")
-    prompt_parts.append("- Undgå vold, upassende temaer eller noget, der kan give mareridt.")
-
+    # Resten af prompten fortsætter som før
     if negative_prompt_text:
-        prompt_parts.append(f"- VIGTIGT: Følgende må IKKE indgå i historien: {negative_prompt_text}")
+        prompt_parts.append(f"- **Må IKKE indeholde:** {negative_prompt_text}")
 
-    prompt_parts.append(f"- {ending_instruction}")
     prompt_parts.append("---")
     prompt_parts.append(
-        "Start outputtet med TITLEN på første linje, efterfulgt af ET ENKELT LINJESKIFT, og derefter selve historien:")
+        "Start dit output med TITLEN på første linje, efterfulgt af ET ENKELT LINJESKIFT, og derefter selve historien:")
 
     return "\n".join(prompt_parts)

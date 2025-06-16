@@ -29,13 +29,17 @@ const createStoryEntryHtml = (story) => {
 
     const finalSubtitleHtml = `<span class="logbook-subtitle">${subtitleHtml}</span>`;
 
+    // Udvidet dataindsamling til analysen
+    const aiSummary = story.ai_summary || 'Ikke angivet';
     const problemName = story.problem_name || 'Ikke angivet';
+    const problemCategory = story.problem_category || 'Ikke angivet';
     const problemInfluence = story.problem_influence || 'Ikke angivet';
     const uniqueOutcome = story.unique_outcome || 'Ikke angivet';
     const discoveredMethodName = story.discovered_method_name || 'Ikke angivet';
-    const discoveredMethodSteps = story.discovered_method_steps || 'Ikke angivet';
+    const strengthType = story.strength_type || 'Ikke angivet';
     const childValues = story.child_values || 'Ikke angivet';
     const supportSystem = story.support_system || 'Ikke angivet';
+    const discoveredMethodSteps = story.discovered_method_steps || 'Ikke angivet';
     const userNotes = story.user_notes || '';
 
     return `
@@ -60,16 +64,18 @@ const createStoryEntryHtml = (story) => {
                     </div>
                 </div>
                 <div class="logbook-inner-entry">
-                    <button type="button" class="nested-accordion-toggle">Se Dokumentation <span class="arrow">◀</span></button>
+                    <button type="button" class="nested-accordion-toggle">Analyse af Historien <span class="arrow">◀</span></button>
                     <div class="nested-accordion-content hidden">
-                        <h4>Analyse af Historien</h4>
+                        <div class="logbook-doc-item"><strong>Pædagogisk Analyse:</strong> <span>${aiSummary}</span></div>
                         <div class="logbook-doc-item"><strong>Problemets Navn:</strong> <span>${problemName}</span></div>
-                        <div class="logbook-doc-item"><strong>Problemets Indflydelse:</strong> <span>${problemInfluence}</span></div>
+                        <div class="logbook-doc-item"><strong>Problemets Kategori:</strong> <span>${problemCategory}</span></div>
+                        <div class="logbook-doc-item"><strong>Problemets Indflydelse (Hvordan påvirkede det barnet?):</strong> <span>${problemInfluence}</span></div>
                         <div class="logbook-doc-item"><strong>Helten i Aktion ("Glimtet"):</strong> <span>${uniqueOutcome}</span></div>
                         <div class="logbook-doc-item"><strong>Opdaget Metode/Styrke:</strong> <span>${discoveredMethodName}</span></div>
-                        <div class="logbook-doc-item"><strong>Fra Historie til Handling:</strong> <p style="white-space: pre-wrap;">${discoveredMethodSteps}</p></div>
-                        <div class="logbook-doc-item"><strong>Barnets Værdier (f.eks. Mod, Venskab):</strong> <span>${childValues}</span></div>
+                        <div class="logbook-doc-item"><strong>Styrkens Type:</strong> <span>${strengthType}</span></div>
+                        <div class="logbook-doc-item"><strong>Barnets Værdier:</strong> <span>${childValues}</span></div>
                         <div class="logbook-doc-item"><strong>Støttesystem ("Vidner"):</strong> <span>${supportSystem}</span></div>
+                        <div class="logbook-doc-item"><strong>Fra Historie til Handling:</strong> <p style="white-space: pre-wrap;">${discoveredMethodSteps}</p></div>
                     </div>
                 </div>
                 <div class="logbook-inner-entry">
@@ -177,18 +183,6 @@ export async function initializeLogbook() {
         } else {
             logbookListContainer.innerHTML = stories.map(createStoryEntryHtml).join('');
             attachEventListeners();
-
-            // FORSØG PÅ AT ÅBNE DET FØRSTE ELEMENT (NY KODE HER)
-            const firstLogbookEntry = logbookListContainer.querySelector('.logbook-entry');
-            if (firstLogbookEntry) {
-                const firstToggle = firstLogbookEntry.querySelector('.logbook-accordion-toggle');
-                const firstContent = firstLogbookEntry.querySelector('.logbook-accordion-content');
-                if (firstToggle && firstContent) {
-                    firstToggle.classList.add('open');
-                    firstContent.classList.remove('hidden'); // Denne linje er afgørende
-                    console.log("[logbook.js] Åbnede automatisk første logbogsindgang.");
-                }
-            }
         }
     } catch (error) {
         console.error('[logbook.js] Fejl under hentning eller rendering af logbog:', error);

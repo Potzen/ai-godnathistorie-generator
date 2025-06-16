@@ -1703,8 +1703,9 @@ input:disabled + .slider-label:before {
     text-align: left;
 }
 
-/* Generel styling for alle pile */
-.logbook-accordion-toggle .arrow {
+/* Generel regel for ALLE pile i både hoved- og underharmonikaer */
+.logbook-accordion-toggle .arrow,
+.nested-accordion-toggle .arrow {
     font-size: 0.8em;
     line-height: 1;
     transition: transform 0.3s ease;
@@ -1712,11 +1713,16 @@ input:disabled + .slider-label:before {
     color: var(--color-primary);
     padding-left: 10px;
 }
-.logbook-accordion-toggle.open .arrow {
-    transform: rotate(-90deg); /* Peger nedad (▼) når åben */
-}
+
+/* Specifik farve for KUN hovedharmonikaens pil */
 .logbook-entry > .logbook-accordion-toggle .arrow {
     color: #555;
+}
+
+/* Regel for rotation, når ENHVER harmonika er åben */
+.logbook-accordion-toggle.open .arrow,
+.nested-accordion-toggle.open .arrow {
+    transform: rotate(-90deg); /* Peger nedad (▼) når åben */
 }
 
 
@@ -1947,4 +1953,9 @@ input:disabled + .slider-label:before {
     opacity: 1;
     background-color: #f8d7da; /* Giver en rødlig hover-effekt */
     color: #721c24;
+}
+
+/* Styling for Læsehesten historie-varianter */
+.story-variant {
+    margin-bottom: 10px;
 }

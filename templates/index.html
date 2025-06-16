@@ -32,7 +32,7 @@
 
 <div class="tab-navigation">
         <button type="button" class="tab-button active" data-tab-target="#generator">Højtlæsning</button>
-        <button type="button" class="tab-button" data-tab-target="#laesehesten-module">Læsehesten</button>
+        <button type="button" class="tab-button" data-tab-target="#laesehesten-module">Læsehesten (BETA)</button>
         <button type="button" class="tab-button" data-tab-target="#narrative-support-module">
                 Narrativ Støtte
                 {% if not current_user.is_authenticated or current_user.role != 'premium' %}
@@ -227,7 +227,7 @@
 
             <div class="input-category" style="padding-top: 5px; margin-top: -15px; text-align: left;">
                 <small class="form-text text-muted" style="display: block; font-size: 0.85em;">
-                    (Ønskes adgang til Basic/Premium, skriv til Philip, da dette pt. er en mekanisme for at beskytte systemet mod uventet meget brug af de dyreste modeller).
+                    (Ønskes adgang til Premium funktioner så opret en gratis bruger. - og den ER helt og aldeles gratis)
                 </small>
             </div>
 
@@ -255,7 +255,12 @@
                 </button>
                 <button type="button"
                         class="utility-button image-button js-generate-image"
-                        disabled> Generer Billede
+                        {% if not current_user.is_authenticated %}
+                            disabled title="Login for at generere et billede"
+                        {% else %}
+                            disabled
+                        {% endif %}
+                        > Generer Billede
                 </button>
                 <div class="font-size-controls">
                     <button type="button" id="decrease-font-button" class="utility-button font-button" title="Gør teksten mindre">A-</button>
@@ -392,8 +397,8 @@
                     </div>
                 </div>
 
-                <div class="narrative-info-dropdown">
-                    <button type="button" class="dropdown-toggle">Hvad er Narrativ Terapi? <span class="dropdown-arrow">&#9664;</span></button>
+                <div class="narrative-info-dropdown info-dropdown">
+                    <button type="button" class="dropdown-toggle">Vejledning: Hvad er Narrativ Terapi? <span class="dropdown-arrow">&#9664;</span></button>
                     <div class="dropdown-content hidden">
                        <h4>Hvad er narrativ støtte?</h4>
                         <p>Dette modul er inspireret af narrativ terapi. Grundtanken er, at vi mennesker forstår vores liv gennem historier. Disse historier er ikke bare passive genfortællinger, men aktive medskabere af vores identitet og hvordan vi ser verden. Ved at ændre historien, kan vi ændre oplevelsen.</p>
@@ -418,8 +423,8 @@
                     </div>
                 </div>
 
-                <div class="narrative-info-dropdown">
-                    <button type="button" class="dropdown-toggle">Vejledning til Narrativ Historiefortælling <span class="dropdown-arrow">&#9664;</span></button>
+                <div class="narrative-info-dropdown info-dropdown">
+                    <button type="button" class="dropdown-toggle">Vejledning: Narrativ Historiefortælling <span class="dropdown-arrow">&#9664;</span></button>
                     <div class="dropdown-content hidden">
                         <h4>Sådan får du mest ud af "Narrativ Støtte"</h4>
                         <p>Denne guide hjælper dig med at udfylde felterne, så AI'en kan skabe den bedst mulige historie for dit barn:</p>
@@ -526,7 +531,7 @@
                 <div class="narrative-info-dropdown input-category">
                     <button type="button" class="dropdown-toggle">Beskriv Problem-Karakteren (Eksternalisering) <span class="dropdown-arrow">◀</span></button>
                     <div class="dropdown-content hidden">
-                        <div class="narrative-info-dropdown inner-dropdown" style="margin-bottom: 20px; border: 1px dashed var(--color-secondary); background-color: #fdfdfd;">
+                        <div class="narrative-info-dropdown inner-dropdown info-dropdown" style="margin-bottom: 20px;">
                             <button type="button" class="dropdown-toggle inner-dropdown-toggle" style="font-size: 0.9em; padding: 8px 12px;">Vejledning: Hvad er Eksternalisering? <span class="dropdown-arrow">◀</span></button>
                             <div class="dropdown-content inner-dropdown-content hidden" style="padding: 10px 12px;">
                                 <p style="font-size: 0.85em; line-height: 1.6;">Eksternalisering er et kerneprincip...</p>
@@ -787,14 +792,14 @@
                 <p style="text-align: center; margin-top: -10px; margin-bottom: 25px;">Et bibliotek af personlige sejre og opdagede styrker.</p>
 
                 <section id="profile-management-section" class="narrative-info-dropdown" style="margin-bottom: 30px; border: 1px solid var(--border-color); background-color: #fdfdff;">
-<button type="button" class="dropdown-toggle">
+                    <button type="button" class="dropdown-toggle">
                         Mine profiler
                         <span class="dropdown-arrow">◀</span>
                     </button>
-                    <div class="dropdown-content" style="padding: 15px 20px;">
+                    <div class="dropdown-content hidden" style="padding: 15px 20px;">
                         <div id="saved-profiles-list" style="margin-bottom: 20px;"></div>
 
-                        <h3 style="color: var(--color-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 5px; margin-bottom: 20px;">Opret Ny / Rediger Profil</h3>
+                        <h3 style="color: var(--color-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 5px; margin-bottom: 20px; font-size: 0.9em; font-weight: bold;">Opret Ny / Rediger Profil</h3>
 
                         <form id="child-profile-form">
                             <input type="hidden" id="profile-id" name="profile_id">
@@ -931,6 +936,7 @@
             </div>
 
             <div id="story-share-buttons" class="hidden">
+                <button type="button" id="generate-image-from-output-button" class="utility-button js-generate-image">Generer Billede</button>
                 <button type="button" id="share-story-facebook-button" class="utility-button">Del på Facebook</button>
                 <button type="button" id="copy-story-button" class="utility-button">Kopier Historie</button>
                 <button id="reset-button" class="utility-button" style="display: none;">Prøv igen</button>
@@ -938,7 +944,7 @@
 
             <div class="info-dropdown-container" style="margin-top: 20px; text-align: left; max-width: 100%;">
                 <button type="button" class="dropdown-toggle" id="failure-info-dropdown-toggle">
-                    Hvorfor fejler min historie/billede nogle gange? <span class="dropdown-arrow">◀</span>
+                    Vejledning: Hvorfor fejler min historie/billede nogle gange? <span class="dropdown-arrow">◀</span>
                 </button>
                 <div id="failure-info-dropdown-content" class="dropdown-content hidden" style="padding: 12px 15px; border-top: 1px solid var(--border-color); background-color: #fcfcfc;">
                     <p><strong>Mulige årsager til at AI-generering kan fejle:</strong></p>

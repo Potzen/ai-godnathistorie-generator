@@ -43,14 +43,14 @@ export async function generateStoryApi(storyData) {
  * @returns {Promise<object>} Et promise der resolver med JSON-svar fra serveren (forventer image_url eller error).
  * @throws {Error} Kaster en fejl hvis netværksrespons ikke er ok, eller ved andre fejl.
  */
-export async function generateImageApi(storyText) {
-    console.log("api_client.js: generateImageApi called.");
+export async function generateImageApi(dataToSend) { // Modtager nu et helt objekt
+    console.log("api_client.js: generateImageApi called with data:", dataToSend);
     const response = await fetch('/story/generate_image_from_story', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ story_text: storyText })
+        body: JSON.stringify(dataToSend) // Sender hele objektet videre
     });
 
     if (!response.ok) {

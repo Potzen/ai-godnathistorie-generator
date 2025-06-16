@@ -51,15 +51,10 @@ def generate_story_text_from_gemini(full_prompt_string, generation_config_settin
     Genererer en historie (titel og indhold) ved hjælp af Google Gemini.
     """
     current_app.logger.info(
-        f"--- ai_service: Kalder Gemini for historie (Max Tokens: {generation_config_settings.get('max_output_tokens')}) ---")
-
-    story_title = "Uden Titel (AI Service Fejl)"
-    actual_story_content = "Der opstod en fejl under historiegenerering i AI-tjenesten."
+        f"--- ai_service: Kalder Gemini for historie (Model: {target_model_name}, Max Tokens: {generation_config_settings.get('max_output_tokens')}) ---")
 
     try:
-        actual_model_to_use = target_model_name if target_model_name and target_model_name.strip() else 'gemini-1.5-flash-latest'
-        current_app.logger.info(f"ai_service: Anvender model '{actual_model_to_use}' for historiegenerering.")
-        model = genai.GenerativeModel(actual_model_to_use)
+        model = genai.GenerativeModel(target_model_name)
         gen_config = genai.types.GenerationConfig(**generation_config_settings)
 
         response = model.generate_content(
@@ -67,26 +62,18 @@ def generate_story_text_from_gemini(full_prompt_string, generation_config_settin
             generation_config=gen_config,
             safety_settings=safety_settings_values
         )
-        current_app.logger.info("ai_service: Svar modtaget fra Google Gemini for historiegenerering.")
 
-        was_blocked_by_safety = False
-        if hasattr(response, 'prompt_feedback') and response.prompt_feedback and response.prompt_feedback.block_reason:
-            was_blocked_by_safety = True
-            current_app.logger.warning(
-                f"ai_service (historie): Prompt blev blokeret. Årsag: {response.prompt_feedback.block_reason_message or response.prompt_feedback.block_reason}")
+        # Forbedret tjek for blokeret indhold
+        if not response.parts:
+            block_reason = "Ukendt"
+            if response.prompt_feedback and response.prompt_feedback.block_reason:
+                block_reason = response.prompt_feedback.block_reason.name
 
-        if not was_blocked_by_safety and hasattr(response, 'candidates') and response.candidates:
-            candidate = response.candidates[0]
-            if hasattr(candidate, 'finish_reason') and hasattr(candidate.finish_reason,
-                                                               'name') and candidate.finish_reason.name == 'SAFETY':
-                was_blocked_by_safety = True
-                current_app.logger.warning(
-                    f"ai_service (historie): Generering blokeret af sikkerhedsfiltre. Finish Reason: SAFETY, Safety Ratings: {candidate.safety_ratings}")
+            current_app.logger.error(
+                f"ai_service: Svar fra Gemini blev blokeret. Årsag: {block_reason}. Safety Ratings: {response.prompt_feedback.safety_ratings}")
 
-        if was_blocked_by_safety:
-            story_title = "Blokeret Indhold (Sikkerhedsfilter)"
-            actual_story_content = "Beklager, den ønskede historie kunne ikke genereres, da indholdet blev blokeret af sikkerhedsfiltre. Overvej at justere dine input."
-            return story_title, actual_story_content
+            # Returnerer en specifik fejl, som kan fanges i den kaldende funktion
+            raise ValueError(f"Generering blokeret af sikkerhedsfiltre (Årsag: {block_reason})")
 
         raw_text_from_gemini = response.text
         lines = raw_text_from_gemini.splitlines()
@@ -108,45 +95,43 @@ def generate_story_text_from_gemini(full_prompt_string, generation_config_settin
         else:
             actual_story_content = "Modtog et tomt svar fra AI."
 
+        return story_title, actual_story_content
+
+    except ValueError as ve:
+        # Gen-kast fejlen fra den forbedrede blokeringstjek, så den kan håndteres i routes.
+        raise ve
     except Exception as e_api:
         current_app.logger.error(
             f"ai_service: Fejl ved kald til Google Gemini API eller i parsing: {e_api}\n{traceback.format_exc()}")
-        story_title = "API Fejl (AI Service)"
-        actual_story_content = f"Beklager, teknisk fejl med AI-tjenesten (Gemini). Prøv igen senere."
-
-    return story_title, actual_story_content
+        # Returnerer en almindelig fejlbesked for andre typer fejl
+        return "API Fejl (AI Service)", "Beklager, teknisk fejl med AI-tjenesten (Gemini). Prøv igen senere."
 
 
-def generate_image_prompt_from_gemini(story_text):
+# I services/ai_service.py
+def generate_image_prompt_from_gemini(story_text, karakter_str, sted_str):  # <--- Opdateret signatur
     """
-    Genererer en billedprompt baseret på en historietekst ved hjælp af Google Gemini.
+    Genererer en billedprompt baseret på en historietekst og brugerens originale inputs.
     # ... (docstring fortsætter)
     """
-    current_app.logger.info("ai_service: Genererer billedprompt med Gemini...")
+    current_app.logger.info("ai_service: Genererer billedprompt med Gemini, prioriterer brugerinput...")
 
     default_image_prompt = "A whimsical and enchanting fairytale illustration, child-friendly, high-quality 3D digital art, imaginative."
     generated_prompt_text = default_image_prompt
 
-    if not story_text or not story_text.strip():
-        current_app.logger.warning(
-            "ai_service: Tom historietekst modtaget til billedprompt generering. Bruger standard prompt.")
-        return default_image_prompt
-
     try:
         gemini_model_for_prompting = genai.GenerativeModel('gemini-1.5-flash-latest')
 
-        # Byg prompten til billedprompt-generering ved hjælp af den nye funktion
-        actual_prompt_to_gemini = build_image_prompt_generation_prompt(story_text)
+        # Byg den nye, forbedrede prompt med de ekstra argumenter
+        actual_prompt_to_gemini = build_image_prompt_generation_prompt(story_text, karakter_str, sted_str)
 
         response_gemini = gemini_model_for_prompting.generate_content(
-            actual_prompt_to_gemini)  # Nu bruges den prompt, der er bygget af funktionen
+            actual_prompt_to_gemini)
 
         if response_gemini.text and response_gemini.text.strip():
             generated_prompt_text = response_gemini.text.strip()
             current_app.logger.info(f"ai_service: Genereret billedprompt: {generated_prompt_text}")
         else:
             current_app.logger.warning("ai_service: Gemini returnerede en tom billedprompt. Bruger standard prompt.")
-            # if response_gemini.prompt_feedback: current_app.logger.warning(f"Prompt feedback: {response_gemini.prompt_feedback}")
 
     except Exception as e_gemini_prompt:
         current_app.logger.error(

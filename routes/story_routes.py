@@ -8,9 +8,10 @@ from services.ai_service import (
     generate_story_text_from_gemini,
     generate_image_prompt_from_gemini,
     generate_image_with_vertexai,
-    generate_gemini_tts_audio,
-    refine_story_for_lix
+    generate_gemini_tts_audio
 )
+from services.lix_service import calculate_lix
+import concurrent.futures
 
 story_bp = Blueprint('story', __name__, template_folder='../templates', static_folder='../static')
 
@@ -165,8 +166,8 @@ def generate_story():
 @login_required
 def generate_lix_story_route():
     """
-    API endpoint til Læsehesten-modulet.
-    Bygger en avanceret "one-shot" prompt og kalder AI'en én gang.
+    API endpoint til Læsehesten.
+    Genererer 3 historie-varianter parallelt og inden for app-kontekst.
     """
     if current_user.role not in ['basic', 'premium']:
         return jsonify({"error": "Læsehesten er en Premium-funktion."}), 403
@@ -175,135 +176,121 @@ def generate_lix_story_route():
     if not data:
         return jsonify(error="Ingen data modtaget."), 400
 
-    current_app.logger.info(f"Bruger {current_user.id}: Modtaget anmodning til /generate_lix med data: {data}")
+    current_app.logger.info(
+        f"Bruger {current_user.id}: Modtaget PARALLEL anmodning om 3 LIX-historier med data: {data}")
 
-    # --- 1. Indsaml og valider input ---
+    # --- Indsaml og forbered data (uændret) ---
     target_lix = data.get('target_lix')
     if not isinstance(target_lix, int) or not (5 <= target_lix <= 55):
         return jsonify(error="Ugyldigt eller manglende LIX-tal."), 400
 
-    story_elements = data.get('elements', [])
-    custom_words = data.get('custom_words', [])
-    karakter_str = ", ".join(story_elements + custom_words) if (
-                story_elements or custom_words) else "en uspecificeret karakter"
-
+    karakter_str = ", ".join(data.get('elements', []) + data.get('custom_words', [])) or "en uspecificeret karakter"
     plot_str = data.get('plot', 'et uspecificeret eventyr')
     laengde = data.get('laengde', 'mellem')
     mood = data.get('mood', 'neutral')
     negative_prompt_text = data.get('negative_prompt', '').strip()
     focus_letter = data.get('focus_letter', '')
 
-    # --- 2. Forbered AI-konfiguration ---
     target_model_name = 'gemini-2.5-pro-preview-05-06'
-
-    length_map = {
-        'kort': ("Skriv historien i cirka 6-8 afsnit.", 3072),
-        'mellem': ("Skriv historien i cirka 10-14 afsnit.", 4096),
-        'lang': ("Skriv en lang historie på mindst 15-18 afsnit.", 8192)
-    }
+    length_map = {'kort': ("...", 3072), 'mellem': ("...", 4096), 'lang': ("...", 8192)}
     length_instruction, max_tokens_setting = length_map.get(laengde, length_map['mellem'])
 
-    generation_config_dict = {"max_output_tokens": max_tokens_setting, "temperature": 0.75}
     safety_settings = {
-        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
     }
 
-    # --- 3. Byg den smarte prompt og kald AI'en ÉN gang ---
-    # --- 3. Byg den smarte prompt og kald AI'en (med genforsøg) ---
-    final_title, final_content, final_lix, error_message = None, None, None, None
-    max_retries = 2  # Prøv op til 2 gange
+    # --- Ny logik til parallel generering med app-kontekst ---
 
-    for attempt in range(max_retries):
-        try:
-            current_app.logger.info(f"Bruger {current_user.id}: Starter genereringsforsøg #{attempt + 1}")
+    # Få en reference til den faktiske app-instans
+    app = current_app._get_current_object()
 
-            # Juster temperaturen en smule på andet forsøg for at fremprovokere et andet resultat
-            current_temp = generation_config_dict.get("temperature", 0.75)
-            if attempt > 0:
-                generation_config_dict["temperature"] = min(current_temp + 0.1, 1.0)  # Gør temperaturen lidt højere
-                current_app.logger.info(
-                    f"Genforsøg #{attempt + 1}: Justerer temperaturen til {generation_config_dict['temperature']}")
+    def generate_variant(temp, app_context):
+        """Hjælpefunktion der kører i en separat tråd MED app-kontekst."""
+        with app_context.app_context():  # VIGTIGT: Aktiverer konteksten i tråden
+            try:
+                current_app.logger.info(f"Starter generering af variant med temperatur {temp}")
 
-            final_prompt = build_story_prompt(
-                karakter_str=karakter_str,
-                sted_str="et passende sted for historien",
-                plot_str=plot_str,
-                length_instruction=length_instruction,
-                mood_prompt_part=f"Historien skal have en {mood} stemning.",
-                listener_context_instruction="",
-                ending_instruction="Afslut historien på en positiv og opløftende måde.",
-                negative_prompt_text=negative_prompt_text,
-                focus_letter=focus_letter,
-                target_lix=target_lix
-            )
+                generation_config_dict = {"max_output_tokens": max_tokens_setting, "temperature": temp}
 
-            current_app.logger.info(
-                f"Bruger {current_user.id}: Kalder AI med 'one-shot' LIX-prompt (forsøg #{attempt + 1}).")
-
-            final_title, final_content = generate_story_text_from_gemini(
-                full_prompt_string=final_prompt,
-                generation_config_settings=generation_config_dict,
-                safety_settings_values=safety_settings,
-                target_model_name=target_model_name
-            )
-
-            # Tjek for fejl/blokering. Hvis der er en, vil den kaste en exception og vi ryger til 'except' blokken
-            if "Fejl" in final_title or "blokeret" in final_content:
-                # Dette er en sikkerhedsforanstaltning, men den primære fejl fanges af .text accessoren
-                raise ValueError("Generering blokeret af AI-tjenesten.")
-
-            # Hvis vi når hertil, var forsøget en succes. Beregn lix og afslut loopet.
-            from services.lix_service import calculate_lix
-            final_lix = calculate_lix(final_content)
-            error_message = None  # Nulstil eventuel tidligere fejl
-            current_app.logger.info(f"Bruger {current_user.id}: Succesfuld generering på forsøg #{attempt + 1}.")
-            break  # Afslut loopet ved succes
-
-        except Exception as e:
-            error_message = str(e)
-            current_app.logger.error(
-                f"Fejl under 'one-shot' LIX-generering for bruger {current_user.id} (forsøg #{attempt + 1}): {e}\n{traceback.format_exc()}")
-            if attempt == max_retries - 1:
-                # Sidste forsøg er fejlet. Send en brugervenlig besked i stedet for en 500-fejl.
-                current_app.logger.error(
-                    f"Alle {max_retries} forsøg fejlede for bruger {current_user.id}. Returnerer brugervenlig fejlbesked.")
-                return jsonify(
-                    status="all_attempts_failed",
-                    title="Historien kunne ikke skabes",
-                    story=(
-                        "Vi beklager! AI'en kunne desværre ikke skabe en historie med de valgte indstillinger, selv efter flere forsøg. "
-                        "Dette sker nogle gange med meget specifikke eller ekstreme LIX-tal.\n\n"
-                        "Prøv venligst igen med et lidt andet LIX-tal eller andre elementer."
-                    )
+                prompt = build_story_prompt(
+                    karakter_str=karakter_str,
+                    sted_str="et passende sted for historien",
+                    plot_str=plot_str,
+                    length_instruction=length_instruction,
+                    negative_prompt_text=negative_prompt_text,
+                    focus_letter=focus_letter,
+                    target_lix=target_lix,
+                    mood_prompt_part="", listener_context_instruction="", ending_instruction=""
                 )
-    # --- 4. Returner det endelige resultat ---
-    response_data = {
-        "title": final_title,
-        "story": final_content,
-        "final_lix_score": final_lix,
-        "status": "success"
-    }
 
-    LIX_TOLERANCE = 5
-    if final_lix is not None and abs(final_lix - target_lix) > LIX_TOLERANCE:
-        response_data[
-            'warning_message'] = f"Historien blev genereret med LIX {final_lix}, hvilket afviger lidt fra målet på {target_lix}. AI'en gør sit bedste, men præcis LIX-styring er svær!"
+                title, content = generate_story_text_from_gemini(
+                    full_prompt_string=prompt,
+                    generation_config_settings=generation_config_dict,
+                    safety_settings_values=safety_settings,
+                    target_model_name=target_model_name
+                )
 
-    return jsonify(response_data)
+                if "Fejl" in title or "blokeret" in content:
+                    current_app.logger.warning(f"Variant med temp {temp} blev blokeret eller fejlede internt.")
+                    return None
 
+                lix_score = calculate_lix(content)
+                current_app.logger.info(f"Variant med temp {temp} færdig. Titel: '{title}', LIX: {lix_score}")
+                return {"title": title, "story": content, "final_lix_score": lix_score}
+            except Exception as e:
+                # Nu kan vi logge sikkert, da vi er i en app-kontekst
+                current_app.logger.error(f"Fejl under generering af variant med temp {temp}: {e}")
+                return None
+
+    story_results = []
+    temperatures_to_try = [0.75, 0.9, 1.0]
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        # Sender app-referencen med til hver opgave
+        future_to_temp = {executor.submit(generate_variant, temp, app): temp for temp in temperatures_to_try}
+
+        for future in concurrent.futures.as_completed(future_to_temp):
+            result = future.result()
+            if result:
+                story_results.append(result)
+
+    if not story_results:
+        return jsonify(error="Det lykkedes desværre ikke at generere nogen historier. Prøv venligst igen."), 500
+
+    story_results.sort(key=lambda x: x['final_lix_score'])
+
+    return jsonify(story_results)
+
+
+# I routes/story_routes.py
 @story_bp.route('/generate_image_from_story', methods=['POST'])
 @login_required
 def generate_image_from_story():
     data = request.get_json()
     if not data or 'story_text' not in data:
         return jsonify({"error": "Mangler 'story_text'."}), 400
+
+    # Hent alle data fra request
     story_text = data.get('story_text')
+    karakterer_data = data.get('karakterer', [])
+    steder_liste = data.get('steder', [])
+
+    # Bearbejd brugerinput (genbrugt logik fra /generate)
+    karakter_descriptions = [
+        f"{char.get('description', '')} ved navn {char.get('name', '')}".strip()
+        for char in karakterer_data if char.get('description')
+    ]
+    karakter_str = ", ".join(karakter_descriptions) if karakter_descriptions else "en uspecificeret karakter"
+    sted_str = ", ".join(filter(None, steder_liste)) if steder_liste else "et uspecificeret sted"
+
     try:
-        image_prompt = generate_image_prompt_from_gemini(story_text)
+        # Kald service-funktionen med de nye argumenter
+        image_prompt = generate_image_prompt_from_gemini(story_text, karakter_str, sted_str)
         image_data_url = generate_image_with_vertexai(image_prompt)
+
         if image_data_url:
             return jsonify({"image_url": image_data_url, "image_prompt_used": image_prompt})
         else:

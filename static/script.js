@@ -1257,7 +1257,22 @@ loadFontSizesFromLocalStorage();
             if(resetButton) resetButton.style.display = 'inline-block';
         }
         if (generateImageButtons.length > 0 && cleanStory) {
-            generateImageButtons.forEach(button => { button.disabled = false; button.removeAttribute('title'); });
+            // Hent brugerens rolle fra det skjulte data-element i HTML'en
+            const userRoleElement = document.getElementById('current-user-role-data');
+            const userRole = userRoleElement ? userRoleElement.dataset.role : 'guest';
+
+            generateImageButtons.forEach(button => {
+                // Tjek om brugeren IKKE er en 'gæst' (dvs. er logget ind)
+                if (userRole !== 'guest') {
+                    // Aktiver kun knappen, hvis brugeren er logget ind
+                    button.disabled = false;
+                    button.removeAttribute('title');
+                } else {
+                    // Hvis brugeren er gæst, skal knappen forblive deaktiveret
+                    // og beholde den informative 'title'-tekst.
+                    console.log("Bruger er gæst, 'Generer Billede'-knappen forbliver deaktiveret.");
+                }
+            });
         }
 
     } catch (error) {
@@ -1393,6 +1408,8 @@ async function handleReadAloudClick() {
     }
 }
 
+// KODEN TIL HØJTLÆSNINGS-FANENS BILLEDE-KNAP
+
 async function handleGenerateImageFromStoryClick() {
     console.log("--> handleGenerateImageFromStoryClick (FOR HØJTLÆSNING) startet");
 
@@ -1402,18 +1419,45 @@ async function handleGenerateImageFromStoryClick() {
         return;
     }
 
-    // Nulstil og vis UI for KUN ét billede
+    // Indsaml originale bruger-inputs fra Højtlæsnings-fanen
+    const karakterer = [];
+    document.querySelectorAll('#karakter-container .character-group').forEach(group => {
+        const descInput = group.querySelector('input[name="karakter_desc"]');
+        const nameInput = group.querySelector('input[name="karakter_navn"]');
+        if (descInput && descInput.value.trim()) {
+            karakterer.push({
+                description: descInput.value.trim(),
+                name: nameInput ? nameInput.value.trim() : ''
+            });
+        }
+    });
+
+    const steder = [];
+    document.querySelectorAll('#sted-container .input-group input[name="sted"]').forEach(input => {
+        const v = input.value.trim();
+        if(v) steder.push(v);
+    });
+
+    // UI-håndtering
     imageSection.classList.remove('hidden');
     storyImageContainer.classList.remove('hidden');
-    problemImageContainer.classList.add('hidden'); // Vigtigt: Skjul problem-containeren
-
+    problemImageContainer.classList.add('hidden');
     storyImageLoader.classList.remove('hidden');
     storyImageDisplay.classList.add('hidden');
     storyImageError.classList.add('hidden');
     generateImageButtons.forEach(button => button.disabled = true);
 
     try {
-        const result = await generateImageApi(currentStoryText);
+        // Pak alle informationer (historie + bruger-inputs) i ét objekt
+        const dataToSend = {
+            story_text: currentStoryText,
+            karakterer: karakterer,
+            steder: steder
+        };
+
+        // Kald den opdaterede API-funktion
+        const result = await generateImageApi(dataToSend);
+
         if (result.image_url) {
             storyImageDisplay.src = result.image_url;
             storyImageDisplay.classList.remove('hidden');
@@ -1431,14 +1475,14 @@ async function handleGenerateImageFromStoryClick() {
 
 async function handleGenerateNarrativeImagesClick() {
     if (!currentNarrativeData || !currentNarrativeData.storyContent) {
-        alert("Fejl: Der er ingen genereret historie at skabe billeder fra.");
+        alert("Fejl: Der er ingen genereret narrativ historie at skabe billeder fra.");
         return;
     }
 
     narrativeGenerateImagesButton.disabled = true;
     narrativeGenerateImagesButton.textContent = "Genererer billeder...";
 
-    // Nulstil og vis UI for BEGGE billed-containere
+    // Nulstil UI (uændret)
     imageSection.classList.remove('hidden');
     storyImageContainer.classList.remove('hidden');
     problemImageContainer.classList.remove('hidden');
@@ -1448,11 +1492,14 @@ async function handleGenerateNarrativeImagesClick() {
     storyImageError.textContent = '';
     problemImageError.textContent = '';
 
-    // Start begge API-kald samtidigt
-    const storyImagePromise = generateImageApi(currentNarrativeData.storyContent);
+    // --- OPDATERET DEL ---
+    // Vi sender hele "currentNarrativeData" med til BEGGE API-kald.
+    // Det sikrer, at begge billeder genereres ud fra den fulde kontekst af brugerens input.
+    const storyImagePromise = generateImageApi(currentNarrativeData);
     const problemImagePromise = generateProblemImageApi(currentNarrativeData);
+    // --- SLUT PÅ OPDATERING ---
 
-    // Håndter resultatet for historie-billedet
+    // Håndtering af resultater (er uændret)
     storyImagePromise
         .then(result => {
             if (result.image_url) {
@@ -1470,7 +1517,6 @@ async function handleGenerateNarrativeImagesClick() {
             storyImageLoader.classList.add('hidden');
         });
 
-    // Håndter resultatet for problem-billedet
     problemImagePromise
         .then(result => {
             if (result.image_url) {
@@ -1488,10 +1534,8 @@ async function handleGenerateNarrativeImagesClick() {
             problemImageLoader.classList.add('hidden');
         });
 
-    // Vent på at begge kald er færdige (enten succes eller fejl)
     await Promise.allSettled([storyImagePromise, problemImagePromise]);
 
-    // Gen-aktiver knappen
     narrativeGenerateImagesButton.disabled = false;
     narrativeGenerateImagesButton.textContent = "Skab Billeder til Fortællingen";
 }
@@ -1878,6 +1922,31 @@ if (copyStoryButton) {
     }
 
     console.log("Script loaded and all initial event listeners attached, including for Narrative Support.");
+
+// INDSÆT DENNE KODEBLOK (f.eks. omkring linje 824)
+
+    // Funktion til at style vejlednings-knapper direkte med JavaScript
+    function styleGuidanceDropdowns() {
+        // Nøgleord der identificerer en vejledningsknap
+        const keywords = ['Vejledning', 'Hvad er'];
+        // Den blå farve vi vil bruge (direkte farvekode for at være sikker)
+        const infoColor = '#bbbe70';
+
+        // Find alle dropdown-knapper på siden
+        document.querySelectorAll('.dropdown-toggle').forEach(button => {
+            const buttonText = button.textContent.trim();
+
+            // Tjek om knappens tekst indeholder et af vores nøgleord
+            if (keywords.some(keyword => buttonText.includes(keyword))) {
+                // Sæt farven direkte på knappen
+                button.style.color = infoColor;
+            }
+        });
+        console.log("Vejlednings-knapper er blevet stylet med JavaScript.");
+    }
+
+    // Kald den nye funktion for at udføre stylingen
+    styleGuidanceDropdowns();
 
     initializeInfoIcons(); // Kald funktionen for at aktivere infoknapperne
 
@@ -2583,18 +2652,20 @@ async function handleLaesehestGenerateClick() {
 
     const originalButtonText = generateButton.textContent;
     generateButton.disabled = true;
-    generateButton.textContent = 'Skaber historie...';
+    generateButton.textContent = 'Skaber 3 historier...';
 
-    const storyDisplay = document.getElementById('story-display');
-    const storyTextContent = document.getElementById('story-text-content');
+    const historieOutputSection = document.getElementById('historie-output');
+    const storyDisplayContainer = document.getElementById('story-display');
     const storyLoadingIndicator = document.getElementById('story-loading-indicator');
     const storySectionHeading = document.getElementById('story-section-heading');
 
-    storyDisplay.innerHTML = '';
-    storyDisplay.appendChild(storyLoadingIndicator);
+    // Nulstil og klargør UI
+    storyDisplayContainer.innerHTML = '';
+    storyDisplayContainer.appendChild(storyLoadingIndicator);
     storyLoadingIndicator.classList.remove('hidden');
-    storyLoadingIndicator.querySelector('p').textContent = 'Historien genereres... Vent venligst.';
-    storySectionHeading.textContent = "Jeres historie";
+    storyLoadingIndicator.querySelector('p').textContent = 'Genererer 3 historie-forslag... Dette kan tage lidt tid.';
+    storySectionHeading.textContent = "Vælg den bedste historie";
+    historieOutputSection.classList.remove('hidden'); // Sørg for at hele output-sektionen er synlig
     document.getElementById('story-share-buttons').classList.add('hidden');
 
     const dataToSend = {
@@ -2608,47 +2679,45 @@ async function handleLaesehestGenerateClick() {
         mood: document.getElementById('laesehest-mood-select').value,
     };
 
-    const loadingTextTimeout = setTimeout(() => {
-        if (generateButton.disabled) {
-            storyLoadingIndicator.querySelector('p').textContent = 'Justerer teksten til at passe lixtallet...';
-        }
-    }, 7000);
-
     try {
-        const result = await generateLixStoryApi(dataToSend);
-        clearTimeout(loadingTextTimeout);
-        if (result.error) throw new Error(result.error);
+        const results = await generateLixStoryApi(dataToSend);
+        storyLoadingIndicator.classList.add('hidden');
+        storyDisplayContainer.innerHTML = ''; // Ryd igen for en sikkerheds skyld
 
-        // Tjek om der er en advarselsbesked fra backend
-        if (result.warning_message) {
-            const storyDisplay = document.getElementById('story-display');
-            const warningDiv = document.createElement('div');
-            warningDiv.className = 'flash-message flash-warning'; // Genbruger din flash-besked styling
-            warningDiv.style.marginBottom = '15px'; // Lidt luft ned til historien
-            warningDiv.textContent = result.warning_message;
-            storyDisplay.prepend(warningDiv); // Indsætter advarslen øverst i historie-boksen
+        if (!results || results.length === 0) {
+            throw new Error("Modtog ingen historier fra serveren.");
         }
 
-        const cleanTitle = (result.title || "Uden Titel").trim();
-        const cleanStory = (result.story || "Modtog en tom historie.").replace(/^\s+/, '');
+        // Byg de 3 dropdowns
+        results.forEach((story, index) => {
+            const storyVariantDiv = document.createElement('div');
+            storyVariantDiv.className = 'story-variant';
 
-        storyLoadingIndicator.classList.add('hidden');
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'nested-accordion-toggle';
+            button.innerHTML = `Forslag ${index + 1}: ${story.title} (LIX: ${story.final_lix_score}) <span class="arrow">◀</span>`;
 
-        // Sørg for at tilføje selve historieteksten efter en eventuel advarsel
-        const storyContentDiv = document.createElement('div');
-        storyContentDiv.id = 'story-text-content'; // Genskab ID for font-styling
-        storyContentDiv.textContent = cleanStory;
-        storyDisplay.appendChild(storyContentDiv);
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'nested-accordion-content hidden';
+            contentDiv.style.whiteSpace = 'pre-wrap';
+            contentDiv.textContent = story.story;
 
-        storySectionHeading.innerHTML = `${cleanTitle} <span class="final-lix-tag" title="Beregnet Læsbarhedsindeks">LIX: ${result.final_lix_score}</span>`;
-        document.getElementById('story-share-buttons').classList.remove('hidden');
-        document.querySelectorAll('.js-generate-image, #read-aloud-button').forEach(btn => btn.disabled = false);
+            storyVariantDiv.appendChild(button);
+            storyVariantDiv.appendChild(contentDiv);
+            storyDisplayContainer.appendChild(storyVariantDiv);
+
+            // Gør knappen interaktiv
+            button.addEventListener('click', () => {
+                button.classList.toggle('open');
+                contentDiv.classList.toggle('hidden');
+            });
+        });
 
     } catch (error) {
-        clearTimeout(loadingTextTimeout);
         console.error("Error in handleLaesehestGenerateClick:", error);
         storyLoadingIndicator.classList.add('hidden');
-        storyDisplay.innerHTML = `<p style="color: red; text-align: center;">Ups! Noget gik galt: ${error.message}.</p>`;
+        storyDisplayContainer.innerHTML = `<p style="color: red; text-align: center;">Ups! Noget gik galt: ${error.message}.</p>`;
         storySectionHeading.textContent = "Fejl ved generering";
     } finally {
         generateButton.disabled = false;
