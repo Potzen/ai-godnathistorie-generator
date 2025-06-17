@@ -20,6 +20,7 @@ __pycache__/
 # Downloadede nøgler (Service Account Keys etc.)
 # Ignorerer alle .json filer for en sikkerheds skyld
 *.json
+!static/laesehest_data.json
 
 # macOS specific
 .DS_Store
