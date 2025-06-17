@@ -3,6 +3,8 @@ from flask import Blueprint, request, jsonify, current_app, Response
 import traceback
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from flask_login import login_required, current_user
+from models import Story
+from extensions import db
 from prompts.story_generation_prompt import build_story_prompt
 from services.ai_service import (
     generate_story_text_from_gemini,
@@ -100,7 +102,7 @@ def generate_story():
     if selected_model_from_frontend:
          target_model_name = selected_model_from_frontend
 
-    pro_model_identifier = 'gemini-2.5-pro-preview-05-06'
+    pro_model_identifier = 'gemini-2.5-pro-preview-06-05'
     if target_model_name == pro_model_identifier:
         if laengde == 'kort':
             length_instruction = "Skriv historien i cirka 6-8 afsnit. Den skal være relativt kortfattet, men velformuleret."
@@ -191,7 +193,7 @@ def generate_lix_story_route():
     negative_prompt_text = data.get('negative_prompt', '').strip()
     focus_letter = data.get('focus_letter', '')
 
-    target_model_name = 'gemini-2.5-pro-preview-05-06'
+    target_model_name = 'gemini-2.5-pro-preview-06-05'
     length_map = {'kort': ("...", 3072), 'mellem': ("...", 4096), 'lang': ("...", 8192)}
     length_instruction, max_tokens_setting = length_map.get(laengde, length_map['mellem'])
 
@@ -315,3 +317,46 @@ def generate_audio():
     except Exception as e:
         current_app.logger.error(f"Fejl ved lydgenerering: {e}\n{traceback.format_exc()}")
         return jsonify({"error": f"Fejl ved generering af lyd: {str(e)}"}), 500
+
+
+@story_bp.route('/save_to_logbook', methods=['POST'])
+@login_required
+def save_story_to_logbook():
+    """
+    Modtager en historie genereret i Højtlæsning og gemmer den som en logbogs-entry.
+    """
+    if not request.is_json:
+        return jsonify({"error": "Anmodning skal være JSON."}), 415
+
+    data = request.get_json()
+    title = data.get('title')
+    content = data.get('content')
+
+    if not title or not content:
+        return jsonify({"error": "Både titel og indhold er påkrævet."}), 400
+
+    try:
+        # Opret en ny Story-instans i databasen
+        new_story = Story(
+            title=title,
+            content=content,
+            user_id=current_user.id,
+            source='Højtlæsning',  # Angiver hvor historien kommer fra
+            is_log_entry=True  # Markerer den med det samme som en logbogs-entry
+        )
+        db.session.add(new_story)
+        db.session.commit()
+
+        current_app.logger.info(
+            f"Bruger {current_user.id} gemte Højtlæsnings-historie '{title}' til logbogen (Ny ID: {new_story.id}).")
+
+        return jsonify({
+            "success": True,
+            "message": "Historien er gemt i din logbog!",
+            "story_id": new_story.id
+        }), 201  # 201 Created
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Fejl ved gemning af Højtlæsnings-historie til logbog: {e}\n{traceback.format_exc()}")
+        return jsonify({"error": "En intern fejl opstod under gemning."}), 500

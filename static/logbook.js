@@ -64,7 +64,7 @@ const createStoryEntryHtml = (story) => {
                     </div>
                 </div>
                 <div class="logbook-inner-entry">
-                    <button type="button" class="nested-accordion-toggle">Analyse af Historien <span class="arrow">◀</span></button>
+                    <button type="button" class="nested-accordion-toggle">Analyse af Historien (narrativ støtte) <span class="arrow">◀</span></button>
                     <div class="nested-accordion-content hidden">
                         <div class="logbook-doc-item"><strong>Pædagogisk Analyse:</strong> <span>${aiSummary}</span></div>
                         <div class="logbook-doc-item"><strong>Problemets Navn:</strong> <span>${problemName}</span></div>

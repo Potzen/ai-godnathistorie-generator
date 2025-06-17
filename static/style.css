@@ -1362,7 +1362,7 @@ input:disabled + .slider-label:before {
 }
 
 .accordion-header.open .accordion-arrow {
-    transform: rotate(90deg);
+    transform: rotate(-90deg);
 }
 
 .accordion-content {

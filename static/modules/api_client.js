@@ -417,3 +417,21 @@ export async function deleteChildProfileApi(profileId) {
 
     return await response.json();
 }
+
+export async function saveHojtlasningStoryApi(storyData) {
+    console.log("api_client.js: saveHojtlasningStoryApi called with:", storyData);
+    const response = await fetch('/story/save_to_logbook', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(storyData)
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved gem til logbog." }));
+        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
+    }
+
+    return await response.json();
+}

@@ -427,7 +427,7 @@ def get_ai_suggested_character_traits(narrative_focus):
             f"ai_service: Prompt til karaktertræk-forslag (delvis): {prompt_for_suggestions[:200]}...")
 
         # 2. Konfigurer og kald Gemini 2.5 Pro
-        model_name = 'gemini-2.5-pro-preview-05-06'
+        model_name = 'gemini-2.5-pro-preview-06-05'
 
         current_app.logger.info(f"ai_service: Bruger model '{model_name}' til karaktertræk-forslag.")
         model = genai.GenerativeModel(model_name)
@@ -634,7 +634,7 @@ def draft_narrative_story_with_rag(
                 original_user_inputs=original_user_inputs,
                 continuation_context=continuation_context
             )
-            ai_model_name = 'gemini-2.5-pro-preview-05-06'
+            ai_model_name = 'gemini-2.5-pro-preview-06-05'
             model = genai.GenerativeModel(ai_model_name)
             safety_settings = {
                 HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,

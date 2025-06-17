@@ -1,6 +1,6 @@
 // Fil: static/script.js
 import { initializeLogbook } from './logbook.js';
-import { generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generateNarrativeStoryApi, getGuidingQuestionsApi, generateAudioApi, generateLixStoryApi, analyzeStoryForLogbookApi, saveLogbookEntryApi, listContinuableStoriesApi, generateProblemImageApi, saveChildProfileApi, listChildProfilesApi, deleteChildProfileApi } from './modules/api_client.js';
+import { saveHojtlasningStoryApi, generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generateNarrativeStoryApi, getGuidingQuestionsApi, generateAudioApi, generateLixStoryApi, analyzeStoryForLogbookApi, saveLogbookEntryApi, listContinuableStoriesApi, generateProblemImageApi, saveChildProfileApi, listChildProfilesApi, deleteChildProfileApi } from './modules/api_client.js';
 
 // Kør først koden, når hele HTML dokumentet er færdigindlæst og klar
 document.addEventListener('DOMContentLoaded', () => {
@@ -572,9 +572,10 @@ loadFontSizesFromLocalStorage();
     const tabButtons = document.querySelectorAll('.tab-button');
     const contentSections = document.querySelectorAll('.content-section');
 
+    // ERSTAT HELE BLOKKEN FRA DIN FORESPØRGSEL MED DENNE:
+
     if (tabButtons.length > 0 && contentSections.length > 0) {
         const historieOutput = document.getElementById('historie-output');
-        // VIGTIGT: Hent imageSection her, så den er tilgængelig i handleTabClick
         const imageSection = document.getElementById('billede-til-historien-sektion');
 
         const handleTabClick = (button) => {
@@ -606,24 +607,55 @@ loadFontSizesFromLocalStorage();
                     document.getElementById('logbook-list-container').innerHTML = `<p style="text-align: center; padding: 20px;"><a href="/auth/login">Log venligst ind</a> for at bruge logbogen og profiler.</p>`;
                 } else {
                     initializeLogbook();
-                    // Vi kalder nu kun initializeProfileFeature én gang når scriptet indlæses.
                 }
             } else if (targetId === '#narrative-support-module') {
                 if (userRole === 'premium') {
-                    // Hent profiler til dropdown i narrativ fane
                     listChildProfilesApi().then(populateNarrativeProfileSelector).catch(err => console.error(err));
                 }
             }
         };
 
+        // Trin 1: Sæt funktionalitet på FANE-knapperne
         tabButtons.forEach(button => {
             button.addEventListener('click', () => handleTabClick(button));
-        });
+        }); // <-- Her slutter forEach-løkken
 
-        // Håndter den fane, der er aktiv ved sideindlæsning
+        // Trin 2: Sæt funktionalitet på "GEM I LOGBOG"-knappen (placeret KORREKT her)
+        const saveToLogbookButton = document.getElementById('save-to-logbook-button');
+        if (saveToLogbookButton) {
+            saveToLogbookButton.addEventListener('click', async () => {
+                const titleElement = document.getElementById('story-section-heading');
+                const contentElement = document.getElementById('story-text-content');
+
+                const title = titleElement ? titleElement.textContent.replace(/LIX: \d+/, '').trim() : "Uden Titel";
+                const content = contentElement ? contentElement.textContent.trim() : "";
+
+                if (!content) {
+                    alert("Der er ingen historie at gemme.");
+                    return;
+                }
+
+                saveToLogbookButton.disabled = true;
+                saveToLogbookButton.textContent = 'Gemmer...';
+
+                try {
+                    const result = await saveHojtlasningStoryApi({ title: title, content: content });
+                    saveToLogbookButton.textContent = 'Gemt!';
+                    saveToLogbookButton.style.backgroundColor = '#28a745';
+                    console.log(result.message);
+
+                } catch (error) {
+                    console.error("Fejl ved gemning til logbog:", error);
+                    alert(`Kunne ikke gemme historien: ${error.message}`);
+                    saveToLogbookButton.disabled = false;
+                    saveToLogbookButton.textContent = 'Gem i Logbog';
+                }
+            });
+        }
+
+        // Trin 3: Håndter den fane, der er aktiv ved sideindlæsning
         const initiallyActiveButton = document.querySelector('.tab-button.active');
         if (initiallyActiveButton) {
-            // Vi kalder handleTabClick for at sikre, at den korrekte synlighed sættes ved start
             handleTabClick(initiallyActiveButton);
         }
     }
@@ -1203,7 +1235,7 @@ loadFontSizesFromLocalStorage();
     const negativePromptText = negativePromptInput ? negativePromptInput.value.trim() : '';
     let selectedModel = 'gemini-1.5-flash-latest';
     if (aiModelSwitch && !aiModelSwitch.disabled && aiModelSwitch.checked) {
-        selectedModel = 'gemini-2.5-pro-preview-05-06';
+        selectedModel = 'gemini-2.5-pro-preview-06-05';
     }
     saveCurrentListeners();
     const dataToSend = { karakterer, steder, plots, laengde: selectedLaengde, mood: selectedMoodValue, listeners, interactive: isInteractive, is_bedtime_story: isBedtimeStory, negative_prompt: negativePromptText, selected_model: selectedModel };
@@ -2561,7 +2593,7 @@ function renderAccordion(categories) {
         <div class="accordion-item" data-category-id="${category.id}">
             <button type="button" class="accordion-header">
                 <span>${category.name}</span>
-                <span class="accordion-arrow">▶</span>
+                <span class="accordion-arrow">◀</span>
             </button>
             <div class="accordion-content hidden">
                 <div class="element-checklist-container">

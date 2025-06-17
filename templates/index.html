@@ -936,6 +936,11 @@
             </div>
 
             <div id="story-share-buttons" class="hidden">
+                <button type="button" id="save-to-logbook-button" class="utility-button"
+                        {% if not current_user.is_authenticated %}disabled title="Login for at gemme i logbog"{% endif %}>
+                        Gem i Logbog
+                </button>
+
                 <button type="button" id="generate-image-from-output-button" class="utility-button js-generate-image">Generer Billede</button>
                 <button type="button" id="share-story-facebook-button" class="utility-button">Del på Facebook</button>
                 <button type="button" id="copy-story-button" class="utility-button">Kopier Historie</button>
