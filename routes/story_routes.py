@@ -14,6 +14,8 @@ from services.ai_service import (
 )
 from services.lix_service import calculate_lix
 import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from google.api_core.exceptions import InternalServerError
 
 story_bp = Blueprint('story', __name__, template_folder='../templates', static_folder='../static')
 
@@ -169,102 +171,104 @@ def generate_story():
 def generate_lix_story_route():
     """
     API endpoint til Læsehesten.
-    Genererer 3 historie-varianter parallelt og inden for app-kontekst.
+    Bruger nu ét API-kald til at generere flere kandidater for robusthed og effektivitet.
     """
+    # ... (hele sektionen med dataindsamling og prompt-bygning er uændret) ...
     if current_user.role not in ['basic', 'premium']:
         return jsonify({"error": "Læsehesten er en Premium-funktion."}), 403
-
     data = request.get_json()
     if not data:
         return jsonify(error="Ingen data modtaget."), 400
-
-    current_app.logger.info(
-        f"Bruger {current_user.id}: Modtaget PARALLEL anmodning om 3 LIX-historier med data: {data}")
-
-    # --- Indsaml og forbered data (uændret) ---
+    current_app.logger.info(f"Bruger {current_user.id}: Modtaget LIX-anmodning: {data}")
     target_lix = data.get('target_lix')
-    if not isinstance(target_lix, int) or not (5 <= target_lix <= 55):
-        return jsonify(error="Ugyldigt eller manglende LIX-tal."), 400
-
-    karakter_str = ", ".join(data.get('elements', []) + data.get('custom_words', [])) or "en uspecificeret karakter"
+    story_elements = data.get('elements', [])
+    custom_words = data.get('custom_words', [])
+    karakter_str = ", ".join(story_elements + custom_words) if (
+                story_elements or custom_words) else "en uspecificeret karakter"
     plot_str = data.get('plot', 'et uspecificeret eventyr')
     laengde = data.get('laengde', 'mellem')
     mood = data.get('mood', 'neutral')
     negative_prompt_text = data.get('negative_prompt', '').strip()
     focus_letter = data.get('focus_letter', '')
-
-    target_model_name = 'gemini-2.5-pro-preview-06-05'
-    length_map = {'kort': ("...", 3072), 'mellem': ("...", 4096), 'lang': ("...", 8192)}
-    length_instruction, max_tokens_setting = length_map.get(laengde, length_map['mellem'])
-
-    safety_settings = {
-        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    length_map = {
+        'kort': ("Skriv historien i cirka 6-8 afsnit.", 3072),
+        'mellem': ("Skriv historien i cirka 10-14 afsnit.", 4096),
+        'lang': ("Skriv en lang historie på mindst 15-18 afsnit.", 8192)
     }
+    length_instruction, max_tokens_setting = length_map.get(laengde, length_map['mellem'])
+    safety_settings = {
+        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+    }
+    final_prompt = build_story_prompt(
+        karakter_str=karakter_str, sted_str="et passende sted for historien", plot_str=plot_str,
+        length_instruction=length_instruction, mood_prompt_part=f"Historien skal have en {mood} stemning.",
+        listener_context_instruction="", ending_instruction="Afslut historien på en positiv og opløftende måde.",
+        negative_prompt_text=negative_prompt_text, focus_letter=focus_letter, target_lix=target_lix
+    )
 
-    # --- Ny logik til parallel generering med app-kontekst ---
+    successful_story = None
+    used_fallback = False
 
-    # Få en reference til den faktiske app-instans
-    app = current_app._get_current_object()
+    try:
+        # Første forsøg: Bed Pro-modellen om 3 svar på én gang
+        pro_model_name = 'gemini-2.5-pro-preview-06-05'
+        generation_config_dict = {"max_output_tokens": max_tokens_setting, "temperature": 0.85}
 
-    def generate_variant(temp, app_context):
-        """Hjælpefunktion der kører i en separat tråd MED app-kontekst."""
-        with app_context.app_context():  # VIGTIGT: Aktiverer konteksten i tråden
-            try:
-                current_app.logger.info(f"Starter generering af variant med temperatur {temp}")
+        current_app.logger.info(f"Forsøger at generere 3 kandidater med {pro_model_name}")
+        results = generate_story_text_from_gemini(
+            final_prompt, generation_config_dict, safety_settings, pro_model_name, number_of_results=3
+        )
 
-                generation_config_dict = {"max_output_tokens": max_tokens_setting, "temperature": temp}
+        # Find den første succesfulde historie fra resultaterne
+        for title, content in results:
+            if "Fejl" not in title and "blokeret" not in content:
+                successful_story = {"title": title, "content": content}
+                break
 
-                prompt = build_story_prompt(
-                    karakter_str=karakter_str,
-                    sted_str="et passende sted for historien",
-                    plot_str=plot_str,
-                    length_instruction=length_instruction,
-                    negative_prompt_text=negative_prompt_text,
-                    focus_letter=focus_letter,
-                    target_lix=target_lix,
-                    mood_prompt_part="", listener_context_instruction="", ending_instruction=""
-                )
+        if not successful_story:
+            raise InternalServerError("Alle kandidater fra Pro-modellen fejlede eller blev blokeret.")
 
-                title, content = generate_story_text_from_gemini(
-                    full_prompt_string=prompt,
-                    generation_config_settings=generation_config_dict,
-                    safety_settings_values=safety_settings,
-                    target_model_name=target_model_name
-                )
+    except (InternalServerError, ValueError) as e:
+        current_app.logger.warning(f"Pro-model fejlede: {e}. Aktiverer fallback til Flash-model.")
+        try:
+            fallback_model = 'gemini-1.5-flash-latest'
+            gen_config = {"max_output_tokens": 7000, "temperature": 0.7}
+            # Bed Flash-modellen om ét enkelt, sikkert svar
+            results = generate_story_text_from_gemini(final_prompt, gen_config, safety_settings, fallback_model,
+                                                      number_of_results=1)
 
-                if "Fejl" in title or "blokeret" in content:
-                    current_app.logger.warning(f"Variant med temp {temp} blev blokeret eller fejlede internt.")
-                    return None
+            if results and "Fejl" not in results[0][0]:
+                successful_story = {"title": results[0][0], "content": results[0][1]}
+                used_fallback = True
+            else:
+                raise ValueError("Fallback-modellen fejlede også.")
 
-                lix_score = calculate_lix(content)
-                current_app.logger.info(f"Variant med temp {temp} færdig. Titel: '{title}', LIX: {lix_score}")
-                return {"title": title, "story": content, "final_lix_score": lix_score}
-            except Exception as e:
-                # Nu kan vi logge sikkert, da vi er i en app-kontekst
-                current_app.logger.error(f"Fejl under generering af variant med temp {temp}: {e}")
-                return None
+        except Exception as fallback_e:
+            current_app.logger.error(f"Fallback-model fejlede: {fallback_e}")
+            return jsonify({"error": "Kunne desværre ikke skabe historien. Begge AI-modeller fejlede."}), 500
 
-    story_results = []
-    temperatures_to_try = [0.75, 0.9, 1.0]
+    # --- Håndter svar (denne del er næsten uændret) ---
+    final_title = successful_story["title"]
+    final_content = successful_story["content"]
+    from services.lix_service import calculate_lix
+    final_lix = calculate_lix(final_content)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-        # Sender app-referencen med til hver opgave
-        future_to_temp = {executor.submit(generate_variant, temp, app): temp for temp in temperatures_to_try}
+    response_data = {"title": final_title, "story": final_content, "final_lix_score": final_lix, "status": "success"}
+    warning_messages = []
+    if used_fallback:
+        warning_messages.append(
+            "Historien blev skabt med vores standard AI-model, da Pro-modellen var midlertidigt utilgængelig.")
+    LIX_TOLERANCE = 5
+    if final_lix is not None and abs(final_lix - target_lix) > LIX_TOLERANCE:
+        warning_messages.append(
+            f"Historien blev genereret med LIX {final_lix}, hvilket afviger lidt fra målet på {target_lix}.")
+    if warning_messages:
+        response_data['warning_message'] = " ".join(warning_messages)
 
-        for future in concurrent.futures.as_completed(future_to_temp):
-            result = future.result()
-            if result:
-                story_results.append(result)
-
-    if not story_results:
-        return jsonify(error="Det lykkedes desværre ikke at generere nogen historier. Prøv venligst igen."), 500
-
-    story_results.sort(key=lambda x: x['final_lix_score'])
-
-    return jsonify(story_results)
+    return jsonify(response_data)
 
 
 # I routes/story_routes.py

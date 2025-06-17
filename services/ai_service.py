@@ -46,15 +46,19 @@ TTS_VOICES = {
 # I filen: services/ai_service.py
 
 def generate_story_text_from_gemini(full_prompt_string, generation_config_settings, safety_settings_values,
-                                    target_model_name='gemini-1.5-flash-latest'):
+                                    target_model_name='gemini-1.5-flash-latest', number_of_results=1):
     """
-    Genererer en historie (titel og indhold) ved hjælp af Google Gemini.
+    Genererer tekst ved hjælp af Google Gemini.
+    Kan nu anmode om flere kandidat-svar i ét enkelt API-kald.
     """
     current_app.logger.info(
-        f"--- ai_service: Kalder Gemini for historie (Model: {target_model_name}, Max Tokens: {generation_config_settings.get('max_output_tokens')}) ---")
+        f"--- ai_service: Kalder Gemini (Model: {target_model_name}, Antal svar: {number_of_results}) ---")
 
     try:
         model = genai.GenerativeModel(target_model_name)
+
+        # Tilføj antallet af ønskede kandidater til generation_config
+        generation_config_settings['candidate_count'] = number_of_results
         gen_config = genai.types.GenerationConfig(**generation_config_settings)
 
         response = model.generate_content(
@@ -63,48 +67,48 @@ def generate_story_text_from_gemini(full_prompt_string, generation_config_settin
             safety_settings=safety_settings_values
         )
 
-        # Forbedret tjek for blokeret indhold
-        if not response.parts:
-            block_reason = "Ukendt"
-            if response.prompt_feedback and response.prompt_feedback.block_reason:
-                block_reason = response.prompt_feedback.block_reason.name
+        # Tjek for promp-feedback, før vi tilgår kandidater
+        if response.prompt_feedback.block_reason:
+            reason = response.prompt_feedback.block_reason.name
+            current_app.logger.error(f"Prompt blokeret af sikkerhedsfilter. Årsag: {reason}")
+            # Returner en enkelt fejl, da hele anmodningen blev blokeret
+            return [("Blokeret Indhold", f"Anmodning blokeret af sikkerhedsfilter: {reason}")]
 
-            current_app.logger.error(
-                f"ai_service: Svar fra Gemini blev blokeret. Årsag: {block_reason}. Safety Ratings: {response.prompt_feedback.safety_ratings}")
+        results = []
+        for candidate in response.candidates:
+            # Tjek hver kandidat for sikkerhedsblokering
+            if candidate.finish_reason == 'SAFETY':
+                ratings_str = ", ".join([f"{r.category.name}: {r.probability.name}" for r in candidate.safety_ratings])
+                results.append(
+                    ("Blokeret Indhold", f"En variant blev blokeret af sikkerhedsfiltre. Årsag: {ratings_str}"))
+                continue
 
-            # Returnerer en specifik fejl, som kan fanges i den kaldende funktion
-            raise ValueError(f"Generering blokeret af sikkerhedsfiltre (Årsag: {block_reason})")
+            # --- START PÅ KORREKT MÅDE AT LÆSE SVAR ---
+            # Tjek om der er indhold, før vi prøver at læse det
+            if candidate.content and candidate.content.parts:
+                raw_text = candidate.content.parts[0].text
+            else:
+                # Hvis der ikke er noget indhold, fortsæt til næste kandidat
+                results.append(("Tomt Svar", "AI returnerede ikke noget indhold for denne variant."))
+                continue
+            # --- SLUT PÅ KORREKT MÅDE AT LÆSE SVAR ---
 
-        raw_text_from_gemini = response.text
-        lines = raw_text_from_gemini.splitlines()
+            lines = raw_text.splitlines()
+            story_title = "Uden Titel"
+            actual_story_content = raw_text  # Fallback
 
-        story_title = "Uden Titel (Parse Fejl)"
-        first_line_index = -1
+            if lines and lines[0].strip():
+                story_title = lines[0].strip()
+                actual_story_content = "\n".join(lines[1:]).strip()
 
-        for i, line in enumerate(lines):
-            if line.strip():
-                story_title = line.strip()
-                first_line_index = i
-                break
+            results.append((story_title, actual_story_content))
 
-        if first_line_index != -1:
-            story_lines = lines[first_line_index + 1:]
-            actual_story_content = "\n".join(story_lines).strip()
-            if not actual_story_content:
-                actual_story_content = "Historien mangler indhold efter titlen."
-        else:
-            actual_story_content = "Modtog et tomt svar fra AI."
+        return results
 
-        return story_title, actual_story_content
-
-    except ValueError as ve:
-        # Gen-kast fejlen fra den forbedrede blokeringstjek, så den kan håndteres i routes.
-        raise ve
-    except Exception as e_api:
-        current_app.logger.error(
-            f"ai_service: Fejl ved kald til Google Gemini API eller i parsing: {e_api}\n{traceback.format_exc()}")
-        # Returnerer en almindelig fejlbesked for andre typer fejl
-        return "API Fejl (AI Service)", "Beklager, teknisk fejl med AI-tjenesten (Gemini). Prøv igen senere."
+    except Exception as e:
+        current_app.logger.error(f"ai_service: Fejl ved kald til Gemini API: {e}\n{traceback.format_exc()}")
+        # Returner en liste med én fejl, så den kan håndteres ensartet
+        return [("API Fejl", f"Teknisk fejl med AI-tjenesten: {e}")]
 
 
 # I services/ai_service.py

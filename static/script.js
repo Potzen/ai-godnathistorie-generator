@@ -1270,15 +1270,16 @@ loadFontSizesFromLocalStorage();
 
         // ==================================================================
         // ### NY INDSÆTTELSE AF INDHOLD ###
-        // Igen, slet ALT i boksen først for at være helt sikker
+     // Slet alt eksisterende indhold i output-boksen
         if(storyDisplay) {
             storyDisplay.innerHTML = '';
         }
-        // Tilføj den nye, rene tekst
-        if(storyTextContent) {
-            storyTextContent.textContent = cleanStory;
-            storyDisplay.appendChild(storyTextContent);
-        }
+
+        // Opret en HELT NY div til historieteksten og tilføj den
+        const newStoryContentDiv = document.createElement('div');
+        newStoryContentDiv.id = 'story-text-content'; // Giver den det korrekte ID for styling
+        newStoryContentDiv.textContent = cleanStory;
+        storyDisplay.appendChild(newStoryContentDiv); // Tilføjer det nye element til output-boksen
         // ==================================================================
 
         if(storySectionHeading) storySectionHeading.textContent = cleanTitle;
@@ -2711,45 +2712,60 @@ async function handleLaesehestGenerateClick() {
         mood: document.getElementById('laesehest-mood-select').value,
     };
 
-    try {
-        const results = await generateLixStoryApi(dataToSend);
-        storyLoadingIndicator.classList.add('hidden');
-        storyDisplayContainer.innerHTML = ''; // Ryd igen for en sikkerheds skyld
+        try {
+        const result = await generateLixStoryApi(dataToSend);
 
-        if (!results || results.length === 0) {
-            throw new Error("Modtog ingen historier fra serveren.");
+        // Stop den timeout, der ændrer loading-teksten
+        clearTimeout(loadingTextTimeout);
+
+        // Tjek om serveren returnerede en specifik fejlmeddelelse
+        if (result.error) {
+            throw new Error(result.error);
         }
 
-        // Byg de 3 dropdowns
-        results.forEach((story, index) => {
-            const storyVariantDiv = document.createElement('div');
-            storyVariantDiv.className = 'story-variant';
+        // --- START PÅ NY, SIMPEL UI-OPDATERING ---
 
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'nested-accordion-toggle';
-            button.innerHTML = `Forslag ${index + 1}: ${story.title} (LIX: ${story.final_lix_score}) <span class="arrow">◀</span>`;
+        // 1. Ryd output-området fuldstændigt
+        storyDisplay.innerHTML = '';
 
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'nested-accordion-content hidden';
-            contentDiv.style.whiteSpace = 'pre-wrap';
-            contentDiv.textContent = story.story;
+        // 2. Håndter en eventuel advarselsbesked fra backend først
+        if (result.warning_message) {
+            const warningDiv = document.createElement('div');
+            warningDiv.className = 'flash-message flash-warning';
+            warningDiv.style.marginBottom = '15px';
+            warningDiv.textContent = result.warning_message;
+            storyDisplay.appendChild(warningDiv); // Brug appendChild i stedet for prepend
+        }
 
-            storyVariantDiv.appendChild(button);
-            storyVariantDiv.appendChild(contentDiv);
-            storyDisplayContainer.appendChild(storyVariantDiv);
+        // 3. Udpak titel og historie fra det enkelte resultat-objekt
+        const cleanTitle = (result.title || "Uden Titel").trim();
+        const cleanStory = (result.story || "Modtog en tom historie.").replace(/^\s+/, '');
 
-            // Gør knappen interaktiv
-            button.addEventListener('click', () => {
-                button.classList.toggle('open');
-                contentDiv.classList.toggle('hidden');
+        // 4. Opret og tilføj det nye historie-element
+        const storyContentDiv = document.createElement('div');
+        storyContentDiv.id = 'story-text-content';
+        storyContentDiv.textContent = cleanStory;
+        storyDisplay.appendChild(storyContentDiv); // Tilføjer selve historien
+
+        // 5. Opdater den overordnede overskrift og vis knapperne
+        storySectionHeading.innerHTML = `${cleanTitle} <span class="final-lix-tag" title="Beregnet Læsbarhedsindeks">LIX: ${result.final_lix_score}</span>`;
+        document.getElementById('story-share-buttons').classList.remove('hidden');
+
+        // 6. Aktivér relevante knapper for den nye historie
+        const userRoleElement = document.getElementById('current-user-role-data');
+        const userRole = userRoleElement ? userRoleElement.dataset.role : 'guest';
+        if (userRole !== 'guest') {
+            document.querySelectorAll('.js-generate-image, #read-aloud-button, #save-to-logbook-button').forEach(btn => {
+                btn.disabled = false;
+                btn.removeAttribute('title');
             });
-        });
+        }
+        // --- SLUT PÅ NY, SIMPEL UI-OPDATERING ---
 
     } catch (error) {
+        clearTimeout(loadingTextTimeout);
         console.error("Error in handleLaesehestGenerateClick:", error);
-        storyLoadingIndicator.classList.add('hidden');
-        storyDisplayContainer.innerHTML = `<p style="color: red; text-align: center;">Ups! Noget gik galt: ${error.message}.</p>`;
+        storyDisplay.innerHTML = `<p style="color: red; text-align: center;">Ups! Noget gik galt: ${error.message}.</p>`;
         storySectionHeading.textContent = "Fejl ved generering";
     } finally {
         generateButton.disabled = false;
