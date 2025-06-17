@@ -1218,110 +1218,86 @@ loadFontSizesFromLocalStorage();
         return inputs;
     }
 
-    async function handleGenerateClick(event) {
+// I static/script.js
+
+async function handleGenerateClick(event) {
     event.preventDefault();
 
-    // --- Dataindsamling (uændret) ---
-    const karakterer = [];
-    if(karakterContainer) { karakterContainer.querySelectorAll('.character-group').forEach(group => { const descInput = group.querySelector('input[name="karakter_desc"]'); const nameInput = group.querySelector('input[name="karakter_navn"]'); const description = descInput ? descInput.value.trim() : ''; const name = nameInput ? nameInput.value.trim() : ''; if (description) { karakterer.push({ description: description, name: name }); } }); }
-    const steder = []; document.querySelectorAll('#sted-container .input-group input[name="sted"]').forEach(input => { const v = input.value.trim(); if(v) steder.push(v); });
-    const plots = []; document.querySelectorAll('#plot-container .input-group input[name="plot"]').forEach(input => { const v = input.value.trim(); if(v) plots.push(v); });
-    const listeners = [];
-    if(listenerContainer) { listenerContainer.querySelectorAll('.listener-group').forEach(group => { const nameInput = group.querySelector('input[name="listener_name_single"]'); const ageInput = group.querySelector('input[name="listener_age_single"]'); const name = nameInput ? nameInput.value.trim() : ''; const age = ageInput ? ageInput.value.trim() : ''; if (name || age) { listeners.push({ name: name, age: age }); } }); }
-    const selectedLaengde = laengdeSelect ? laengdeSelect.value : 'kort';
-    const selectedMoodValue = moodSelect ? moodSelect.value : 'neutral';
-    const isInteractive = interactiveStorySwitch ? interactiveStorySwitch.checked : false;
-    const isBedtimeStory = bedtimeStorySwitch ? bedtimeStorySwitch.checked : false;
-    const negativePromptText = negativePromptInput ? negativePromptInput.value.trim() : '';
-    let selectedModel = 'gemini-1.5-flash-latest';
-    if (aiModelSwitch && !aiModelSwitch.disabled && aiModelSwitch.checked) {
-        selectedModel = 'gemini-2.5-pro-preview-06-05';
-    }
-    saveCurrentListeners();
-    const dataToSend = { karakterer, steder, plots, laengde: selectedLaengde, mood: selectedMoodValue, listeners, interactive: isInteractive, is_bedtime_story: isBedtimeStory, negative_prompt: negativePromptText, selected_model: selectedModel };
+    // Find kun de elementer, der er uden for output-området
+    const generateButton = document.getElementById('generate-button');
+    const aiModelSwitch = document.getElementById('ai-model-switch');
 
-    // --- UI Opdatering: Loading State ---
+    // Dataindsamling... (som før)
+    const karakterer = Array.from(document.getElementById('karakter-container').querySelectorAll('.character-group')).map(g => ({ description: g.querySelector('input[name="karakter_desc"]').value.trim(), name: g.querySelector('input[name="karakter_navn"]').value.trim() })).filter(k => k.description);
+    const steder = Array.from(document.querySelectorAll('#sted-container input[name="sted"]')).map(i => i.value.trim()).filter(Boolean);
+    const plots = Array.from(document.querySelectorAll('#plot-container input[name="plot"]')).map(i => i.value.trim()).filter(Boolean);
+    const listeners = Array.from(document.getElementById('listener-container').querySelectorAll('.listener-group')).map(g => ({ name: g.querySelector('input[name="listener_name_single"]').value.trim(), age: g.querySelector('input[name="listener_age_single"]').value.trim() })).filter(l => l.name || l.age);
+    const dataToSend = {
+        karakterer, steder, plots, listeners,
+        laengde: document.getElementById('laengde-select').value,
+        mood: document.getElementById('mood-select').value,
+        interactive: document.getElementById('interactive-story-switch').checked,
+        is_bedtime_story: document.getElementById('bedtime-story-switch').checked,
+        negative_prompt: document.getElementById('negative-prompt-input').value.trim(),
+        selected_model: (aiModelSwitch && !aiModelSwitch.disabled && aiModelSwitch.checked) ? 'gemini-2.5-pro-preview-06-05' : 'gemini-1.5-flash-latest'
+    };
+    saveCurrentListeners();
+
+    // --- START PÅ NY, ROBUST LOADING-SEKVENS ---
     if(generateButton) { generateButton.disabled = true; generateButton.textContent = 'Laver historie...'; }
 
-    // ==================================================================
-    // ### NY AGGRESSIV OP RYDNING ###
-    // Vi bruger .innerHTML = '' til at slette ALT indhold (både tekst og skjulte elementer)
-    // fra historie-boksen, før vi starter.
+    // Find de dynamiske elementer her, lige før brug
+    const storyDisplay = document.getElementById('story-display');
+    const storySectionHeading = document.getElementById('story-section-heading');
+    const storyShareButtonsContainer = document.getElementById('story-share-buttons');
+    const audioPlayer = document.getElementById('audio-player');
+
+    // Ryd output-området og opret en ny loader
     if(storyDisplay) {
-        storyDisplay.innerHTML = '';
+        storyDisplay.innerHTML = `
+            <div id="story-loading-indicator">
+                <p>Historien genereres... Vent venligst.</p>
+                <span class="spinner"></span>
+            </div>
+        `;
     }
-    // ==================================================================
-
-    // Vis loading-indikatoren ved at tilføje den til den (nu tomme) boks
-    if(storyLoadingIndicator) storyDisplay.appendChild(storyLoadingIndicator);
-    if(storyLoadingIndicator) storyLoadingIndicator.classList.remove('hidden');
-
     if(storySectionHeading) storySectionHeading.textContent = 'Jeres historie';
-    if (storyShareButtonsContainer) storyShareButtonsContainer.classList.add('hidden');
-    if(audioPlayer) { audioPlayer.classList.add('hidden'); audioPlayer.pause(); audioPlayer.src = ''; }
-    if (generateImageButtons.length > 0) generateImageButtons.forEach(button => button.disabled = true);
+    if(storyShareButtonsContainer) storyShareButtonsContainer.classList.add('hidden');
+    if(audioPlayer) { audioPlayer.classList.add('hidden'); audioPlayer.src = ''; }
+    document.querySelectorAll('.js-generate-image').forEach(button => button.disabled = true);
+    // --- SLUT PÅ NY, ROBUST LOADING-SEKVENS ---
 
     try {
         const result = await generateStoryApi(dataToSend);
+        if (result.error) throw new Error(result.error);
 
-        // Rens både titel og historie for en sikkerheds skyld
         const cleanTitle = (result.title || "Jeres historie").trim();
-        const cleanStory = (result.story || "Modtog en tom historie fra serveren.").replace(/^\s+/, '');
+        const cleanStory = (result.story || "Modtog en tom historie.").replace(/^\s+/, '');
 
-        // ==================================================================
-        // ### NY INDSÆTTELSE AF INDHOLD ###
-     // Slet alt eksisterende indhold i output-boksen
         if(storyDisplay) {
-            storyDisplay.innerHTML = '';
+            storyDisplay.innerHTML = ''; // Ryd loading-indikator
+            const newStoryContentDiv = document.createElement('div');
+            newStoryContentDiv.id = 'story-text-content';
+            newStoryContentDiv.textContent = cleanStory;
+            storyDisplay.appendChild(newStoryContentDiv);
         }
-
-        // Opret en HELT NY div til historieteksten og tilføj den
-        const newStoryContentDiv = document.createElement('div');
-        newStoryContentDiv.id = 'story-text-content'; // Giver den det korrekte ID for styling
-        newStoryContentDiv.textContent = cleanStory;
-        storyDisplay.appendChild(newStoryContentDiv); // Tilføjer det nye element til output-boksen
-        // ==================================================================
 
         if(storySectionHeading) storySectionHeading.textContent = cleanTitle;
+        if (storyShareButtonsContainer && cleanStory) storyShareButtonsContainer.classList.remove('hidden');
 
-        if (storyShareButtonsContainer && cleanStory) {
-            storyShareButtonsContainer.classList.remove('hidden');
-            const resetButton = storyShareButtonsContainer.querySelector('#reset-button');
-            if(resetButton) resetButton.style.display = 'inline-block';
-        }
-        if (generateImageButtons.length > 0 && cleanStory) {
-            // Hent brugerens rolle fra det skjulte data-element i HTML'en
-            const userRoleElement = document.getElementById('current-user-role-data');
-            const userRole = userRoleElement ? userRoleElement.dataset.role : 'guest';
-
-            generateImageButtons.forEach(button => {
-                // Tjek om brugeren IKKE er en 'gæst' (dvs. er logget ind)
-                if (userRole !== 'guest') {
-                    // Aktiver kun knappen, hvis brugeren er logget ind
-                    button.disabled = false;
-                    button.removeAttribute('title');
-                } else {
-                    // Hvis brugeren er gæst, skal knappen forblive deaktiveret
-                    // og beholde den informative 'title'-tekst.
-                    console.log("Bruger er gæst, 'Generer Billede'-knappen forbliver deaktiveret.");
-                }
-            });
-        }
+        const userRole = document.getElementById('current-user-role-data')?.dataset.role || 'guest';
+        document.querySelectorAll('.js-generate-image').forEach(button => {
+            if (userRole !== 'guest' && cleanStory) {
+                button.disabled = false;
+                button.removeAttribute('title');
+            }
+        });
 
     } catch (error) {
-         if(storyDisplay) {
-            storyDisplay.innerHTML = `<p style="color: red; text-align: center;">Ups! Noget gik galt: ${error.message}. Prøv igen.</p>`;
-         }
+         if(storyDisplay) storyDisplay.innerHTML = `<p style="color: red; text-align: center;">Ups! Noget gik galt: ${error.message}.</p>`;
          if(storySectionHeading) storySectionHeading.textContent = "Fejl ved generering";
-         if (storyShareButtonsContainer) {
-            storyShareButtonsContainer.classList.remove('hidden');
-            const resetButton = storyShareButtonsContainer.querySelector('#reset-button');
-            if (resetButton) resetButton.style.display = 'inline-block';
-         }
     } finally {
          if(generateButton) { generateButton.disabled = false; generateButton.textContent = 'Skab Historie'; }
-         // Skjul loading-indikatoren, uanset hvor den er.
-         if(storyLoadingIndicator) storyLoadingIndicator.classList.add('hidden');
     }
 }
 
@@ -2679,28 +2655,39 @@ function setupLaesehestEventListeners() {
     }
 }
 
+// I static/script.js
+
 async function handleLaesehestGenerateClick() {
     const generateButton = document.getElementById('generate-laesehest-button');
     if (!generateButton || generateButton.disabled) return;
 
     const originalButtonText = generateButton.textContent;
+
+    // --- START PÅ NY, ROBUST LOADING-SEKVENS ---
     generateButton.disabled = true;
     generateButton.textContent = 'Skaber 3 historier...';
 
     const historieOutputSection = document.getElementById('historie-output');
     const storyDisplayContainer = document.getElementById('story-display');
-    const storyLoadingIndicator = document.getElementById('story-loading-indicator');
     const storySectionHeading = document.getElementById('story-section-heading');
 
-    // Nulstil og klargør UI
-    storyDisplayContainer.innerHTML = '';
-    storyDisplayContainer.appendChild(storyLoadingIndicator);
-    storyLoadingIndicator.classList.remove('hidden');
-    storyLoadingIndicator.querySelector('p').textContent = 'Genererer 3 historie-forslag... Dette kan tage lidt tid.';
-    storySectionHeading.textContent = "Vælg den bedste historie";
-    historieOutputSection.classList.remove('hidden'); // Sørg for at hele output-sektionen er synlig
-    document.getElementById('story-share-buttons').classList.add('hidden');
+    if (historieOutputSection) historieOutputSection.classList.remove('hidden');
+    if (storySectionHeading) storySectionHeading.textContent = "Venter på historier...";
 
+    // Ryd output-området og opret en ny loader
+    if (storyDisplayContainer) {
+        storyDisplayContainer.innerHTML = `
+            <div id="story-loading-indicator">
+                <p>Genererer 3 historie-forslag... Dette kan tage lidt tid.</p>
+                <span class="spinner"></span>
+            </div>
+        `;
+    }
+    const storyShareButtons = document.getElementById('story-share-buttons');
+    if (storyShareButtons) storyShareButtons.classList.add('hidden');
+    // --- SLUT PÅ NY, ROBUST LOADING-SEKVENS ---
+
+    // Dataindsamling... (som før)
     const dataToSend = {
         target_lix: parseInt(document.getElementById('lix-slider').value, 10),
         elements: Array.from(document.querySelectorAll('input[name="laesehest_element"]:checked')).map(el => el.value),
@@ -2712,64 +2699,67 @@ async function handleLaesehestGenerateClick() {
         mood: document.getElementById('laesehest-mood-select').value,
     };
 
-        try {
+    try {
         const result = await generateLixStoryApi(dataToSend);
+        if (result.error) throw new Error(result.error);
 
-        // Stop den timeout, der ændrer loading-teksten
-        clearTimeout(loadingTextTimeout);
+        if (storyDisplayContainer) storyDisplayContainer.innerHTML = ''; // Ryd loading-indikator
 
-        // Tjek om serveren returnerede en specifik fejlmeddelelse
-        if (result.error) {
-            throw new Error(result.error);
-        }
-
-        // --- START PÅ NY, SIMPEL UI-OPDATERING ---
-
-        // 1. Ryd output-området fuldstændigt
-        storyDisplay.innerHTML = '';
-
-        // 2. Håndter en eventuel advarselsbesked fra backend først
-        if (result.warning_message) {
-            const warningDiv = document.createElement('div');
-            warningDiv.className = 'flash-message flash-warning';
-            warningDiv.style.marginBottom = '15px';
-            warningDiv.textContent = result.warning_message;
-            storyDisplay.appendChild(warningDiv); // Brug appendChild i stedet for prepend
-        }
-
-        // 3. Udpak titel og historie fra det enkelte resultat-objekt
-        const cleanTitle = (result.title || "Uden Titel").trim();
-        const cleanStory = (result.story || "Modtog en tom historie.").replace(/^\s+/, '');
-
-        // 4. Opret og tilføj det nye historie-element
-        const storyContentDiv = document.createElement('div');
-        storyContentDiv.id = 'story-text-content';
-        storyContentDiv.textContent = cleanStory;
-        storyDisplay.appendChild(storyContentDiv); // Tilføjer selve historien
-
-        // 5. Opdater den overordnede overskrift og vis knapperne
-        storySectionHeading.innerHTML = `${cleanTitle} <span class="final-lix-tag" title="Beregnet Læsbarhedsindeks">LIX: ${result.final_lix_score}</span>`;
-        document.getElementById('story-share-buttons').classList.remove('hidden');
-
-        // 6. Aktivér relevante knapper for den nye historie
-        const userRoleElement = document.getElementById('current-user-role-data');
-        const userRole = userRoleElement ? userRoleElement.dataset.role : 'guest';
-        if (userRole !== 'guest') {
-            document.querySelectorAll('.js-generate-image, #read-aloud-button, #save-to-logbook-button').forEach(btn => {
-                btn.disabled = false;
-                btn.removeAttribute('title');
+        // ... Resten af koden, der bygger harmonika-menuen, er uændret ...
+        if (result.stories && Array.isArray(result.stories) && result.stories.length > 0) {
+            if (storySectionHeading) storySectionHeading.textContent = "Vælg din favorithistorie:";
+            const accordionContainer = document.createElement('div');
+            // ... (resten af harmonika-logikken indsættes her, præcis som i forrige svar)
+            result.stories.forEach(variant => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'accordion-item';
+                const headerButton = document.createElement('button');
+                headerButton.type = 'button';
+                headerButton.className = 'accordion-header';
+                headerButton.innerHTML = `<span>${variant.title} <span class="final-lix-tag">LIX: ${variant.lix_score}</span></span><span class="accordion-arrow">◀</span>`;
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'accordion-content hidden';
+                const storyParagraph = document.createElement('p');
+                storyParagraph.textContent = variant.content;
+                storyParagraph.style.whiteSpace = 'pre-wrap';
+                storyParagraph.style.marginBottom = '20px';
+                const selectButton = document.createElement('button');
+                selectButton.type = 'button';
+                selectButton.className = 'utility-button';
+                selectButton.textContent = 'Vælg denne historie';
+                contentDiv.append(storyParagraph, selectButton);
+                headerButton.addEventListener('click', () => { headerButton.classList.toggle('open'); contentDiv.classList.toggle('hidden'); });
+                selectButton.addEventListener('click', () => {
+                    const currentDisplay = document.getElementById('story-display');
+                    const currentHeading = document.getElementById('story-section-heading');
+                    const currentShareButtons = document.getElementById('story-share-buttons');
+                    if (currentDisplay) currentDisplay.innerHTML = '';
+                    if (currentHeading) currentHeading.innerHTML = `${variant.title} <span class="final-lix-tag">LIX: ${variant.lix_score}</span>`;
+                    const storyContentDiv = document.createElement('div');
+                    storyContentDiv.id = 'story-text-content';
+                    storyContentDiv.textContent = variant.content;
+                    if (currentDisplay) currentDisplay.appendChild(storyContentDiv);
+                    if (currentShareButtons) currentShareButtons.classList.remove('hidden');
+                    const userRole = document.getElementById('current-user-role-data')?.dataset.role || 'guest';
+                    if (userRole !== 'guest') { document.querySelectorAll('.js-generate-image, #read-aloud-button, #save-to-logbook-button').forEach(btn => { btn.disabled = false; btn.removeAttribute('title'); }); }
+                });
+                itemDiv.append(headerButton, contentDiv);
+                accordionContainer.appendChild(itemDiv);
             });
+            storyDisplayContainer.appendChild(accordionContainer);
+        } else {
+             throw new Error("Modtog ingen historie-varianter fra serveren.");
         }
-        // --- SLUT PÅ NY, SIMPEL UI-OPDATERING ---
 
     } catch (error) {
-        clearTimeout(loadingTextTimeout);
         console.error("Error in handleLaesehestGenerateClick:", error);
-        storyDisplay.innerHTML = `<p style="color: red; text-align: center;">Ups! Noget gik galt: ${error.message}.</p>`;
-        storySectionHeading.textContent = "Fejl ved generering";
+        if (storyDisplayContainer) storyDisplayContainer.innerHTML = `<p style="color: red; text-align: center;">Ups! Noget gik galt: ${error.message}.</p>`;
+        if (storySectionHeading) storySectionHeading.textContent = "Fejl ved generering";
     } finally {
-        generateButton.disabled = false;
-        generateButton.textContent = originalButtonText;
+        if (generateButton) {
+            generateButton.disabled = false;
+            generateButton.textContent = originalButtonText;
+        }
     }
 }
 // ===================================================================
