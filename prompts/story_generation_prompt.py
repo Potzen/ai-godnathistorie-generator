@@ -8,7 +8,7 @@ def build_story_prompt(
         plot_str,
         length_instruction,
         mood_prompt_part,
-        listener_context_instruction, # <-- TILFØJET IGEN
+        listener_context_instruction,
         ending_instruction,
         negative_prompt_text,
         is_interactive=False,
@@ -32,15 +32,21 @@ def build_story_prompt(
         f"- Hovedperson(er): {karakter_str}",
         f"- Sted(er): {sted_str}",
         f"- Plot/Elementer/Morale: {plot_str}",
-        "---"
     ]
+
+    # --- START PÅ RETTELSE: Inkluder Fokus Bogstav ---
+    if focus_letter:
+        prompt_parts.append(
+            f"- **Fokus Bogstav/Lyd:** '{focus_letter}'. Sørg for at inkludere ord, der indeholder dette bogstav (eller disse bogstaver) hyppigt og naturligt i historien. Dette er for at øve udtalen.")
+    # --- SLUT PÅ RETTELSE ---
+
+    prompt_parts.append("---")
 
     # --- NY KREATIV LIX-INSTRUKTION ---
     if target_lix is not None:
         prompt_parts.append("**KRITISK INSTRUKTION: SPROGLIGT NIVEAU OG STIL**")
 
         if target_lix <= 19:
-            # Her kommer den nye, kreative tilgang
             lix_instruction = (
                 f"**ROLLE:** Du er en pædagog, der fortæller en historie til et **vuggestuebarn (1-2 år)**.\n"
                 f"**STIL:** Dit sprog skal være som i en **pegebog**. Tænk i meget korte, simple sætninger, der beskriver én ting ad gangen. Gentagelser er rigtig gode. Sproget skal være rytmisk og roligt.\n"
@@ -48,19 +54,16 @@ def build_story_prompt(
                 f"**VIGTIGT:** Fokusér på at skabe en **varm og menneskelig fortællerstemme**, ikke på at overholde matematiske regler. Målet er en naturlig, simpel historie, der føles som en rolig stund, ikke en robot-tekst. Dit mål er at ramme LIX {target_lix} ved at efterligne denne pædagogiske pegebogs-stil."
             )
             prompt_parts.append(lix_instruction)
-
-        # De andre LIX-niveauer kan forblive som de var, da de ikke er problematiske
         elif 20 <= target_lix <= 29:
             prompt_parts.append(
                 f"Mål-LIX: {target_lix}. Dette er for en læser, der er ved at få fat. Brug simple, korte til mellemlange sætninger. Hold sætningsstrukturen klar og ligetil.")
         elif 30 <= target_lix <= 44:
             prompt_parts.append(
                 f"Mål-LIX: {target_lix}. Dette er for en sikker læser. Brug mere komplekse og varierede sætningslængder og et rigere ordforråd.")
-        else:  # target_lix >= 45
+        else:
             prompt_parts.append(
                 f"Mål-LIX: {target_lix}. Dette er for en meget erfaren læser. Skriv med litterær kvalitet, komplekse sætningsstrukturer og et sofistikeret ordforråd.")
 
-    # Resten af prompten fortsætter som før
     if negative_prompt_text:
         prompt_parts.append(f"- **Må IKKE indeholde:** {negative_prompt_text}")
 
