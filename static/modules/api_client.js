@@ -435,3 +435,35 @@ export async function saveHojtlasningStoryApi(storyData) {
 
     return await response.json();
 }
+
+export async function generateNarrativeStoryImageApi(narrativeData) {
+    console.log("api_client.js: generateNarrativeStoryImageApi called with data:", narrativeData);
+    const response = await fetch('/narrative/generate_story_image', { // Det nye endepunkt
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(narrativeData)
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved generering af narrativt billede." }));
+        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+export async function generateQuizApi(story_content, lix_score) {
+    console.log("api_client.js: Anmoder om quiz...");
+    const response = await fetch('/story/generate_quiz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ story_content, lix_score })
+    });
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Serverfejl ved quiz-generering.");
+    }
+    return await response.json();
+}

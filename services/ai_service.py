@@ -28,6 +28,7 @@ from prompts.logbook_analysis_prompt import build_logbook_analysis_prompt
 from google.api_core.exceptions import InternalServerError
 import time
 from prompts.problem_image_prompt import build_problem_image_prompt
+from prompts.quiz_generation_prompt import build_quiz_generation_prompt
 
 # Definerede stemmer til Google Text-to-Speech (Engelske Gemini TTS-modeller)
 # Zephyr virker. Gacrux, Sadachbia, Zubenelgenubi forventes IKKE at virke med denne klient/model.
@@ -1092,23 +1093,26 @@ def analyze_story_for_logbook(story_content: str) -> dict:
         current_app.logger.error(f"AI Service: Generel fejl ved analyse af historie: {e}\n{traceback.format_exc()}")
         return {"error": f"En teknisk fejl opstod under analysen: {e}"}
 
+# ERSTAT HELE DENNE FUNKTION I services/ai_service.py
+
+# ERSTAT HELE DENNE FUNKTION I services/ai_service.py
+
 def generate_problem_image(narrative_data: dict):
     """
     Orkestrerer genereringen af et billede, der visualiserer et problem.
     """
     current_app.logger.info("ai_service: Starter generering af 'problem-billede'.")
     try:
-        # Byg en prompt til at generere den endelige billed-prompt
-        prompt_for_imagen_prompt = build_problem_image_prompt(narrative_data)
+        # Byg den endelige billed-prompt direkte.
+        # Denne funktion laver den prompt, vi skal sende til Vertex AI.
+        final_imagen_prompt = build_problem_image_prompt(narrative_data)
 
-        # Brug Gemini til at skabe den endelige, engelske billed-prompt
-        imagen_prompt = generate_image_prompt_from_gemini(prompt_for_imagen_prompt)
-
-        # Brug Vertex AI til at generere selve billedet
-        image_data_url = generate_image_with_vertexai(imagen_prompt)
+        # Brug Vertex AI til at generere selve billedet med den korrekte prompt.
+        # Vi springer det forkerte, overflødige kald over.
+        image_data_url = generate_image_with_vertexai(final_imagen_prompt)
 
         if image_data_url:
-            return {"image_url": image_data_url, "image_prompt_used": imagen_prompt}
+            return {"image_url": image_data_url, "image_prompt_used": final_imagen_prompt}
         else:
             return {"error": "Kunne ikke generere problem-billede med Vertex AI."}
 
@@ -1116,3 +1120,40 @@ def generate_problem_image(narrative_data: dict):
         current_app.logger.error(f"Fejl i generate_problem_image: {e}\\n{traceback.format_exc()}")
         return {"error": f"Intern fejl under generering af problem-billede: {e}"}
 
+def generate_quiz_for_story(story_content: str, lix_score: int) -> dict:
+    """
+    Genererer en JSON-baseret quiz for en given historie og LIX-score.
+    """
+    current_app.logger.info(f"AI Service: Starter quiz-generering for historie med LIX: {lix_score}")
+    try:
+        prompt = build_quiz_generation_prompt(story_content, lix_score)
+
+        model = genai.GenerativeModel('gemini-1.5-pro-latest') # En stærk model er god til JSON
+
+        generation_config = genai.types.GenerationConfig(
+            temperature=0.5,
+            response_mime_type="application/json"
+        )
+        safety_settings = {
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+        }
+
+        response = model.generate_content(
+            prompt,
+            generation_config=generation_config,
+            safety_settings=safety_settings
+        )
+
+        quiz_data = json.loads(response.text)
+        current_app.logger.info("AI Service: Succesfuld generering af quiz-data.")
+        return {"questions": quiz_data}
+
+    except json.JSONDecodeError as e:
+        current_app.logger.error(f"AI Service (Quiz): JSONDecodeError: {e}. Rå output: {response.text}")
+        return {"error": "AI'en returnerede et ugyldigt format for quizzen."}
+    except Exception as e:
+        current_app.logger.error(f"AI Service (Quiz): Generel fejl: {e}\\n{traceback.format_exc()}")
+        return {"error": f"En teknisk fejl opstod under quiz-generering: {e}"}

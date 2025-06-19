@@ -1959,3 +1959,67 @@ input:disabled + .slider-label:before {
 .story-variant {
     margin-bottom: 10px;
 }
+
+/* TILFØJ DENNE KODE I BUNDEN AF static/style.css */
+
+.quiz-success-button {
+    background-color: #28a745 !important; /* En flot grøn farve */
+    color: white !important;
+    border-color: #218838 !important;
+}
+
+.quiz-success-button:hover {
+    background-color: #218838 !important; /* Lidt mørkere grøn ved hover */
+    transform: translateY(-1px);
+}
+
+/* TILFØJ DENNE KODE I BUNDEN AF static/style.css */
+
+/* Styling for selve quiz-containeren */
+#quiz-container {
+    display: grid;
+    /* Opret to kolonner med lige stor bredde */
+    grid-template-columns: 1fr 1fr;
+    /* Tilføj lidt luft mellem kolonnerne og rækkerne */
+    gap: 20px 30px; /* 20px mellem rækker, 30px mellem kolonner */
+}
+
+/* Styling for hvert enkelt spørgsmåls-blok */
+.quiz-question-block {
+    /* Sikrer at indholdet fylder pænt ud */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Media Query for mindre skærme (f.eks. mobiler) */
+@media (max-width: 700px) {
+    #quiz-container {
+        /* Skift tilbage til én kolonne */
+        grid-template-columns: 1fr;
+    }
+}
+
+#quiz-sektion {
+    text-align: left;
+}
+
+#quiz-container .quiz-question-block p {
+    /* Sætter en minimumshøjde, der ca. svarer til to linjers tekst */
+    min-height: 3em;
+}
+
+/* Giver selve spørgsmåls-blokken en flex-struktur */
+.quiz-question-block {
+    display: flex;
+    flex-direction: column; /* Arrangerer spørgsmål over svar */
+}
+
+/* Fortæller svar-knappernes container, at den skal vokse */
+.quiz-question-block .quiz-options {
+    flex-grow: 1; /* VIGTIGT: Denne linje får containeren til at strække sig */
+
+    /* Justerer knapperne, så de starter nedefra. Det ser pænest ud. */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}

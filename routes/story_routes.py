@@ -10,7 +10,8 @@ from services.ai_service import (
     generate_story_text_from_gemini,
     generate_image_prompt_from_gemini,
     generate_image_with_vertexai,
-    generate_gemini_tts_audio
+    generate_gemini_tts_audio,
+    generate_quiz_for_story
 )
 from services.lix_service import calculate_lix
 import concurrent.futures
@@ -361,3 +362,23 @@ def save_story_to_logbook():
         db.session.rollback()
         current_app.logger.error(f"Fejl ved gemning af Højtlæsnings-historie til logbog: {e}\n{traceback.format_exc()}")
         return jsonify({"error": "En intern fejl opstod under gemning."}), 500
+
+@story_bp.route('/generate_quiz', methods=['POST'])
+@login_required
+def generate_quiz_route():
+    if current_user.role not in ['basic', 'premium']:
+        return jsonify({"error": "Funktionen er forbeholdt premium-brugere."}), 403
+
+    data = request.get_json()
+    story_content = data.get('story_content')
+    lix_score = data.get('lix_score')
+
+    if not story_content or lix_score is None:
+        return jsonify({"error": "Mangler 'story_content' eller 'lix_score'."}), 400
+
+    quiz_data = generate_quiz_for_story(story_content, int(lix_score))
+
+    if "error" in quiz_data:
+        return jsonify(quiz_data), 500
+
+    return jsonify(quiz_data), 200

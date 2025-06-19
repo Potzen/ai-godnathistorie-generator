@@ -1,10 +1,15 @@
 // Fil: static/script.js
 import { initializeLogbook } from './logbook.js';
-import { saveHojtlasningStoryApi, generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generateNarrativeStoryApi, getGuidingQuestionsApi, generateAudioApi, generateLixStoryApi, analyzeStoryForLogbookApi, saveLogbookEntryApi, listContinuableStoriesApi, generateProblemImageApi, saveChildProfileApi, listChildProfilesApi, deleteChildProfileApi } from './modules/api_client.js';
+import { saveHojtlasningStoryApi, generateStoryApi, generateImageApi, suggestCharacterTraitsApi, generateNarrativeStoryApi, getGuidingQuestionsApi, generateAudioApi, generateLixStoryApi, analyzeStoryForLogbookApi, saveLogbookEntryApi, listContinuableStoriesApi, generateProblemImageApi, saveChildProfileApi, listChildProfilesApi, deleteChildProfileApi, generateNarrativeStoryImageApi, generateQuizApi } from './modules/api_client.js';
 
 // Kør først koden, når hele HTML dokumentet er færdigindlæst og klar
 document.addEventListener('DOMContentLoaded', () => {
 
+const quizSektion = document.getElementById('quiz-sektion');
+const quizContainer = document.getElementById('quiz-container');
+const quizFeedback = document.getElementById('quiz-feedback');
+let currentQuizData = [];
+let correctAnswersCount = 0;
 console.log("DOMContentLoaded event fired. Initializing Read Me A Story script.");
 const imageSection = document.getElementById('billede-til-historien-sektion');
 const storyImageContainer = document.getElementById('story-image-container');
@@ -581,6 +586,13 @@ loadFontSizesFromLocalStorage();
         const handleTabClick = (button) => {
             if (button.classList.contains('active')) return;
 
+            // Find og skjul altid quiz-sektionen, når der skiftes fane.
+            // Dette fungerer som en "nulstilling".
+            const quizSektion = document.getElementById('quiz-sektion');
+            if (quizSektion) {
+                quizSektion.classList.add('hidden');
+            }
+
             tabButtons.forEach(btn => btn.classList.remove('active'));
             contentSections.forEach(section => section.classList.add('hidden'));
 
@@ -597,7 +609,7 @@ loadFontSizesFromLocalStorage();
                 historieOutput.classList.toggle('hidden', targetId !== '#generator' && targetId !== '#laesehesten-module');
             }
             if (imageSection) {
-                imageSection.classList.add('hidden'); // Skjul altid billeder ved faneskift
+                imageSection.classList.add('hidden');
             }
 
             const userRole = document.getElementById('current-user-role-data')?.dataset.role || 'guest';
@@ -1301,6 +1313,117 @@ async function handleGenerateClick(event) {
     }
 }
 
+// TILFØJ DISSE 3 NYE FUNKTIONER I static/script.js
+
+function renderQuiz(quizData) {
+    if (!quizSektion || !quizContainer) return;
+    currentQuizData = quizData;
+    correctAnswersCount = 0;
+    quizContainer.innerHTML = '';
+    quizFeedback.classList.add('hidden');
+
+    quizData.forEach((q, index) => {
+        const questionEl = document.createElement('div');
+        questionEl.className = 'quiz-question-block';
+        questionEl.style.marginBottom = '25px';
+
+        const questionText = document.createElement('p');
+        questionText.style.fontWeight = 'bold';
+        questionText.textContent = `${index + 1}. ${q.question}`;
+
+        const optionsEl = document.createElement('div');
+        optionsEl.className = 'quiz-options';
+        optionsEl.style.display = 'flex';
+        optionsEl.style.flexDirection = 'column';
+        optionsEl.style.gap = '10px';
+
+        q.options.forEach((option, optionIndex) => {
+            const optionBtn = document.createElement('button');
+            optionBtn.className = 'utility-button';
+            optionBtn.textContent = option;
+            optionBtn.dataset.qIndex = index;
+            optionBtn.dataset.oIndex = optionIndex;
+            optionBtn.onclick = checkAnswer;
+            optionsEl.appendChild(optionBtn);
+        });
+
+        questionEl.append(questionText, optionsEl);
+        quizContainer.appendChild(questionEl);
+    });
+    quizSektion.classList.remove('hidden');
+}
+
+// ERSTAT HELE checkAnswer FUNKTIONEN I static/script.js
+
+function checkAnswer(event) {
+    const btn = event.target;
+    const qIndex = parseInt(btn.dataset.qIndex, 10);
+    const oIndex = parseInt(btn.dataset.oIndex, 10);
+
+    const questionData = currentQuizData[qIndex];
+    const parentOptions = btn.parentElement;
+
+    // Deaktiver alle knapper for dette spørgsmål, så man ikke kan svare igen
+    parentOptions.querySelectorAll('button').forEach(button => button.disabled = true);
+
+    // Farv knapperne baseret på svaret
+    if (oIndex === questionData.correct_answer_index) {
+        btn.style.backgroundColor = 'var(--color-success-bg)';
+        btn.style.borderColor = 'var(--color-success-border)';
+        btn.style.color = 'var(--color-success-text)';
+        correctAnswersCount++;
+    } else {
+        btn.style.backgroundColor = 'var(--color-error-bg)';
+        btn.style.borderColor = 'var(--color-error-border)';
+        btn.style.color = 'var(--color-error-text)';
+        parentOptions.children[questionData.correct_answer_index].style.backgroundColor = 'var(--color-success-bg)';
+    }
+
+    // Tjek om alle spørgsmål er besvaret korrekt
+    if (correctAnswersCount === currentQuizData.length) {
+        // Vis succes-beskeden
+        quizFeedback.textContent = "Fantastisk! Du har svaret rigtigt på alt. Du kan nu generere et billede til historien.";
+        quizFeedback.className = 'flash-message flash-success';
+        quizFeedback.classList.remove('hidden');
+
+        // Først, fjern en eventuel gammel knap for at undgå dubletter
+        document.getElementById('dynamic-quiz-reward-button')?.remove();
+
+        // Opret den nye knap i hukommelsen
+        const rewardButton = document.createElement('button');
+        rewardButton.id = 'dynamic-quiz-reward-button'; // Giver den et unikt ID
+        rewardButton.type = 'button';
+        rewardButton.textContent = 'Generer Billede';
+        rewardButton.className = 'utility-button quiz-success-button'; // Giver den grøn stil
+
+        // Fortæl knappen, hvad den skal gøre, når man klikker på den
+        rewardButton.addEventListener('click', handleGenerateImageFromStoryClick);
+
+        // Indsæt den nye knap i dokumentet, lige efter feedback-beskeden
+        quizFeedback.insertAdjacentElement('afterend', rewardButton);
+        // --- SLUT PÅ NY KODE ---
+    }
+}
+
+async function fetchAndDisplayQuiz(storyContent, lixScore) {
+    if (!quizSektion || !quizContainer) return;
+    quizSektion.classList.remove('hidden');
+    quizContainer.innerHTML = '<p>Genererer quiz, vent venligst...</p>';
+
+    try {
+        const data = await generateQuizApi(storyContent, lixScore);
+        if (data.questions && data.questions.length > 0) {
+            renderQuiz(data.questions);
+        } else {
+            throw new Error("Modtog en tom quiz fra serveren.");
+        }
+    } catch (error) {
+        console.error("Fejl under hentning af quiz:", error);
+        quizContainer.innerHTML = `<p style="color:red;">Kunne ikke oprette en quiz til denne historie.</p>`;
+    }
+}
+
+
     // === Lyd Generering (TTS) ===
 async function handleReadAloudClick() {
     console.log("Read Aloud: Started");
@@ -1422,7 +1545,10 @@ async function handleReadAloudClick() {
 async function handleGenerateImageFromStoryClick() {
     console.log("--> handleGenerateImageFromStoryClick (FOR HØJTLÆSNING) startet");
 
-    const currentStoryText = storyTextContent.textContent.trim();
+    // RETTELSE: Hent referencen til historie-elementet her, LIGE før vi skal bruge den.
+    const storyContentElement = document.getElementById('story-text-content');
+
+    const currentStoryText = storyContentElement ? storyContentElement.textContent.trim() : "";
     if (!currentStoryText) {
         alert("Generer venligst en historie først.");
         return;
@@ -1491,7 +1617,7 @@ async function handleGenerateNarrativeImagesClick() {
     narrativeGenerateImagesButton.disabled = true;
     narrativeGenerateImagesButton.textContent = "Genererer billeder...";
 
-    // Nulstil UI (uændret)
+    // Nulstil UI
     imageSection.classList.remove('hidden');
     storyImageContainer.classList.remove('hidden');
     problemImageContainer.classList.remove('hidden');
@@ -1501,12 +1627,12 @@ async function handleGenerateNarrativeImagesClick() {
     storyImageError.textContent = '';
     problemImageError.textContent = '';
 
-    // --- OPDATERET DEL ---
-    // Vi sender hele "currentNarrativeData" med til BEGGE API-kald.
-    // Det sikrer, at begge billeder genereres ud fra den fulde kontekst af brugerens input.
-    const storyImagePromise = generateImageApi(currentNarrativeData);
+    // --- RETTELSE LIGGER HER ---
+    // Kald den nye, korrekte API funktion for historie-billedet
+    const storyImagePromise = generateNarrativeStoryImageApi(currentNarrativeData);
+    // Kaldet til problem-billedet er uændret, da det allerede virker
     const problemImagePromise = generateProblemImageApi(currentNarrativeData);
-    // --- SLUT PÅ OPDATERING ---
+    // --- SLUT PÅ RETTELSE ---
 
     // Håndtering af resultater (er uændret)
     storyImagePromise
@@ -1682,26 +1808,26 @@ if (copyStoryButton) {
 }
 
     // === NYT: Sangtekst Funktionalitet ===
-    async function loadSongs() {
-        console.log("Songs: Attempting to load songs.json...");
-        if (!sangDropdown || !sangtekstVisning || !sangtekstTitel) {
-            console.error("Songs: Dropdown or display elements for songs not found in DOM.");
-            return;
-        }
-        try {
-            const response = await fetch('static/songs.json'); // Stien er relativ til HTML-filens placering
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status} when fetching songs.json`);
-            }
-            allSongsData = await response.json();
-            // console.log("Songs: songs.json loaded and parsed:", allSongsData);
-            populateSongDropdown();
-        } catch (error) {
-            console.error("Songs: Failed to load or parse songs.json:", error);
-            if (sangDropdown) sangDropdown.innerHTML = '<option value="">Kunne ikke hente sange</option>';
-            if (sangtekstVisning) sangtekstVisning.textContent = "Fejl: Kunne ikke indlæse sanglisten. Prøv at genindlæse siden.";
-        }
+async function loadSongs() {
+    console.log("Songs: Attempting to load songs.json...");
+    if (!sangDropdown || !sangtekstVisning || !sangtekstTitel) {
+        console.error("Songs: Dropdown or display elements for songs not found in DOM.");
+        return;
     }
+    try {
+        const response = await fetch('static/songs.json'); // Stien er relativ til HTML-filens placering
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} when fetching songs.json`);
+        }
+        allSongsData = await response.json();
+        // console.log("Songs: songs.json loaded and parsed:", allSongsData);
+        populateSongDropdown();
+    } catch (error) {
+        console.error("Songs: Failed to load or parse songs.json:", error);
+        if (sangDropdown) sangDropdown.innerHTML = '<option value="">Kunne ikke hente sange</option>';
+        if (sangtekstVisning) sangtekstVisning.textContent = "Fejl: Kunne ikke indlæse sanglisten. Prøv at genindlæse siden.";
+    }
+}
 
     function populateSongDropdown() {
         // console.log("Songs: Populating dropdown.");
@@ -1895,17 +2021,26 @@ if (copyStoryButton) {
     if (addListenerButton) { addListenerButton.addEventListener('click', addListenerGroup); } else { console.error("Add listener button (#add-listener-button) not found!"); }
     if (addKarakterButton) { addKarakterButton.addEventListener('click', addCharacterGroup); } else { console.error("Add character button (#add-karakter-button) not found!"); }
     if (readAloudButton) { readAloudButton.addEventListener('click', handleReadAloudClick); } else { console.info("Read Aloud button (#read-aloud-button) not found or user not authenticated."); }
-    if (toggleFeedbackButton) { toggleFeedbackButton.addEventListener('click', toggleFeedbackEmbed); } else { console.error("Toggle feedback button (#toggle-feedback-button) not found!"); }
-    if (generateImageButtons.length > 0) {
-        generateImageButtons.forEach(button => {
-            button.addEventListener('click', handleGenerateImageFromStoryClick);
-        });
+    if (toggleFeedbackButton) { toggleFeedbackButton.addEventListener('click', toggleFeedbackEmbed); } else { console.error("Toggle feedback button (#toggle-feedback-button) not found!"); }// ERSTAT DEN GAMLE KODEBLOK I static/script.js MED DENNE NYE:
+
+    // Hent knapperne via deres unikke ID'er
+    const hojtlaesningImageButton = document.getElementById('generate-image-from-output-button');
+    const narrativeImagesButton = document.getElementById('narrative-generate-images-button');
+
+    // Tilføj den korrekte listener til Højtlæsnings-knappen
+    if (hojtlaesningImageButton) {
+        hojtlaesningImageButton.addEventListener('click', handleGenerateImageFromStoryClick);
+        console.log("Event listener tilføjet til Højtlæsnings billed-knap.");
     } else {
-        console.warn("Ingen knapper med klassen '.js-generate-image' blev fundet for event listeners.");
+        console.warn("Højtlæsnings billed-knap (#generate-image-from-output-button) ikke fundet.");
     }
 
-    if (narrativeGenerateImagesButton) {
-    narrativeGenerateImagesButton.addEventListener('click', handleGenerateNarrativeImagesClick);
+    // Tilføj den korrekte listener til Narrativ Støtte-knappen
+    if (narrativeImagesButton) {
+        narrativeImagesButton.addEventListener('click', handleGenerateNarrativeImagesClick);
+        console.log("Event listener tilføjet til Narrativ Støtte billed-knap.");
+    } else {
+        console.warn("Narrativ Støtte billed-knap (#narrative-generate-images-button) ikke fundet.");
     }
 
     // Generiske "Tilføj felt" knapper for historie (sted, plot)
@@ -1959,7 +2094,6 @@ if (copyStoryButton) {
 
     initializeInfoIcons(); // Kald funktionen for at aktivere infoknapperne
 
- // potzen/ai-godnathistorie-generator/ai-godnathistorie-generator-5ffa7696e20a294c8648c9db4a2cb60980e2a54e/static/script.js
 
     // ===================================================================
     // START: ENDELIG LOGIK FOR BØRNEPROFILER (Version 5 - Inkl. alle rettelser)
@@ -2014,10 +2148,10 @@ if (copyStoryButton) {
    /** Udfylder en formular (enten profil eller narrativ) med data. */
     // INDSÆT DENNE NYE FUNKTION (f.eks. omkring linje 1075)
 
-/**
- * Udfylder profil-formularen med data fra et valgt profil-objekt.
- * @param {object} profileData - Objektet der indeholder den valgte profils data.
- */
+    /**
+     * Udfylder profil-formularen med data fra et valgt profil-objekt.
+     * @param {object} profileData - Objektet der indeholder den valgte profils data.
+     */
     function populateFormWithProfileData(profileData) {
         const profileForm = document.getElementById('child-profile-form');
         if (!profileForm || !profileData) {
@@ -2657,37 +2791,37 @@ function setupLaesehestEventListeners() {
 
 // I static/script.js
 
+// ERSTAT HELE DIN GAMLE FUNKTION MED DENNE KORREKTE VERSION
+
 async function handleLaesehestGenerateClick() {
     const generateButton = document.getElementById('generate-laesehest-button');
     if (!generateButton || generateButton.disabled) return;
 
     const originalButtonText = generateButton.textContent;
 
-    // --- START PÅ NY, ROBUST LOADING-SEKVENS ---
+    // UI Håndtering for loading
     generateButton.disabled = true;
     generateButton.textContent = 'Skaber 3 historier...';
 
     const historieOutputSection = document.getElementById('historie-output');
     const storyDisplayContainer = document.getElementById('story-display');
     const storySectionHeading = document.getElementById('story-section-heading');
+    const storyShareButtons = document.getElementById('story-share-buttons');
+    const quizSektion = document.getElementById('quiz-sektion'); // Sørg for at hente reference til quiz sektion
 
     if (historieOutputSection) historieOutputSection.classList.remove('hidden');
     if (storySectionHeading) storySectionHeading.textContent = "Venter på historier...";
-
-    // Ryd output-området og opret en ny loader
     if (storyDisplayContainer) {
         storyDisplayContainer.innerHTML = `
             <div id="story-loading-indicator">
                 <p>Genererer 3 historie-forslag... Dette kan tage lidt tid.</p>
                 <span class="spinner"></span>
-            </div>
-        `;
+            </div>`;
     }
-    const storyShareButtons = document.getElementById('story-share-buttons');
     if (storyShareButtons) storyShareButtons.classList.add('hidden');
-    // --- SLUT PÅ NY, ROBUST LOADING-SEKVENS ---
+    if (quizSektion) quizSektion.classList.add('hidden'); // Skjul også quizzen fra start
 
-    // Dataindsamling... (som før)
+    // Dataindsamling
     const dataToSend = {
         target_lix: parseInt(document.getElementById('lix-slider').value, 10),
         elements: Array.from(document.querySelectorAll('input[name="laesehest_element"]:checked')).map(el => el.value),
@@ -2705,48 +2839,82 @@ async function handleLaesehestGenerateClick() {
 
         if (storyDisplayContainer) storyDisplayContainer.innerHTML = ''; // Ryd loading-indikator
 
-        // ... Resten af koden, der bygger harmonika-menuen, er uændret ...
         if (result.stories && Array.isArray(result.stories) && result.stories.length > 0) {
             if (storySectionHeading) storySectionHeading.textContent = "Vælg din favorithistorie:";
+
             const accordionContainer = document.createElement('div');
-            // ... (resten af harmonika-logikken indsættes her, præcis som i forrige svar)
+
             result.stories.forEach(variant => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'accordion-item';
+
                 const headerButton = document.createElement('button');
                 headerButton.type = 'button';
                 headerButton.className = 'accordion-header';
-                headerButton.innerHTML = `<span>${variant.title} <span class="final-lix-tag">LIX: ${variant.lix_score}</span></span><span class="accordion-arrow">◀</span>`;
+                headerButton.innerHTML = `<span>${variant.title} <span class="final-lix-tag" title="Læsbarheds-score">LIX: ${variant.lix_score}</span></span><span class="accordion-arrow">◀</span>`;
+
                 const contentDiv = document.createElement('div');
                 contentDiv.className = 'accordion-content hidden';
+
                 const storyParagraph = document.createElement('p');
                 storyParagraph.textContent = variant.content;
                 storyParagraph.style.whiteSpace = 'pre-wrap';
                 storyParagraph.style.marginBottom = '20px';
+
                 const selectButton = document.createElement('button');
                 selectButton.type = 'button';
                 selectButton.className = 'utility-button';
                 selectButton.textContent = 'Vælg denne historie';
+
                 contentDiv.append(storyParagraph, selectButton);
-                headerButton.addEventListener('click', () => { headerButton.classList.toggle('open'); contentDiv.classList.toggle('hidden'); });
+
+                headerButton.addEventListener('click', () => {
+                    headerButton.classList.toggle('open');
+                    contentDiv.classList.toggle('hidden');
+                });
+
+                // --- HER ER DEN KORREKTE, RENE EVENT LISTENER TIL "VÆLG"-KNAPPEN ---
                 selectButton.addEventListener('click', () => {
                     const currentDisplay = document.getElementById('story-display');
                     const currentHeading = document.getElementById('story-section-heading');
                     const currentShareButtons = document.getElementById('story-share-buttons');
+
                     if (currentDisplay) currentDisplay.innerHTML = '';
-                    if (currentHeading) currentHeading.innerHTML = `${variant.title} <span class="final-lix-tag">LIX: ${variant.lix_score}</span>`;
+                    if (currentHeading) currentHeading.innerHTML = `${variant.title} <span class="final-lix-tag" title="Læsbarheds-score">LIX: ${variant.lix_score}</span>`;
+
                     const storyContentDiv = document.createElement('div');
                     storyContentDiv.id = 'story-text-content';
                     storyContentDiv.textContent = variant.content;
+
                     if (currentDisplay) currentDisplay.appendChild(storyContentDiv);
                     if (currentShareButtons) currentShareButtons.classList.remove('hidden');
+
+                    if(quizSektion) quizSektion.classList.add('hidden');
+
+                    const imageButton = document.querySelector('#story-share-buttons #generate-image-from-output-button');
+                    if(imageButton) {
+                        imageButton.disabled = true;
+                        imageButton.title = "Svar rigtigt på quizzen for at låse op";
+                    }
+
                     const userRole = document.getElementById('current-user-role-data')?.dataset.role || 'guest';
-                    if (userRole !== 'guest') { document.querySelectorAll('.js-generate-image, #read-aloud-button, #save-to-logbook-button').forEach(btn => { btn.disabled = false; btn.removeAttribute('title'); }); }
+                    if (userRole !== 'guest') {
+                        document.querySelectorAll('#read-aloud-button, #save-to-logbook-button').forEach(btn => {
+                            btn.disabled = false;
+                            btn.removeAttribute('title');
+                        });
+                    }
+
+                    fetchAndDisplayQuiz(variant.content, variant.lix_score);
                 });
+                // --- SLUT PÅ DEN KORREKTE EVENT LISTENER ---
+
                 itemDiv.append(headerButton, contentDiv);
                 accordionContainer.appendChild(itemDiv);
             });
+
             storyDisplayContainer.appendChild(accordionContainer);
+
         } else {
              throw new Error("Modtog ingen historie-varianter fra serveren.");
         }

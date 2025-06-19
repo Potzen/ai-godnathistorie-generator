@@ -12,7 +12,9 @@ from services.ai_service import (
     edit_narrative_story,
     generate_reflection_questions_step4,
     analyze_story_for_logbook,
-    generate_problem_image
+    generate_problem_image,
+    generate_image_prompt_from_gemini,
+    generate_image_with_vertexai
 )
 import traceback
 
@@ -563,3 +565,44 @@ def delete_child_profile(profile_id):
         db.session.rollback()
         current_app.logger.error(f"Fejl ved sletning af profil {profile_id}: {e}")
         return jsonify({"error": "Intern fejl ved sletning."}), 500
+
+# TILFØJ DENNE NYE ROUTE I bunden af routes/narrative_routes.py
+
+@narrative_bp.route('/generate_story_image', methods=['POST'])
+@login_required
+def generate_narrative_story_image():
+    if current_user.role != 'premium':
+        return jsonify({"error": "Adgang nægtet."}), 403
+
+    narrative_data = request.get_json()
+    if not narrative_data:
+        return jsonify({"error": "Mangler narrative data."}), 400
+
+    # Uddrag de nødvendige felter fra det komplekse narrative_data objekt
+    story_text = narrative_data.get('storyContent')
+    main_characters_list = narrative_data.get('main_characters', [])
+    story_places_list = narrative_data.get('places', [])
+
+    if not story_text:
+        return jsonify({"error": "Mangler 'storyContent' i narrative data."}), 400
+
+    # Bearbejd de udtrukne data til strenge for prompt-generatoren
+    karakter_descriptions = [
+        f"{char.get('description', '')} ved navn {char.get('name', '')}".strip()
+        for char in main_characters_list if char.get('description')
+    ]
+    karakter_str = ", ".join(karakter_descriptions) if karakter_descriptions else "en uspecificeret karakter"
+    sted_str = ", ".join(filter(None, story_places_list)) if story_places_list else "et uspecificeret sted"
+
+    try:
+        # Nu kan vi kalde de eksisterende service-funktioner med de korrekte argumenter
+        image_prompt = generate_image_prompt_from_gemini(story_text, karakter_str, sted_str)
+        image_data_url = generate_image_with_vertexai(image_prompt)
+
+        if image_data_url:
+            return jsonify({"image_url": image_data_url, "image_prompt_used": image_prompt})
+        else:
+            return jsonify({"error": "Kunne ikke generere historie-billede med Vertex AI."}), 500
+    except Exception as e:
+        current_app.logger.error(f"Fejl i /narrative/generate_story_image: {e}\\n{traceback.format_exc()}")
+        return jsonify({"error": "Intern serverfejl under billedgenerering."}), 500
