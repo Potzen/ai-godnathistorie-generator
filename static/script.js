@@ -586,6 +586,9 @@ loadFontSizesFromLocalStorage();
         const handleTabClick = (button) => {
             if (button.classList.contains('active')) return;
 
+            const tabName = button.textContent.trim().replace('🔒', '').trim();
+            trackGAEvent('change_tab', 'Navigation', `Tab: ${tabName}`, null);
+
             // Find og skjul altid quiz-sektionen, når der skiftes fane.
             // Dette fungerer som en "nulstilling".
             const quizSektion = document.getElementById('quiz-sektion');
@@ -652,6 +655,9 @@ loadFontSizesFromLocalStorage();
 
                 try {
                     const result = await saveHojtlasningStoryApi({ title: title, content: content });
+                    if (result.success) {
+                        trackGAEvent('save_to_logbook', 'Højtlæsning', `Story ID: ${result.story_id}`, null);
+                    }
                     saveToLogbookButton.textContent = 'Gemt!';
                     saveToLogbookButton.style.backgroundColor = '#28a745';
                     console.log(result.message);
@@ -1283,6 +1289,8 @@ async function handleGenerateClick(event) {
         const result = await generateStoryApi(dataToSend);
         if (result.error) throw new Error(result.error);
 
+        trackGAEvent('generate_story', 'Højtlæsning', `Mood: ${dataToSend.mood} - Length: ${dataToSend.laengde}`, null);
+
         const cleanTitle = (result.title || "Jeres historie").trim();
         const cleanStory = (result.story || "Modtog en tom historie.").replace(/^\s+/, '');
 
@@ -1462,6 +1470,9 @@ async function handleReadAloudClick() {
     const selectedVoice = ttsVoiceSelect.value;
     console.log(`Read Aloud: Generating audio for voice: ${selectedVoice}`);
 
+    trackGAEvent('play_audio', 'Højtlæsning', `Voice: ${selectedVoice}`, null);
+
+
     if (audioLoadingDiv) audioLoadingDiv.classList.remove('hidden');
     if (audioErrorDiv) { audioErrorDiv.textContent = ''; audioErrorDiv.classList.add('hidden'); }
     if (audioPlayer) { audioPlayer.pause(); audioPlayer.src = ''; audioPlayer.classList.add('hidden'); }
@@ -1589,6 +1600,8 @@ async function handleGenerateImageFromStoryClick() {
             karakterer: karakterer,
             steder: steder
         };
+
+        trackGAEvent('generate_image', 'Højtlæsning', 'Success', null);
 
         // Kald den opdaterede API-funktion
         const result = await generateImageApi(dataToSend);
@@ -2837,6 +2850,8 @@ async function handleLaesehestGenerateClick() {
         const result = await generateLixStoryApi(dataToSend);
         if (result.error) throw new Error(result.error);
 
+        trackGAEvent('generate_lix_story', 'Læsehesten', `Target LIX: ${dataToSend.target_lix}`, dataToSend.target_lix);
+
         if (storyDisplayContainer) storyDisplayContainer.innerHTML = ''; // Ryd loading-indikator
 
         if (result.stories && Array.isArray(result.stories) && result.stories.length > 0) {
@@ -3055,6 +3070,10 @@ function populateLogbookForm(storyId, data) {
             try {
                 const result = await saveLogbookEntryApi(storyId, dataToSave);
                 console.log("Server svar efter gem:", result);
+
+                if (result.success) {
+                    trackGAEvent('save_to_logbook', 'Narrativ Støtte', `Story ID: ${storyId}`, null);
+                }
 
                 // Opdater UI for at vise succes
                 saveButton.textContent = 'Gemt i Logbog!';
@@ -3361,6 +3380,9 @@ async function executeNarrativeGeneration(dataToSend) {
         const result = await generateNarrativeStoryApi(dataToSend);
         console.log("Svar modtaget fra server:", result);
         if (result.error) throw new Error(result.error);
+
+        const eventLabel = dataToSend.continuation_strategy ? `Continuation: ${dataToSend.continuation_strategy}` : 'New Story';
+        trackGAEvent('generate_narrative_story', 'Narrativ Støtte', eventLabel, null);
 
         if (narrativeGeneratedTitle) narrativeGeneratedTitle.textContent = result.title;
         if (narrativeGeneratedStory) narrativeGeneratedStory.innerHTML = result.story.replace(/\n/g, '<br>');
