@@ -16,12 +16,11 @@ from prompts.story_generation_prompt import build_story_prompt
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 # --- LÆS KONFIGURATION FRA MILJØVARIABLER ---
+# Denne sektion er uændret. Sørg for at dine nøgler er sat i din PyCharm-konfiguration.
 FACEBOOK_PAGE_ID = os.getenv("FACEBOOK_PAGE_ID")
 FACEBOOK_PAGE_ACCESS_TOKEN = os.getenv("FACEBOOK_PAGE_ACCESS_TOKEN")
 
 if not FACEBOOK_PAGE_ID or not FACEBOOK_PAGE_ACCESS_TOKEN:
-    # Hvis du kører med hårdkodede værdier til test, kan du lade dem stå her.
-    # Ellers behold denne tjek for at sikre, at miljøvariabler er sat.
     print("FEJL: Miljøvariablerne for Facebook skal være sat.")
     sys.exit(1)
 # ------------------------------------------------
@@ -133,6 +132,7 @@ PLOTS = [
 ]
 # ======================================================================
 
+
 # ======================================================================
 
 def generate_daily_content():
@@ -141,21 +141,17 @@ def generate_daily_content():
     """
     print("Starter generering af dagens indhold...")
 
-    # --- ÆNDRING: Vælg tilfældige elementer fra listerne ---
     dagens_karakter = random.choice(KARAKTERER)
     dagens_sted = random.choice(STEDER)
     dagens_plot = random.choice(PLOTS)
 
     print(
         f"Dagens emne: '{dagens_karakter}' som befinder sig '{dagens_sted}', og historien skal handle om '{dagens_plot}'.")
-    # ----------------------------------------------------
 
     prompt = build_story_prompt(
-        # --- ÆNDRING: Brug de nye, tilfældige variable ---
         karakter_str=dagens_karakter,
         sted_str=dagens_sted,
         plot_str=dagens_plot,
-        # -----------------------------------------------
         length_instruction="Skriv en kort og hjertevarm historie.",
         mood_prompt_part="Stemningen skal være magisk og beroligende.",
         listener_context_instruction="",
@@ -164,7 +160,7 @@ def generate_daily_content():
         is_bedtime_story=True
     )
 
-    generation_config = {"max_output_tokens": 1500, "temperature": 0.75}  # Lidt højere temp for mere variation
+    generation_config = {"max_output_tokens": 1500, "temperature": 0.75}
     safety_settings = {
         HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
         HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
@@ -179,16 +175,13 @@ def generate_daily_content():
     story_title, story_content = story_results[0]
     print(f"Historie genereret: '{story_title}'")
 
-    # --- ÆNDRING: Formater teksten til Facebook-opslaget med branding ---
     branding_url = "www.readmeastory.app"
     full_story_text = (
-        f"{branding_url}\n\n"
         f"✨ Dagens Godnathistorie ✨\n\n"
         f"Titel: {story_title}\n\n"
         f"{story_content}\n\n"
-        f"--- Skabt med AI af {branding_url} ---"
+        f"--- Skabt af {branding_url} ---"
     )
-    # --------------------------------------------------------------------
 
     image_prompt = generate_image_prompt_from_gemini(story_content, dagens_karakter, dagens_sted)
     image_data_url = generate_image_with_vertexai(image_prompt)
@@ -208,12 +201,7 @@ def generate_daily_content():
         raise Exception(f"Fejl under klargøring af billede: {e}")
 
 
-# funktionen 'run_daily_job' og 'if __name__ == "__main__"' er uændrede og skal blive som de er.
 def run_daily_job():
-    """
-    Hovedfunktion, der samler alle trådene: opretter app-kontekst,
-    genererer indhold, poster det og rydder op efter sig.
-    """
     app = create_app()
     with app.app_context():
         temp_image_path = None
