@@ -1409,7 +1409,7 @@ function checkAnswer(event) {
 
         // Indsæt den nye knap i dokumentet, lige efter feedback-beskeden
         quizFeedback.insertAdjacentElement('afterend', rewardButton);
-        // --- SLUT PÅ NY KODE ---
+
     }
 }
 
