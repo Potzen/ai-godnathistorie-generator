@@ -1,0 +1,54 @@
+# Fil: .github/workflows/daily_post.yml
+
+name: Daglig Godnathistorie Post
+
+on:
+  # Denne sektion definerer, hvornår scriptet skal køre.
+  schedule:
+    # "cron" er en standard måde at skrive tidspunkter på.
+    # Denne streng betyder "kl. 08:00 UTC hver dag".
+    # (08:00 UTC svarer til kl. 10:00 dansk sommertid).
+    - cron: '0 8 * * *'
+
+  # Giver mulighed for at starte jobbet manuelt fra GitHub Actions-fanen.
+  workflow_dispatch:
+
+jobs:
+  build-and-post:
+    runs-on: ubuntu-latest # Jobbet kører på en standard Linux-server.
+
+    steps:
+    # Trin 1: Henter din kode ned fra GitHub til den midlertidige server.
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # Trin 2: Sætter Python op i den korrekte version.
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    # Trin 3: Installerer alle de pakker, dit projekt skal bruge.
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    # Trin 4: Opretter den midlertidige Google credentials-fil.
+    # Den tager hemmeligheden, du gemte på GitHub, og skriver den til en fil.
+    - name: Create Google Credentials File
+      run: echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}" > /tmp/google_creds.json
+
+    # Trin 5: Kører dit Python-script.
+    - name: Run Daily Poster Script
+      # Her sender vi alle dine GitHub Secrets ind i scriptet som miljøvariabler.
+      env:
+        FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+        FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        GOOGLE_CLOUD_PROJECT_ID: ${{ secrets.GOOGLE_CLOUD_PROJECT_ID }}
+        GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+        GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        # Vi peger nu på den midlertidige fil, vi lige har oprettet.
+        GOOGLE_APPLICATION_CREDENTIALS: /tmp/google_creds.json
+      run: python daily_poster.py
