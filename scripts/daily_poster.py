@@ -1,9 +1,21 @@
-# Fil: daily_poster.py
+# Fil: daily_poster.p
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
 import sys
+
+# Føj rodmappen (GodnathistorieApp) til Python's søgesti
+# Dette sikrer, at vi kan finde mapper som 'app', 'services' og 'prompts'
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 import base64
 import traceback
 import random
+import vertexai
+from google.oauth2 import service_account
 
 from app import create_app
 from services.ai_service import (
@@ -16,12 +28,13 @@ from prompts.story_generation_prompt import build_story_prompt
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 # --- LÆS KONFIGURATION FRA MILJØVARIABLER ---
-# Denne sektion er uændret. Sørg for at dine nøgler er sat i din PyCharm-konfiguration.
 FACEBOOK_PAGE_ID = os.getenv("FACEBOOK_PAGE_ID")
 FACEBOOK_PAGE_ACCESS_TOKEN = os.getenv("FACEBOOK_PAGE_ACCESS_TOKEN")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+GOOGLE_CLOUD_PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT_ID") # <--- RETTELSE 2: Sørger for at denne er defineret
 
-if not FACEBOOK_PAGE_ID or not FACEBOOK_PAGE_ACCESS_TOKEN:
-    print("FEJL: Miljøvariablerne for Facebook skal være sat.")
+if not all([FACEBOOK_PAGE_ID, FACEBOOK_PAGE_ACCESS_TOKEN, GOOGLE_API_KEY, GOOGLE_CLOUD_PROJECT_ID]):
+    print("FEJL: En eller flere nødvendige nøgler mangler i din .env-fil (Facebook eller Google).")
     sys.exit(1)
 # ------------------------------------------------
 
@@ -183,6 +196,29 @@ def generate_daily_content():
         f"--- Skabt af {branding_url} ---"
     )
 
+    # ======================================================================
+    # === ÆNDRING: MEST ROBUSTE METODE - Indlæs nøglefil direkte ===
+    # ======================================================================
+    try:
+        print("Indlæser Google-nøglefil direkte til Vertex AI...")
+
+        # Definer den absolutte sti til din nøglefil på serveren
+        credentials_path = "/home/Potzen/gen-lang-client-0269317733-c9b35424f793.json"
+
+        # Opret et credentials-objekt direkte fra filstien
+        credentials = service_account.Credentials.from_service_account_file(
+            credentials_path,
+            scopes=["https://www.googleapis.com/auth/cloud-platform"],
+        )
+
+        # Initialiser Vertex AI med de direkte indlæste credentials
+        vertexai.init(project=GOOGLE_CLOUD_PROJECT_ID, credentials=credentials)
+
+        print("Vertex AI initialiseret succesfuldt med direkte nøglefil.")
+    except Exception as e:
+        print(f"KRITISK FEJL under direkte indlæsning af nøglefil: {e}")
+        raise e
+    # ======================================================================
     image_prompt = generate_image_prompt_from_gemini(story_content, dagens_karakter, dagens_sted)
     image_data_url = generate_image_with_vertexai(image_prompt)
     if not image_data_url:

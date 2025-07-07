@@ -2,6 +2,13 @@
 import schedule
 import time
 import sys
+
+# Føj rodmappen (GodnathistorieApp) til Python's søgesti
+# Dette sikrer, at vi kan finde mapper som 'app', 'services' og 'prompts'
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from daily_poster import run_daily_job
 
 def job_wrapper():
