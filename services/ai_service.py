@@ -50,7 +50,7 @@ TTS_VOICES = {
 # I filen: services/ai_service.py
 
 def generate_story_text_from_gemini(full_prompt_string, generation_config_settings, safety_settings_values,
-                                    target_model_name='gemini-1.5-flash-latest', number_of_results=1):
+                                    target_model_name='gemini-2.5-pro', number_of_results=1):
     """
     Genererer tekst ved hjælp af Google Gemini.
     Kan nu anmode om flere kandidat-svar i ét enkelt API-kald.
@@ -127,7 +127,7 @@ def generate_image_prompt_from_gemini(story_text, karakter_str, sted_str):  # <-
     generated_prompt_text = default_image_prompt
 
     try:
-        gemini_model_for_prompting = genai.GenerativeModel('gemini-1.5-flash-latest')
+        gemini_model_for_prompting = genai.GenerativeModel('gemini-2.5-pro')
 
         # Byg den nye, forbedrede prompt med de ekstra argumenter
         actual_prompt_to_gemini = build_image_prompt_generation_prompt(story_text, karakter_str, sted_str)

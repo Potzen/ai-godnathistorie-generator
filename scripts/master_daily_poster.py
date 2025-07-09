@@ -5,9 +5,22 @@ import random
 import traceback
 import base64
 from datetime import datetime
+from dotenv import load_dotenv
 
-# Denne vigtige blok sikrer, at scriptet kan finde dine andre moduler
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# --- Indlæsning af .env og credentials ---
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+dotenv_path = os.path.join(project_root, '.env')
+load_dotenv(dotenv_path=dotenv_path)
+
+credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+if credentials_path:
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+    print("INFO: GOOGLE_APPLICATION_CREDENTIALS er sat for dette script.")
+else:
+    print("ADVARSEL: GOOGLE_APPLICATION_CREDENTIALS mangler i .env. Vertex AI vil fejle.")
+# ---
+
+sys.path.append(project_root)
 
 # --- Projekt-specifikke imports ---
 from app import create_app
@@ -31,7 +44,6 @@ SAFETY_SETTINGS = {
 
 
 def get_prompt_type_for_today():
-    """Vælger en prompt-type baseret på ugedagen (Mandag=0, ..., Søndag=6)."""
     weekday = datetime.now().weekday()
     if weekday in [0, 2]: return "article"
     if weekday in [1, 3]: return "connection_tip"
@@ -54,19 +66,14 @@ def main():
 
     with app.app_context():
         try:
-            # 1. Hent en tilfældig historie
-            # *** HER ER RETTELSEN ***
-            # Vi bruger .isnot(None) for en korrekt SQLAlchemy-forespørgsel
             stories = Story.query.filter(Story.is_log_entry == True, Story.problem_name.isnot(None)).all()
             if not stories:
-                print(
-                    "FEJL: Ingen passende historier fundet i databasen. Krav: is_log_entry=True og skal have et problem_name.")
+                print("FEJL: Ingen passende historier fundet i databasen.")
                 return
 
             random_story = random.choice(stories)
             print(f"Valgt historie: '{random_story.title}' (ID: {random_story.id})")
 
-            # 2. Forbered data til at formatere prompten
             story_data = {
                 "title": random_story.title,
                 "problem_name": random_story.problem_name,
@@ -77,7 +84,6 @@ def main():
             if prompt_template is None:
                 raise ValueError(f"Kunne ikke finde en prompt for typen '{prompt_type}'.")
 
-            # 3. Generer tekst-indhold til opslaget
             print("Genererer tekst til opslag...")
             gen_config = {"max_output_tokens": 1024, "temperature": 0.75}
             formatted_prompt = prompt_template.format(**story_data)
@@ -89,7 +95,6 @@ def main():
             _title, post_text = results[0]
             print("Tekst genereret succesfuldt.")
 
-            # 4. Generer et billede til opslaget
             print("Genererer billede til opslag...")
             image_prompt_text = generate_image_prompt_from_gemini(
                 story_text=random_story.content,
@@ -107,11 +112,18 @@ def main():
                 f.write(image_bytes)
             print(f"Billede gemt midlertidigt som '{temp_image_path}'")
 
-            # 5. Post til Facebook
+            # *** HER ER DEN ENDELIGE ÆNDRING ***
+            # Vi henter Facebook-nøglerne direkte fra miljøet for at være sikre.
             print("Poster til Facebook...")
+            page_id = os.getenv("FACEBOOK_PAGE_ID")
+            access_token = os.getenv("FACEBOOK_PAGE_ACCESS_TOKEN")
+
+            if not page_id or not access_token:
+                raise ValueError("FEJL: FACEBOOK_PAGE_ID eller FACEBOOK_PAGE_ACCESS_TOKEN mangler i .env-filen.")
+
             post_photo_to_facebook_page(
-                page_id=app.config["FACEBOOK_PAGE_ID"],
-                page_access_token=app.config["FACEBOOK_PAGE_ACCESS_TOKEN"],
+                page_id=page_id,
+                page_access_token=access_token,
                 image_path=temp_image_path,
                 caption=post_text
             )
