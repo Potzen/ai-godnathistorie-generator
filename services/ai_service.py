@@ -1162,23 +1162,3 @@ def generate_quiz_for_story(story_content: str, lix_score: int) -> dict:
         return {"error": f"En teknisk fejl opstod under quiz-generering: {e}"}
 
     # Tilføj denne funktion i bunden af services/ai_service.py
-
-def generate_parenting_article(story_title: str, story_plot: str) -> str:
-    """
-    Kalder Gemini for at generere en pædagogisk artikel baseret på en histories tema.
-    """
-    current_app.logger.info(f"AI Service: Genererer pædagogisk artikel om '{story_plot}'...")
-    try:
-        prompt = build_article_prompt(story_title, story_plot)
-        model = genai.GenerativeModel('gemini-1.5-pro-latest')
-        response = model.generate_content(prompt)
-
-        if response.text:
-            return response.text.strip()
-        else:
-            current_app.logger.warning("AI Service: Modtog tomt svar ved generering af artikel.")
-            return None
-
-    except Exception as e:
-        current_app.logger.error(f"Fejl under generering af pædagogisk artikel: {e}")
-        return None
