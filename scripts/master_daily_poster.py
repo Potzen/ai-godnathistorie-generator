@@ -27,7 +27,7 @@ from services.ai_service import (
     generate_image_with_vertexai
 )
 from services.facebook_service import post_photo_to_facebook_page
-from prompts.weekly_prompts import PROMPTS
+from prompts.weekly_prompts import PROMPTS, IMAGE_SCENE_GENERATOR_PROMPT
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 # --- TEMA-BANK ---
@@ -52,7 +52,6 @@ SAFETY_SETTINGS = {
 }
 
 def get_prompt_type_for_today():
-    """Vælger en prompt-type baseret på ugedagen for at skabe variation."""
     weekday = datetime.now().weekday()
     if weekday in [0, 2]: return "article"
     if weekday in [1, 3]: return "connection_tip"
@@ -98,29 +97,35 @@ def main():
             _title, post_text = results[0]
             print("Tekst genereret succesfuldt.")
 
-            # === RETTELSE: FORENKLET OG ROBUST BILLEDE-GENERERING ===
-            print("Trin 2: Genererer billede baseret på tema...")
+            print("Trin 2: Genererer unik visuel scene-beskrivelse...")
+            scene_gen_prompt = IMAGE_SCENE_GENERATOR_PROMPT.format(theme_name=theme_name, post_text=post_text)
+            gen_config_scene = {"max_output_tokens": 1024, "temperature": 0.85}
+            scene_results = generate_story_text_from_gemini(scene_gen_prompt, gen_config_scene, SAFETY_SETTINGS)
 
-            # Vi bygger en stærk, direkte prompt, der altid virker.
-            image_prompt = (
-                f"A whimsical and enchanting fairytale illustration capturing the feeling of '{theme_name}'. "
-                "The scene should be heartwarming and magical, suitable for children. "
-                "Style: 3D digital art, high-quality, cinematic lighting, soft and dreamy atmosphere, child-friendly."
+            if not scene_results or "Fejl" in scene_results[0][0]:
+                raise ValueError("Kunne ikke generere en visuel scene-beskrivelse.")
+
+            _scene_title, scene_description = scene_results[0]
+            print(f"Visuel scene genereret: {scene_description[:120]}...")
+
+            final_image_prompt = (
+                f"{scene_description} "
+                "Style: Whimsical and enchanting fairytale illustration, 3D digital art, high-quality, cinematic lighting, soft and dreamy atmosphere, child-friendly."
             )
-            print(f"Bruger direkte billed-prompt: {image_prompt[:100]}...")
 
-            image_data_url = generate_image_with_vertexai(image_prompt)
+            print("Trin 3: Genererer det endelige billede...")
+            image_data_url = generate_image_with_vertexai(final_image_prompt)
             if image_data_url is None:
                 raise ValueError("Kunne ikke generere billed-URL fra Vertex AI.")
 
             header, encoded_data = image_data_url.split(',', 1)
             image_bytes = base64.b64decode(encoded_data)
-            temp_image_path = "daily_post_image.png"
+            temp_image_path = "daily_master_post_image.png"
             with open(temp_image_path, "wb") as f:
                 f.write(image_bytes)
             print(f"Billede gemt midlertidigt som '{temp_image_path}'")
 
-            print("Trin 3: Poster til Facebook...")
+            print("Trin 4: Poster til Facebook...")
             page_id = os.getenv("FACEBOOK_PAGE_ID")
             access_token = os.getenv("FACEBOOK_PAGE_ACCESS_TOKEN")
 
@@ -144,7 +149,6 @@ def main():
                 print(f"Midlertidig billedfil slettet: {temp_image_path}")
 
     print("--- Content Generator færdig ---")
-
 
 if __name__ == "__main__":
     main()

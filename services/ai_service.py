@@ -50,69 +50,70 @@ TTS_VOICES = {
 # I filen: services/ai_service.py
 
 def generate_story_text_from_gemini(full_prompt_string, generation_config_settings, safety_settings_values,
-                                    target_model_name='emini-2.5-flash', number_of_results=1):
+                                    target_model_name='gemini-1.5-flash', number_of_results=1):
     """
-    Genererer tekst ved hjælp af Google Gemini.
-    Kan nu anmode om flere kandidat-svar i ét enkelt API-kald.
+    Genererer tekst ved hjælp af Google Gemini med op til 3 genforsøg ved fejl.
     """
-    current_app.logger.info(
-        f"--- ai_service: Kalder Gemini (Model: {target_model_name}, Antal svar: {number_of_results}) ---")
+    max_retries = 3
+    for attempt in range(max_retries):
+        current_app.logger.info(
+            f"--- ai_service: Kalder Gemini (Forsøg {attempt + 1}/{max_retries}, Model: {target_model_name}) ---")
 
-    try:
-        model = genai.GenerativeModel(target_model_name)
+        try:
+            model = genai.GenerativeModel(target_model_name)
+            generation_config_settings['candidate_count'] = number_of_results
+            gen_config = genai.types.GenerationConfig(**generation_config_settings)
 
-        # Tilføj antallet af ønskede kandidater til generation_config
-        generation_config_settings['candidate_count'] = number_of_results
-        gen_config = genai.types.GenerationConfig(**generation_config_settings)
+            response = model.generate_content(
+                full_prompt_string,
+                generation_config=gen_config,
+                safety_settings=safety_settings_values
+            )
 
-        response = model.generate_content(
-            full_prompt_string,
-            generation_config=gen_config,
-            safety_settings=safety_settings_values
-        )
+            if response.prompt_feedback.block_reason:
+                reason = response.prompt_feedback.block_reason.name
+                current_app.logger.error(f"Prompt blokeret af sikkerhedsfilter. Årsag: {reason}. Stopper forsøg.")
+                return [("Blokeret Indhold", f"Anmodning blokeret: {reason}")]
 
-        # Tjek for promp-feedback, før vi tilgår kandidater
-        if response.prompt_feedback.block_reason:
-            reason = response.prompt_feedback.block_reason.name
-            current_app.logger.error(f"Prompt blokeret af sikkerhedsfilter. Årsag: {reason}")
-            # Returner en enkelt fejl, da hele anmodningen blev blokeret
-            return [("Blokeret Indhold", f"Anmodning blokeret af sikkerhedsfilter: {reason}")]
+            results = []
+            has_valid_content = False
+            for candidate in response.candidates:
+                if candidate.finish_reason == 'SAFETY':
+                    ratings_str = ", ".join(
+                        [f"{r.category.name}: {r.probability.name}" for r in candidate.safety_ratings])
+                    results.append(("Blokeret Indhold", f"En variant blev blokeret. Årsag: {ratings_str}"))
+                    continue
 
-        results = []
-        for candidate in response.candidates:
-            # Tjek hver kandidat for sikkerhedsblokering
-            if candidate.finish_reason == 'SAFETY':
-                ratings_str = ", ".join([f"{r.category.name}: {r.probability.name}" for r in candidate.safety_ratings])
-                results.append(
-                    ("Blokeret Indhold", f"En variant blev blokeret af sikkerhedsfiltre. Årsag: {ratings_str}"))
-                continue
+                if candidate.content and candidate.content.parts and candidate.content.parts[0].text.strip():
+                    raw_text = candidate.content.parts[0].text
+                    lines = raw_text.splitlines()
+                    story_title = lines[0].strip() if lines and lines[0].strip() else "Uden Titel"
+                    actual_story_content = "\n".join(lines[1:]).strip() if len(lines) > 1 else raw_text
 
-            # --- START PÅ KORREKT MÅDE AT LÆSE SVAR ---
-            # Tjek om der er indhold, før vi prøver at læse det
-            if candidate.content and candidate.content.parts:
-                raw_text = candidate.content.parts[0].text
+                    results.append((story_title, actual_story_content))
+                    has_valid_content = True
+                else:
+                    results.append(("Tomt Svar", "AI returnerede ikke noget indhold for denne variant."))
+
+            # Hvis vi har mindst ét gyldigt svar, returnerer vi.
+            if has_valid_content:
+                current_app.logger.info(f"Succes på forsøg {attempt + 1}. Returnerer gyldigt indhold.")
+                return results
+
+            # Hvis vi når hertil, betyder det, at der ikke var gyldigt indhold.
+            current_app.logger.warning(f"Intet gyldigt indhold på forsøg {attempt + 1}. Forsøger igen...")
+            time.sleep(1.5)  # Venter lidt før næste forsøg
+
+        except Exception as e:
+            current_app.logger.error(f"ai_service: Fejl på forsøg {attempt + 1}: {e}\n{traceback.format_exc()}")
+            if attempt < max_retries - 1:
+                time.sleep(1.5)  # Venter også ved teknisk fejl
             else:
-                # Hvis der ikke er noget indhold, fortsæt til næste kandidat
-                results.append(("Tomt Svar", "AI returnerede ikke noget indhold for denne variant."))
-                continue
-            # --- SLUT PÅ KORREKT MÅDE AT LÆSE SVAR ---
+                return [("API Fejl", f"Teknisk fejl med AI-tjenesten efter {max_retries} forsøg: {e}")]
 
-            lines = raw_text.splitlines()
-            story_title = "Uden Titel"
-            actual_story_content = raw_text  # Fallback
-
-            if lines and lines[0].strip():
-                story_title = lines[0].strip()
-                actual_story_content = "\n".join(lines[1:]).strip()
-
-            results.append((story_title, actual_story_content))
-
-        return results
-
-    except Exception as e:
-        current_app.logger.error(f"ai_service: Fejl ved kald til Gemini API: {e}\n{traceback.format_exc()}")
-        # Returner en liste med én fejl, så den kan håndteres ensartet
-        return [("API Fejl", f"Teknisk fejl med AI-tjenesten: {e}")]
+    # Hvis loopet afsluttes uden succes
+    current_app.logger.error(f"Kunne ikke generere gyldigt indhold efter {max_retries} forsøg.")
+    return [("Fejl efter genforsøg", "AI kunne ikke generere indhold efter flere forsøg.")]
 
 
 # I services/ai_service.py
@@ -168,7 +169,7 @@ def generate_image_with_vertexai(image_prompt_text):
 
     current_prompt_to_imagen = image_prompt_text
     image_data_url = None
-    max_retries = 2
+    max_retries = 3
 
     for attempt in range(max_retries):
         try:
@@ -211,7 +212,7 @@ def generate_image_with_vertexai(image_prompt_text):
             response_imagen = model.generate_images(
                 prompt=current_prompt_to_imagen,
                 number_of_images=1,
-                guidance_scale=30
+                guidance_scale=9
             )
 
             if response_imagen and response_imagen.images:
