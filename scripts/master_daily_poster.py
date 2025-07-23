@@ -99,19 +99,23 @@ def main():
             _title, post_text = results[0]
             print("Tekst genereret succesfuldt.")
 
-            # === NY, FORENKLET BILLEDE-GENERERING ===
-            print("Trin 2: Genererer komplet billed-prompt med ny Art Director AI...")
-            # Vi sender kun den færdige tekst. AI'en klarer resten.
-            scene_gen_prompt = IMAGE_SCENE_GENERATOR_PROMPT.format(post_text=post_text)
-            gen_config_scene = {"max_output_tokens": 1024, "temperature": 0.9}
+            # === OPDATERET BILLEDE-GENERERING ===
+            print("Trin 2: Genererer unik visuel scene baseret på den færdige tekst...")
+            # Vi bruger nu den færdige 'post_text' som inspiration for billedet
+            scene_gen_prompt = IMAGE_SCENE_GENERATOR_PROMPT.format(theme_name=theme_name, post_text=post_text)
+            gen_config_scene = {"max_output_tokens": 1024, "temperature": 0.85}
             scene_results = generate_story_text_from_gemini(scene_gen_prompt, gen_config_scene, SAFETY_SETTINGS)
 
             if not scene_results or "Fejl" in scene_results[0][0]:
-                raise ValueError("Kunne ikke generere en komplet billed-prompt.")
+                raise ValueError("Kunne ikke generere en visuel scene-beskrivelse.")
 
-            # Den nye prompt indeholder BÅDE scene og stil.
-            _scene_title, final_image_prompt = scene_results[0]
-            print(f"Komplet billed-prompt genereret: {final_image_prompt[:120]}...")
+            _scene_title, scene_description = scene_results[0]
+            print(f"Visuel scene genereret: {scene_description[:120]}...")
+
+            final_image_prompt = (
+                f"{scene_description} "
+                "Style: Whimsical and enchanting fairytale illustration, 3D digital art, high-quality, cinematic lighting, soft and dreamy atmosphere, child-friendly."
+            )
 
             print("Trin 3: Genererer det endelige billede...")
             image_data_url = generate_image_with_vertexai(final_image_prompt)
