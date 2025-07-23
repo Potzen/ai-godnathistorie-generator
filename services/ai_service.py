@@ -117,20 +117,18 @@ def generate_story_text_from_gemini(full_prompt_string, generation_config_settin
 
 
 # I services/ai_service.py
-def generate_image_prompt_from_gemini(story_text, karakter_str, sted_str):  # <--- Opdateret signatur
+def generate_image_prompt_from_gemini(story_text, karakter_str, sted_str):
     """
     Genererer en billedprompt baseret på en historietekst og brugerens originale inputs.
-    # ... (docstring fortsætter)
     """
     current_app.logger.info("ai_service: Genererer billedprompt med Gemini, prioriterer brugerinput...")
-
     default_image_prompt = "A whimsical and enchanting fairytale illustration, child-friendly, high-quality 3D digital art, imaginative."
-    generated_prompt_text = default_image_prompt
 
     try:
-        gemini_model_for_prompting = genai.GenerativeModel('emini-2.5-flash')
+        # === RETTELSEN ER HER ===
+        # Modelnavnet er rettet fra 'emini-2.5-flash' til den korrekte og stærke 'gemini-1.5-pro-latest'.
+        gemini_model_for_prompting = genai.GenerativeModel('gemini-1.5-pro-latest')
 
-        # Byg den nye, forbedrede prompt med de ekstra argumenter
         actual_prompt_to_gemini = build_image_prompt_generation_prompt(story_text, karakter_str, sted_str)
 
         response_gemini = gemini_model_for_prompting.generate_content(
@@ -139,6 +137,7 @@ def generate_image_prompt_from_gemini(story_text, karakter_str, sted_str):  # <-
         if response_gemini.text and response_gemini.text.strip():
             generated_prompt_text = response_gemini.text.strip()
             current_app.logger.info(f"ai_service: Genereret billedprompt: {generated_prompt_text}")
+            return generated_prompt_text
         else:
             current_app.logger.warning("ai_service: Gemini returnerede en tom billedprompt. Bruger standard prompt.")
 
@@ -146,8 +145,7 @@ def generate_image_prompt_from_gemini(story_text, karakter_str, sted_str):  # <-
         current_app.logger.error(
             f"ai_service: Fejl under generering af billedprompt med Gemini: {e_gemini_prompt}\n{traceback.format_exc()}")
 
-    return generated_prompt_text
-
+    return default_image_prompt
 
 def generate_image_with_vertexai(image_prompt_text):
     """
