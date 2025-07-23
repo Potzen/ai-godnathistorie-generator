@@ -51,6 +51,7 @@ SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
 }
 
+
 def get_prompt_type_for_today():
     weekday = datetime.now().weekday()
     if weekday in [0, 2]: return "article"
@@ -58,6 +59,7 @@ def get_prompt_type_for_today():
     if weekday == 4: return "weekend"
     if weekday == 5: return "character"
     return None
+
 
 def main():
     print(f"--- Starter Content Generator - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---")
@@ -97,21 +99,19 @@ def main():
             _title, post_text = results[0]
             print("Tekst genereret succesfuldt.")
 
-            print("Trin 2: Genererer unik visuel scene-beskrivelse...")
-            scene_gen_prompt = IMAGE_SCENE_GENERATOR_PROMPT.format(theme_name=theme_name, post_text=post_text)
-            gen_config_scene = {"max_output_tokens": 1024, "temperature": 0.85}
+            # === NY, FORENKLET BILLEDE-GENERERING ===
+            print("Trin 2: Genererer komplet billed-prompt med ny Art Director AI...")
+            # Vi sender kun den færdige tekst. AI'en klarer resten.
+            scene_gen_prompt = IMAGE_SCENE_GENERATOR_PROMPT.format(post_text=post_text)
+            gen_config_scene = {"max_output_tokens": 1024, "temperature": 0.9}
             scene_results = generate_story_text_from_gemini(scene_gen_prompt, gen_config_scene, SAFETY_SETTINGS)
 
             if not scene_results or "Fejl" in scene_results[0][0]:
-                raise ValueError("Kunne ikke generere en visuel scene-beskrivelse.")
+                raise ValueError("Kunne ikke generere en komplet billed-prompt.")
 
-            _scene_title, scene_description = scene_results[0]
-            print(f"Visuel scene genereret: {scene_description[:120]}...")
-
-            final_image_prompt = (
-                f"{scene_description} "
-                "Style: Whimsical and enchanting fairytale illustration, 3D digital art, high-quality, cinematic lighting, soft and dreamy atmosphere, child-friendly."
-            )
+            # Den nye prompt indeholder BÅDE scene og stil.
+            _scene_title, final_image_prompt = scene_results[0]
+            print(f"Komplet billed-prompt genereret: {final_image_prompt[:120]}...")
 
             print("Trin 3: Genererer det endelige billede...")
             image_data_url = generate_image_with_vertexai(final_image_prompt)
@@ -149,6 +149,7 @@ def main():
                 print(f"Midlertidig billedfil slettet: {temp_image_path}")
 
     print("--- Content Generator færdig ---")
+
 
 if __name__ == "__main__":
     main()

@@ -24,8 +24,8 @@ narrative_bp = Blueprint('narrative', __name__, url_prefix='/narrative')
 @narrative_bp.route('/generate_narrative_story', methods=['POST'])
 @login_required
 def generate_narrative_story():
-    if current_user.role != 'premium':
-        return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403
+#    if current_user.role != 'premium':
+#        return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403
 
     original_user_inputs = request.get_json()
     if not original_user_inputs:
@@ -124,12 +124,12 @@ def generate_narrative_story():
 @login_required  # Tilføjet/aktiveret
 def suggest_character_traits():
     # Tjek om brugeren har 'premium' rolle
-    if current_user.role != 'premium':
-        current_app.logger.warning(
-            f"Uautoriseret forsøg på adgang til '/suggest_character_traits' af bruger: "
-            f"{current_user.email} (Rolle: {current_user.role})"
-        )
-        return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403  # Forbidden
+    #if current_user.role != 'premium':
+   #     current_app.logger.warning(
+   #         f"Uautoriseret forsøg på adgang til '/suggest_character_traits' af bruger: "
+   #         f"{current_user.email} (Rolle: {current_user.role})"
+   #     )
+   #    return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403  # Forbidden
 
     user_id_for_log = current_user.id # <--- DENNE LINJE ER TILFØJET/FLYTET KORREKT
 
@@ -179,8 +179,8 @@ def analyze_for_logbook():
     API-endepunkt der modtager en historie og returnerer en AI-genereret
     analyse med henblik på at oprette en logbogs-indtastning.
     """
-    if current_user.role != 'premium':
-        return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403
+    #if current_user.role != 'premium':
+    #    return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403
 
     if not request.is_json:
         return jsonify({"error": "Anmodning skal være JSON."}), 415
@@ -211,8 +211,8 @@ def save_log_entry(story_id):
     API-endepunkt der modtager de udfyldte data fra dokumentations-formularen
     og gemmer dem på den specifikke historie i databasen.
     """
-    if current_user.role != 'premium':
-        return jsonify({"error": "Adgang nægtet."}), 403
+    #if current_user.role != 'premium':
+    #    return jsonify({"error": "Adgang nægtet."}), 403
 
     story = Story.query.get_or_404(story_id)
 
@@ -376,8 +376,8 @@ def list_stories_for_continuation():
     API-endepunkt der returnerer en simpel liste af brugerens gemte
     "Narrativ Støtte"-historier, som kan bruges som forældre-historier.
     """
-    if current_user.role != 'premium':
-        return jsonify({"error": "Adgang nægtet."}), 403
+    #if current_user.role != 'premium':
+    #    return jsonify({"error": "Adgang nægtet."}), 403
 
     try:
         # Find alle historier fra den loggede bruger, som er gemt i logbogen
@@ -400,8 +400,8 @@ def list_stories_for_continuation():
 @narrative_bp.route('/generate_problem_image', methods=['POST'])
 @login_required
 def generate_problem_image_route():
-    if current_user.role != 'premium':
-        return jsonify({"error": "Adgang nægtet."}), 403
+    #if current_user.role != 'premium':
+    #    return jsonify({"error": "Adgang nægtet."}), 403
 
     narrative_data = request.get_json()
     if not narrative_data:
@@ -456,8 +456,8 @@ def save_child_profile():
     """
     API-endepunkt til at oprette eller opdatere en barneprofil.
     """
-    if current_user.role != 'premium':
-        return jsonify({"error": "Adgang nægtet."}), 403
+    #if current_user.role != 'premium':
+    #    return jsonify({"error": "Adgang nægtet."}), 403
 
     data = request.get_json()
     if not data or not data.get('name'):
@@ -520,8 +520,8 @@ def list_child_profiles():
     """
     API-endepunkt til at hente alle barneprofiler for den indloggede bruger.
     """
-    if current_user.role != 'premium':
-        return jsonify({"error": "Adgang nægtet."}), 403
+    #if current_user.role != 'premium':
+    #    return jsonify({"error": "Adgang nægtet."}), 403
 
     try:
         profiles = ChildProfile.query.filter_by(user_id=current_user.id).order_by(
@@ -571,8 +571,8 @@ def delete_child_profile(profile_id):
 @narrative_bp.route('/generate_story_image', methods=['POST'])
 @login_required
 def generate_narrative_story_image():
-    if current_user.role != 'premium':
-        return jsonify({"error": "Adgang nægtet."}), 403
+    #if current_user.role != 'premium':
+    #    return jsonify({"error": "Adgang nægtet."}), 403
 
     narrative_data = request.get_json()
     if not narrative_data:

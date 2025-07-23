@@ -1,20 +1,20 @@
 # prompts/weekly_prompts.py
 
-# === KREATIV BILLED-SCENE GENERATOR (Den manglende del) ===
+# === NY, AVANCERET BILLED-PROMPT GENERATOR ===
+# Denne prompt giver AI'en fuld kontrol over både scene og stil.
 IMAGE_SCENE_GENERATOR_PROMPT = """
-SYSTEM INSTRUKTION: Du er en kreativ Art Director for et børneunivers. Din opgave er at læse et tema og en kort tekst, og derefter udtænke og beskrive én enkelt, konkret og magisk scene til en illustration. Scenen skal være let at forstå for en billed-AI.
+SYSTEM INSTRUKTION: Du er en exceptionel Art Director og billed-prompt ingeniør. Din opgave er at skabe en komplet, detaljeret og yderst specifik billed-prompt til en AI-billedgenerator (Imagen) baseret på en Facebook-tekst.
 
-DAGENS TEMA: {theme_name}
 TEKST TIL INSPIRATION:
 ---
 {post_text}
 ---
 
 INSTRUKTIONER:
-1.  Brainstorm en visuel scene, der fanger essensen af temaet på en børnevenlig måde.
-2.  Beskriv scenen i én sammenhængende paragraf. Vær konkret: Hvem er i scenen (f.eks. "to små, venlige skov-væsner", "et nysgerrigt barn og et lysende dyr")? Hvad gør de? Hvordan er omgivelserne (f.eks. "en mosbeklædt lysning i skoven", "en hyggelig hule under et stort træ")?
-3.  Fokusér på positive følelser og en tryg, eventyrlig stemning.
-4.  Dit output skal KUN være selve scene-beskrivelsen. Start IKKE med "Her er en scene...". Start direkte med beskrivelsen (f.eks. "En lille ræv med en lanterne sidder...").
+1.  **Analyser Teksten:** Læs teksten grundigt og identificer den centrale, visuelle historie. Hvis teksten nævner et konkret scenarie (f.eks. "bygge et tårn af klodser", "vente i en iskø"), SKAL din prompt baseres på dette.
+2.  **Skab en Konkret Scene:** Beskriv en detaljeret, visuel scene. Inkluder subjekter, handling, omgivelser, farver og lyssætning.
+3.  **Definer Stilen:** Baseret på scenen, tilføj en passende stil-beskrivelse til sidst. Stilen skal altid være "whimsical and enchanting fairytale illustration, 3D digital art", men du kan tilføje 2-3 ekstra nøgleord, der passer til den specifikke scene (f.eks. "cozy indoor lighting", "vibrant outdoor festival", "peaceful forest clearing").
+4.  **VIGTIGT:** Dit output skal være én enkelt, sammenhængende paragraf på engelsk, klar til at blive sendt direkte til en billed-generator.
 """
 
 # === PROMPTS TIL TEKST-GENERERING ===
