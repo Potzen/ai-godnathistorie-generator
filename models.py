@@ -1,11 +1,7 @@
-# Fil: models.py
 from extensions import db
 from flask_login import UserMixin
 from datetime import datetime
-
-
-# Importer til kodeordshåndtering - flyttes ind i metoderne for at undgå cirkulær import ved opstart
-# from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(UserMixin, db.Model):
     __tablename__ = 'user'
@@ -25,11 +21,9 @@ class User(UserMixin, db.Model):
     stories = db.relationship('Story', backref='author', lazy='dynamic')
 
     def set_password(self, password):
-        from werkzeug.security import generate_password_hash  # Import her for at undgå potentielle opstartsproblemer
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
-        from werkzeug.security import check_password_hash  # Import her
         if self.password_hash is None:
             return False
         return check_password_hash(self.password_hash, password)
@@ -102,7 +96,6 @@ class ChildProfile(db.Model):
     age = db.Column(db.String(20), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # potzen/ai-godnathistorie-generator/ai-godnathistorie-generator-5ffa7696e20a294c8648c9db4a2cb60980e2a54e/models.py
     # One-to-Many relationer til profilens attributter
     # Den første relation etablerer et backref, som de andre skal overlappe.
     strengths = db.relationship('ProfileAttribute', lazy='dynamic', cascade="all, delete-orphan",

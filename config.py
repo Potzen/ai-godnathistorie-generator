@@ -51,8 +51,6 @@ class Config:
     # VIGTIGT: Sørg for, at e-mailadresser skrives med små bogstaver for at undgå case-sensitivitets problemer.
     ALLOWED_EMAIL_ADDRESSES = [
         "philipotzen@gmail.com",
-        "en.anden.godkendt.email@example.com",
-        # Tilføj flere e-mailadresser efter behov
     ]
 
     # E-mail lister for specifikke brugerroller (Google Login)

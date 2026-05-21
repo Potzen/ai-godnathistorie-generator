@@ -1,4 +1,3 @@
-# Fil: routes/story_routes.py (Korrekt og fuld version)
 from flask import Blueprint, request, jsonify, current_app, Response
 import traceback
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
@@ -14,8 +13,6 @@ from services.ai_service import (
     generate_quiz_for_story
 )
 from services.lix_service import calculate_lix
-import concurrent.futures
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from google.api_core.exceptions import InternalServerError
 
 story_bp = Blueprint('story', __name__, template_folder='../templates', static_folder='../static')
@@ -28,7 +25,6 @@ def generate_story():
         return jsonify(title="Fejl", story="Ingen data modtaget."), 400
     current_app.logger.info(f"Modtaget data for /generate: {data}")
 
-    # --- Trin 1 & 2: Udpak og bearbejd data (uændret) ---
     karakterer_data = data.get('karakterer', [])
     steder_liste = data.get('steder', [])
     plots_liste = data.get('plots', [])
@@ -90,7 +86,6 @@ def generate_story():
             else:
                 ending_instruction = "VIGTIGT OM AFSLUTNINGEN: Afslut historien på en positiv, tryg og beroligende måde, der er passende for en godnathistorie. Henvend dig IKKE direkte til lytteren midt i historien."
 
-    # --- Trin 3 & 4: Bestem model, indstillinger og byg prompt (uændret) ---
     target_model_name = 'gemini-1.5-flash-latest'
     if selected_model_from_frontend:
          target_model_name = selected_model_from_frontend
@@ -135,9 +130,7 @@ def generate_story():
         is_bedtime_story=is_bedtime_story
     )
 
-    # --- Trin 5: Kald AI service med KORREKT håndtering ---
     try:
-        # Denne funktion returnerer en LISTE af resultater, f.eks. [('Titel', 'Indhold...')]
         results = generate_story_text_from_gemini(
             full_prompt_string=prompt,
             generation_config_settings=generation_config_dict,
@@ -145,15 +138,11 @@ def generate_story():
             target_model_name=target_model_name
         )
 
-        # ---- START PÅ RETTELSE ----
-        # Tjek om vi faktisk fik en liste med resultater tilbage
         if not results:
             current_app.logger.error("Fejl: AI-servicen returnerede en tom liste.")
             raise ValueError("AI service returnerede intet resultat.")
 
-        # Hent det første (og eneste) resultat-tuple fra listen
         story_title, actual_story_content = results[0]
-        # ---- SLUT PÅ RETTELSE ----
 
     except Exception as e:
         current_app.logger.error(f"Fejl ved kald til ai_service: {e}\n{traceback.format_exc()}")
@@ -176,7 +165,6 @@ def generate_lix_story_route():
         return jsonify(error="Ingen data modtaget."), 400
     current_app.logger.info(f"Bruger {current_user.id}: Modtaget LIX-anmodning: {data}")
 
-    # --- Dataindsamling og prompt-bygning (uændret) ---
     target_lix = data.get('target_lix')
     story_elements = data.get('elements', [])
     custom_words = data.get('custom_words', [])
@@ -269,7 +257,6 @@ def generate_lix_story_route():
     return jsonify(response_data)
 
 
-# I routes/story_routes.py
 @story_bp.route('/generate_image_from_story', methods=['POST'])
 @login_required
 def generate_image_from_story():

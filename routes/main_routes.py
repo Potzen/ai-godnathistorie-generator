@@ -1,7 +1,6 @@
 from flask import Blueprint, render_template, current_app
 from flask_login import login_required, current_user
 from models import Story
-# import uuid # Fjern eller udkommenter denne
 
 # Opret et Blueprint objekt.
 # 'main' er navnet på dette blueprint. Det bruges internt af Flask.
