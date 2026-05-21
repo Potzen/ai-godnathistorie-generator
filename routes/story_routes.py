@@ -158,7 +158,7 @@ def generate_lix_story_route():
     API endpoint til Læsehesten.
     Genererer op til 3 kandidat-historier og sender dem til frontend.
     """
-    if current_user.role not in ['basic', 'premium']:
+    if current_user.role not in ['basic', 'premium', 'teacher']:
         return jsonify({"error": "Læsehesten er en Premium-funktion."}), 403
     data = request.get_json()
     if not data:
@@ -320,24 +320,26 @@ def save_story_to_logbook():
     data = request.get_json()
     title = data.get('title')
     content = data.get('content')
+    source = data.get('source', 'Højtlæsning')
+    lix_score = data.get('lix_score')
 
     if not title or not content:
         return jsonify({"error": "Både titel og indhold er påkrævet."}), 400
 
     try:
-        # Opret en ny Story-instans i databasen
         new_story = Story(
             title=title,
             content=content,
             user_id=current_user.id,
-            source='Højtlæsning',  # Angiver hvor historien kommer fra
-            is_log_entry=True  # Markerer den med det samme som en logbogs-entry
+            source=source,
+            is_log_entry=True,
+            lix_score_stored=int(lix_score) if lix_score is not None else None
         )
         db.session.add(new_story)
         db.session.commit()
 
         current_app.logger.info(
-            f"Bruger {current_user.id} gemte Højtlæsnings-historie '{title}' til logbogen (Ny ID: {new_story.id}).")
+            f"Bruger {current_user.id} gemte '{source}'-historie '{title}' til logbogen (Ny ID: {new_story.id}).")
 
         return jsonify({
             "success": True,
@@ -347,13 +349,13 @@ def save_story_to_logbook():
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Fejl ved gemning af Højtlæsnings-historie til logbog: {e}\n{traceback.format_exc()}")
+        current_app.logger.error(f"Fejl ved gemning af historie til logbog: {e}\n{traceback.format_exc()}")
         return jsonify({"error": "En intern fejl opstod under gemning."}), 500
 
 @story_bp.route('/generate_quiz', methods=['POST'])
 @login_required
 def generate_quiz_route():
-    if current_user.role not in ['basic', 'premium']:
+    if current_user.role not in ['basic', 'premium', 'teacher']:
         return jsonify({"error": "Funktionen er forbeholdt premium-brugere."}), 403
 
     data = request.get_json()

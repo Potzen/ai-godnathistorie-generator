@@ -65,6 +65,10 @@ class Config:
         "philipotzen@gmail.com",  # Eksempel: philipotzen@gmail.com er premium
     ]
 
+    TEACHER_EMAILS = [
+        # "laerer@skole.dk",
+    ]
+
     # Validering (valgfrit men god praksis)
     @staticmethod
     def validate_critical_config():

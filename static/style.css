@@ -53,8 +53,49 @@ body {
 
 /* Header Styling */
 header {
-    margin-bottom: 20px; /* Afstand under headeren */
-    padding: 15px 0;     /* Vertikal padding for header-området */
+    margin-bottom: 20px;
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.site-nav {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.nav-link {
+    padding: 6px 16px;
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    color: var(--color-text);
+    font-weight: 600;
+    font-size: 0.95em;
+    transition: background-color 0.15s, color 0.15s;
+    border: 2px solid transparent;
+}
+
+.nav-link:hover {
+    background-color: var(--color-secondary);
+    text-decoration: none;
+    color: var(--color-text);
+}
+
+.nav-link.active {
+    background-color: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+}
+
+.nav-link.active:hover {
+    background-color: var(--color-primary-hover);
+    color: white;
 }
 
 .header-inner { /* Container for at matche sidens indholdsbredde */

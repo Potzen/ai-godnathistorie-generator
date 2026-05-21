@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Read Me A Story - AI Historier til Børn{% endblock %}
+
+{% block head %}
+<style>
+.landing-hero {
+    text-align: center;
+    padding: 60px 20px 40px;
+}
+.landing-hero h1 {
+    font-size: 2.2em;
+    color: var(--color-primary);
+    margin-bottom: 10px;
+}
+.landing-hero p {
+    font-size: 1.1em;
+    color: #555;
+    max-width: 600px;
+    margin: 0 auto 40px;
+}
+.landing-cards {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 0 20px 60px;
+    max-width: 960px;
+    margin: 0 auto;
+}
+.landing-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+    padding: 40px 30px;
+    flex: 1;
+    min-width: 240px;
+    max-width: 280px;
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.15s, box-shadow 0.15s;
+    border: 2px solid transparent;
+}
+.landing-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+    border-color: var(--color-primary);
+    text-decoration: none;
+}
+.landing-card .card-icon {
+    font-size: 3em;
+    margin-bottom: 16px;
+    display: block;
+}
+.landing-card h2 {
+    font-size: 1.4em;
+    color: var(--color-primary);
+    margin-bottom: 10px;
+}
+.landing-card p {
+    font-size: 0.95em;
+    color: #666;
+    line-height: 1.5;
+}
+.landing-card.skole { border-top: 4px solid #4DB6AC; }
+.landing-card.hygge { border-top: 4px solid #F9A825; }
+.landing-card.stoette { border-top: 4px solid #7986CB; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="landing-hero">
+    <h1>Read Me A Story</h1>
+    <p>AI-genererede historier til børn – tilpasset dit barns læseniveau, humør og behov.</p>
+</div>
+
+<div class="landing-cards">
+    <a href="{{ url_for('main.skole') }}" class="landing-card skole">
+        <span class="card-icon">🏫</span>
+        <h2>Skole</h2>
+        <p>Tilpas historier til præcist det rette læseniveau. Følg elevernes LIX-progression og quizresultater over tid.</p>
+    </a>
+
+    <a href="{{ url_for('main.hygge') }}" class="landing-card hygge">
+        <span class="card-icon">🌙</span>
+        <h2>Hygge</h2>
+        <p>Skab personlige godnathistorier med jeres egne karakterer, steder og stemninger. Få dem læst højt med AI-stemme.</p>
+    </a>
+
+    <a href="{{ url_for('main.stoette') }}" class="landing-card stoette">
+        <span class="card-icon">💬</span>
+        <h2>Støtte</h2>
+        <p>Narrativ støtte til børn der kæmper med udfordringer. Historier der styrker, eksternagliserer og genfortæller.</p>
+    </a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const banner = document.getElementById('cookie-consent-banner');
+    const btn = document.getElementById('accept-cookies-button');
+    if (!banner || !btn) return;
+    const consent = localStorage.getItem('cookieConsent');
+    if (consent !== 'accepted' && consent !== 'rejected') {
+        banner.classList.remove('hidden');
+    }
+    btn.addEventListener('click', () => {
+        localStorage.setItem('cookieConsent', 'accepted');
+        banner.classList.add('hidden');
+    });
+})();
+</script>
+{% endblock %}

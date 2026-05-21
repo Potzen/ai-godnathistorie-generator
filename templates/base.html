@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Read Me A Story{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-M319LP9Z6P"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-M319LP9Z6P', { 'send_page_view': false });
+    </script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <a href="{{ url_for('main.index') }}">
+                <img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Read Me A Story Logo" id="app-logo">
+            </a>
+        </div>
+        <nav class="site-nav">
+            <a href="{{ url_for('main.hygge') }}" class="nav-link {% if request.endpoint == 'main.hygge' %}active{% endif %}">Hygge</a>
+            <a href="{{ url_for('main.skole') }}" class="nav-link {% if request.endpoint == 'main.skole' %}active{% endif %}">Skole</a>
+            <a href="{{ url_for('main.stoette') }}" class="nav-link {% if request.endpoint == 'main.stoette' %}active{% endif %}">Støtte</a>
+        </nav>
+        <div class="user-status">
+            {% if current_user.is_authenticated %}
+                <span class="user-name-display">{{ current_user.name or current_user.email }}</span>
+                <a href="{{ url_for('auth.logout') }}" class="button-logout utility-button">Log ud</a>
+            {% else %}
+                <a href="{{ url_for('auth.auth_login') }}" class="button-login utility-button">Login / Opret Bruger</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages-container">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">
+                            {{ message }}
+                            {% if category == 'info' and 'logget ud' in message %}
+                                <p class="flash-disclaimer">Det har være en fornøjelse - Til vi ses igen :)</p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <div id="current-user-role-data"
+         data-role="{{ current_user.role if current_user.is_authenticated else 'guest' }}"
+         style="display: none;"></div>
+
+    <div id="cookie-consent-banner" class="hidden">
+        <p>Denne side bruger cookies til at forbedre din oplevelse og til analyseformål (Google Analytics).
+           Ved at klikke "Accepter" giver du samtykke til brugen af disse cookies.
+           Læs mere i vores <a href="{{ url_for('main.privacy_policy') }}">privatlivspolitik</a>.</p>
+        <button id="accept-cookies-button" class="utility-button">Accepter</button>
+    </div>
+
+    <footer>
+        <hr>
+        <div class="footer-content">
+            <div class="footer-info">
+                <p>© Read Me A Story 2025 - Historier skabt med AI.</p>
+                <p><i>Forældreopsyn anbefales altid under læsning. ;)</i></p>
+                <p><a href="{{ url_for('main.privacy_policy') }}" class="footer-link">Privatlivs- og Cookiepolitik</a></p>
+            </div>
+            <div class="footer-social">
+                <p>Følg & Del Appen:</p>
+                <a href="https://www.facebook.com/profile.php?id=61576301092618" target="_blank" rel="noopener noreferrer" class="social-link">Find os på Facebook</a>
+            </div>
+        </div>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+    <script>
+    (function() {
+        var banner = document.getElementById('cookie-consent-banner');
+        var btn = document.getElementById('accept-cookies-button');
+        if (!banner || !btn) return;
+        var consent = localStorage.getItem('cookieConsent');
+        if (consent !== 'accepted' && consent !== 'rejected') {
+            banner.classList.remove('hidden');
+        }
+        btn.addEventListener('click', function() {
+            localStorage.setItem('cookieConsent', 'accepted');
+            banner.classList.add('hidden');
+            if (typeof gtag === 'function') {
+                gtag('event', 'page_view', { page_path: window.location.pathname, page_location: window.location.href, page_title: document.title });
+            }
+        });
+    })();
+    </script>
+</body>
+</html>

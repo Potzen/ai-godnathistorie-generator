@@ -106,11 +106,13 @@ def create_app(config_class=Config):
     from routes.auth_routes import auth_bp
     from routes.story_routes import story_bp
     from routes.narrative_routes import narrative_bp
+    from routes.classroom_routes import classroom_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(story_bp, url_prefix='/story')
     app.register_blueprint(narrative_bp)
+    app.register_blueprint(classroom_bp)
 
     @login_manager.user_loader
     def load_user(user_id):

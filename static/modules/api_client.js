@@ -454,6 +454,47 @@ export async function generateNarrativeStoryImageApi(narrativeData) {
     return await response.json();
 }
 
+export async function saveQuizResultApi(data) {
+    const response = await fetch('/classroom/quiz_result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Serverfejl.' }));
+        throw new Error(err.error || `Serverfejl: ${response.status}`);
+    }
+    return await response.json();
+}
+
+export async function listClassroomsApi() {
+    const response = await fetch('/classroom/', { headers: { 'Content-Type': 'application/json' } });
+    if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error(e.error || 'Serverfejl'); }
+    return await response.json();
+}
+
+export async function createClassroomApi(name) {
+    const response = await fetch('/classroom/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name })
+    });
+    if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error(e.error || 'Serverfejl'); }
+    return await response.json();
+}
+
+export async function listClassroomStudentsApi(classroomId) {
+    const response = await fetch(`/classroom/${classroomId}/students`, { headers: { 'Content-Type': 'application/json' } });
+    if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error(e.error || 'Serverfejl'); }
+    return await response.json();
+}
+
+export async function joinClassroomApi(inviteCode) {
+    const response = await fetch('/classroom/join', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ invite_code: inviteCode })
+    });
+    if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error(e.error || 'Serverfejl'); }
+    return await response.json();
+}
+
 export async function generateQuizApi(story_content, lix_score) {
     console.log("api_client.js: Anmoder om quiz...");
     const response = await fetch('/story/generate_quiz', {

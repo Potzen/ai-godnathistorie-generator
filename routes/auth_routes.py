@@ -8,8 +8,11 @@ auth_bp = Blueprint('auth', __name__, template_folder='../templates', static_fol
 
 
 def _determine_role(normalized_email, app_config):
+    teachers = [e.lower() for e in app_config.get('TEACHER_EMAILS', [])]
     premium = [e.lower() for e in app_config.get('PREMIUM_TIER_GOOGLE_EMAILS', [])]
     basic = [e.lower() for e in app_config.get('BASIC_TIER_GOOGLE_EMAILS', [])]
+    if normalized_email in teachers:
+        return 'teacher'
     if normalized_email in premium:
         return 'premium'
     if normalized_email in basic:

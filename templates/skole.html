@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}Skole – Læsehesten | Read Me A Story{% endblock %}
+
+{% block content %}
+<div id="info-tooltip" class="info-tooltip-box hidden" role="tooltip" aria-live="polite">
+    <p id="info-tooltip-text" class="tooltip-text-content"></p>
+    <button type="button" id="info-tooltip-close" class="tooltip-close-button" aria-label="Luk">&times;</button>
+</div>
+
+{# ===== KLASSEROMSMODUL ===== #}
+{% if current_user.is_authenticated and current_user.role == 'teacher' %}
+<section id="teacher-classroom-section" style="border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 20px; margin-bottom: 30px; background: #f8fffd;">
+    <h2>🏫 Mine Klasser</h2>
+    <div id="classroom-list-container">
+        <p>Henter klasser...</p>
+    </div>
+    <div style="margin-top: 20px; display: flex; gap: 10px; align-items: center;">
+        <input type="text" id="new-classroom-name" placeholder="Nyt klassenavn (f.eks. 2.A)" style="flex: 1;">
+        <button type="button" id="create-classroom-button" class="primary-action-button" style="white-space: nowrap;">Opret Klasse</button>
+    </div>
+    <div id="classroom-create-feedback" class="flash-message" style="margin-top: 10px; display: none;"></div>
+
+    <div id="student-list-panel" class="hidden" style="margin-top: 25px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+        <h3 id="student-list-heading">Elever</h3>
+        <div id="student-list-container"></div>
+    </div>
+</section>
+{% elif current_user.is_authenticated %}
+<section id="student-classroom-section" style="border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 20px; margin-bottom: 30px; background: #f8fffd;">
+    <h3>Tilmeld en Klasse</h3>
+    <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
+        <input type="text" id="join-classroom-code" placeholder="Invitationskode (f.eks. AB12CD34)" style="flex: 1; text-transform: uppercase;">
+        <button type="button" id="join-classroom-button" class="utility-button" style="white-space: nowrap;">Tilmeld</button>
+    </div>
+    <div id="join-classroom-feedback" class="flash-message" style="margin-top: 10px; display: none;"></div>
+</section>
+{% endif %}
+
+{# ===== LÆSEHESTEN ===== #}
+<section id="laesehesten-module" class="content-section">
+    <h2>Byg en historie til dit læseniveau</h2>
+    <p>Vælg et LIX-tal og nogle elementer fra listerne, så skaber AI'en en historie, der passer præcist til niveauet.</p>
+
+    <div class="input-category">
+        <label for="lix-slider" class="lix-label">Vælg Læse Niveau (LIX): <span id="lix-value-display" class="lix-value">25</span></label>
+        <div class="lix-slider-container">
+            <span class="lix-range-label">Let</span>
+            <input type="range" id="lix-slider" name="lix_target" min="5" max="55" value="25" class="lix-slider-style">
+            <span class="lix-range-label">Svær</span>
+        </div>
+        <p id="lix-description" class="lix-description-text">Passer til et barn på ca. 8-9 år, der er ved at være sikker i sin læsning.</p>
+    </div>
+    <hr>
+
+    <div class="input-category">
+        <label>Sortér elementer efter sværhedsgrad:</label>
+        <div class="sort-bar">
+            <button type="button" class="utility-button sort-button active" data-sort="all">Alle</button>
+            <button type="button" class="utility-button sort-button" data-sort="1">Let ●○○</button>
+            <button type="button" class="utility-button sort-button" data-sort="2">Medium ●●○</button>
+            <button type="button" class="utility-button sort-button" data-sort="3">Svær ●●●</button>
+        </div>
+    </div>
+
+    <div id="laesehesten-accordion-container"></div>
+    <hr>
+
+    <div class="input-category">
+        <label for="laesehest-focus-letter">Fokus-bogstav (valgfrit):</label>
+        <input type="text" id="laesehest-focus-letter" name="laesehest_focus_letter" placeholder="F.eks. 's' for at øve s-lyde, eller 'a, o, i' for vokalfokus" maxlength="10">
+    </div>
+
+    <div class="input-category">
+        <label>Tilføj dine egne ord eller navne (valgfrit):</label>
+        <div id="laesehest-custom-words-container">
+            <div class="input-group">
+                <input type="text" name="laesehest_custom_word" placeholder="f.eks. farmor, Buster, en sej kasket">
+                <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+            </div>
+        </div>
+        <button type="button" id="laesehest-add-word-button" class="add-button">+ Tilføj ord</button>
+    </div>
+
+    <div class="input-category">
+        <label for="laesehest-plot">Ting, hændelser eller morale (valgfrit)?</label>
+        <input type="text" id="laesehest-plot" name="laesehest_plot" placeholder="f.eks. en magisk fjer, 'at dele er godt'">
+    </div>
+    <div class="input-category">
+        <label for="laesehest-negative-prompt">Ting der IKKE skal med i historien (valgfrit):</label>
+        <textarea id="laesehest-negative-prompt" name="laesehest_negative_prompt" rows="2" placeholder="f.eks. 'ingen edderkopper', 'ikke noget om at falde'"></textarea>
+    </div>
+
+    <div class="input-category" style="display: flex; gap: 20px;">
+        <div style="flex: 1;">
+            <label for="laesehest-laengde-select">Vælg historie længde:</label>
+            <select name="laesehest_laengde" id="laesehest-laengde-select">
+                <option value="kort">Kort</option>
+                <option value="mellem" selected>Mellem</option>
+                <option value="lang">Lang</option>
+            </select>
+        </div>
+        <div style="flex: 1;">
+            <label for="laesehest-mood-select">Vælg stemning:</label>
+            <select name="laesehest_mood" id="laesehest-mood-select">
+                <option value="neutral" selected>Neutral / Blandet</option>
+                <option value="sød">Sød</option>
+                <option value="sjov">Sjov</option>
+                <option value="eventyr">Eventyrlig</option>
+                <option value="spændende">Spændende</option>
+                <option value="rolig">Rolig / Afslappende</option>
+            </select>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 25px;">
+        {% if current_user.is_authenticated and current_user.role in ['basic', 'premium', 'teacher'] %}
+            <button id="generate-laesehest-button" class="primary-action-button">Skab Læsehest-Historie</button>
+        {% else %}
+            <button id="generate-laesehest-button-disabled" class="primary-action-button" disabled title="Log ind for at skabe en historie">Skab Læsehest-Historie</button>
+            <p style="font-size: 0.9em; margin-top: 10px;">
+                <a href="{{ url_for('auth.auth_login') }}">Log ind</a> eller <a href="{{ url_for('auth.register') }}">opret en bruger</a> for at skabe historier.
+            </p>
+        {% endif %}
+    </div>
+</section>
+
+{# ===== HISTORIE OUTPUT ===== #}
+<section id="historie-output" class="hidden">
+    <div class="historie-header-controls">
+        <h2 id="story-section-heading">Historien</h2>
+        <div class="audio-controls-container">
+            <div id="audio-loading" class="hidden">Genererer lyd... <span class="spinner"></span></div>
+            <div id="audio-error" class="feedback-status error"></div>
+        </div>
+    </div>
+    <div id="story-display">
+        <div id="story-loading-indicator" class="hidden">
+            <p>Historien genereres... Vent venligst.</p>
+            <span class="spinner"></span>
+        </div>
+        <div id="story-text-content"></div>
+    </div>
+    <div id="story-share-buttons" class="hidden">
+        <button type="button" id="save-to-logbook-button" class="utility-button"
+                {% if not current_user.is_authenticated %}disabled title="Login for at gemme i logbog"{% endif %}>
+                Gem i Logbog
+        </button>
+        <button type="button" id="copy-story-button" class="utility-button">Kopier Historie</button>
+    </div>
+</section>
+
+{# ===== QUIZ ===== #}
+<section id="quiz-sektion" class="hidden">
+    <h2>Læse-Quiz!</h2>
+    <p>Test forståelsen af historien.</p>
+    <div id="quiz-container"></div>
+    <div id="quiz-feedback" class="flash-message hidden" style="margin-top: 20px;"></div>
+</section>
+
+{# ===== BILLEDE ===== #}
+<section id="billede-til-historien-sektion" class="hidden">
+    <div id="story-image-container" class="image-result-container hidden">
+        <h2>Billede til Historien</h2>
+        <div class="image-display-wrapper">
+            <div id="story-image-loader" class="image-loader hidden">
+                <p>Visualiserer historien...</p><span class="spinner"></span>
+            </div>
+            <img id="story-image-display" class="hidden" src="#" alt="Genereret billede">
+        </div>
+        <div id="story-image-error" class="flash-message flash-error hidden"></div>
+    </div>
+</section>
+
+{# ===== LOGBOG ===== #}
+<section id="logbook-module" style="margin-top: 40px; border-top: 2px solid var(--border-color); padding-top: 30px;">
+    <div class="logbook-container" style="padding: 0; background: none; box-shadow: none;">
+        <h1 style="text-align: center;">Min Logbog</h1>
+        <p style="text-align: center; margin-top: -10px; margin-bottom: 25px;">Historier og læseforløb gemt til Skole.</p>
+
+        <section id="profile-management-section" class="narrative-info-dropdown" style="margin-bottom: 30px; border: 1px solid var(--border-color); background-color: #fdfdff;">
+            <button type="button" class="dropdown-toggle">
+                Mine profiler
+                <span class="dropdown-arrow">◀</span>
+            </button>
+            <div class="dropdown-content hidden" style="padding: 15px 20px;">
+                <div id="saved-profiles-list" style="margin-bottom: 20px;"></div>
+                <h3 style="color: var(--color-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 5px; margin-bottom: 20px; font-size: 0.9em; font-weight: bold;">Opret Ny / Rediger Profil</h3>
+                <form id="child-profile-form">
+                    <input type="hidden" id="profile-id" name="profile_id">
+                    <div class="input-category" style="display: flex; gap: 20px;">
+                        <div style="flex: 2;">
+                            <label for="profile-name">Barnets Navn</label>
+                            <input type="text" id="profile-name" name="profile_name" placeholder="F.eks. Luna" required>
+                        </div>
+                        <div style="flex: 1;">
+                            <label for="profile-age">Barnets Alder</label>
+                            <input type="text" id="profile-age" name="profile_age" placeholder="F.eks. 6">
+                        </div>
+                    </div>
+                    <hr style="margin: 25px 0;">
+                    <div class="input-category">
+                        <label>Barnets Karakteristika/Styrker</label>
+                        <div id="profile-strengths-container">
+                            <div class="input-group">
+                                <select name="profile_strength" class="dynamic-select" data-other-input-id="profile-strength-other-1">
+                                    <option value="">-- Vælg en styrke --</option><option value="Modig">Modig</option><option value="Klog">Klog</option><option value="Venlig">Venlig</option><option value="Kreativ">Kreativ</option><option value="Tålmodig">Tålmodig</option><option value="Nysgerrig">Nysgerrig</option><option value="Omsorgsfuld">Omsorgsfuld</option><option value="Sjov">Sjov</option><option value="Stærk">Stærk</option><option value="Fantasifuld">Fantasifuld</option><option value="Hjælpsom">Hjælpsom</option><option value="Vedholdende">Vedholdende</option><option value="other">Andet...</option>
+                                </select>
+                                <input type="text" name="profile_strength_other" id="profile-strength-other-1" class="hidden other-input" placeholder="Beskriv anden styrke">
+                                <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+                            </div>
+                        </div>
+                        <button type="button" class="add-button" id="add-profile-strength-button">+ Tilføj styrke</button>
+                    </div>
+                    <div class="input-category">
+                        <label>Barnets Motivation/Ønske</label>
+                        <div id="profile-motivations-container">
+                            <div class="input-group"><input type="text" name="profile_motivation" placeholder="F.eks. Vil gerne lære at cykle"><button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button></div>
+                        </div>
+                        <button type="button" class="add-button" data-container="profile-motivations-container" data-name="profile_motivation" data-placeholder="F.eks. Ønsker sig en hundehvalp">+ Tilføj motivation</button>
+                    </div>
+                    <div style="display: flex; gap: 15px; margin-top: 25px;">
+                        <button type="submit" id="save-profile-button" class="primary-action-button" style="flex: 1;">Gem Profil</button>
+                        <button type="button" id="clear-profile-form-button" class="utility-button" style="flex: 1; background-color: var(--color-secondary);">Ryd Formular</button>
+                    </div>
+                    <div id="profile-save-feedback" class="flash-message" style="margin-top: 15px; display: none;"></div>
+                </form>
+            </div>
+        </section>
+
+        <div class="logbook-toolbar">
+            <div class="filter-group">
+                <label for="filter-source">Kilde</label>
+                <select name="source" id="filter-source">
+                    <option value="all">Alle</option>
+                    <option value="Læsehesten">Læsehesten</option>
+                    <option value="Højtlæsning">Højtlæsning</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="sort-by">Sortér efter</label>
+                <select name="sortBy" id="sort-by">
+                    <option value="newest">Dato (nyeste)</option>
+                    <option value="oldest">Dato (ældste)</option>
+                    <option value="title_asc">Titel (A-Å)</option>
+                    <option value="title_desc">Titel (Å-A)</option>
+                </select>
+            </div>
+            <div class="filter-group filter-group-search">
+                <label for="search-term">Søg i titel og indhold</label>
+                <input type="search" id="search-term" name="searchTerm" placeholder="Søg her...">
+            </div>
+        </div>
+        <div id="logbook-list-container">
+            {% if stories %}
+                <p>Henter historier...</p>
+            {% else %}
+                <p style="text-align: center;">Du har endnu ikke gemt nogen Historier.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='skole.js') }}"></script>
+{% endblock %}
