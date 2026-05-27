@@ -48,7 +48,7 @@ body {
     background-repeat: no-repeat;
     background-attachment: fixed;
     background-color: var(--color-bg);
-    padding-bottom: 150px; /* Plads til cookie banner / footer */
+    padding-bottom: 80px; /* Plads til cookie banner */
 }
 
 /* Header Styling */
@@ -516,15 +516,6 @@ button:disabled, .disabled-button {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
-}
-
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
 }
 
 /* Feedback Sektion */
@@ -1201,10 +1192,7 @@ input:disabled + .slider-label:before {
     transition: background-color 0.2s ease, color 0.2s ease;
     box-sizing: border-box;
     vertical-align: middle;
-    padding-top: 1px; /* NYT: Tilføjet for at skubbe 'i'-symbolet en smule ned. Juster evt. til 2px. */
-}
-/* Forbedret centrering af selve ⓘ-symbolet inde i ikonet */
-
+    padding-top: 1px;
 }
 .info-icon:hover {
     background-color: var(--color-primary);
