@@ -1,12 +1,23 @@
-# Fil: routes/auth_routes.py
 from flask import Blueprint, redirect, url_for, flash, current_app, session, request, render_template
 import traceback
 from flask_login import login_user, logout_user, login_required, current_user
 from extensions import db
 from models import User
-from werkzeug.security import generate_password_hash, check_password_hash # Tilføjet denne import
 
 auth_bp = Blueprint('auth', __name__, template_folder='../templates', static_folder='../static')
+
+
+def _determine_role(normalized_email, app_config):
+    teachers = [e.lower() for e in app_config.get('TEACHER_EMAILS', [])]
+    premium = [e.lower() for e in app_config.get('PREMIUM_TIER_GOOGLE_EMAILS', [])]
+    basic = [e.lower() for e in app_config.get('BASIC_TIER_GOOGLE_EMAILS', [])]
+    if normalized_email in teachers:
+        return 'teacher'
+    if normalized_email in premium:
+        return 'premium'
+    if normalized_email in basic:
+        return 'basic'
+    return 'free'
 
 @auth_bp.route('/google-login') # Ny, dedikeret rute til at initiere Google login
 def google_login():
@@ -118,16 +129,8 @@ def google_authorize():
                 user.email = user_email_from_google
                 needs_commit = True
 
-            # Gen-evaluer altid rolle baseret på config.py lister ved Google login
             original_role_from_db = user.role
-            potential_new_role = 'free'
-            premium_emails_lower = [e.lower() for e in current_app.config.get('PREMIUM_TIER_GOOGLE_EMAILS', [])]
-            basic_emails_lower = [e.lower() for e in current_app.config.get('BASIC_TIER_GOOGLE_EMAILS', [])]
-
-            if normalized_email_from_google in premium_emails_lower:
-                potential_new_role = 'premium'
-            elif normalized_email_from_google in basic_emails_lower:
-                potential_new_role = 'basic'
+            potential_new_role = _determine_role(normalized_email_from_google, current_app.config)
 
             if user.role != potential_new_role:
                 user.role = potential_new_role
@@ -173,14 +176,7 @@ def google_authorize():
 
                 # 3. Bestem og opdater rolle baseret på config.py lister
                 original_role_from_db = user.role
-                potential_new_role = 'free'
-                premium_emails_lower = [e.lower() for e in current_app.config.get('PREMIUM_TIER_GOOGLE_EMAILS', [])]
-                basic_emails_lower = [e.lower() for e in current_app.config.get('BASIC_TIER_GOOGLE_EMAILS', [])]
-
-                if normalized_email_from_google in premium_emails_lower:
-                    potential_new_role = 'premium'
-                elif normalized_email_from_google in basic_emails_lower:
-                    potential_new_role = 'basic'
+                potential_new_role = _determine_role(normalized_email_from_google, current_app.config)
 
                 if user.role != potential_new_role:
                     user.role = potential_new_role
@@ -210,14 +206,7 @@ def google_authorize():
             else:  # HELT ny bruger (hverken google_id eller e-mail findes i databasen)
                 current_app.logger.info(
                     f"Helt ny bruger: {user_email_from_google}. Opretter med Google ID {google_user_id}.")
-                assigned_role = 'free'
-                premium_emails_lower = [e.lower() for e in current_app.config.get('PREMIUM_TIER_GOOGLE_EMAILS', [])]
-                basic_emails_lower = [e.lower() for e in current_app.config.get('BASIC_TIER_GOOGLE_EMAILS', [])]
-
-                if normalized_email_from_google in premium_emails_lower:
-                    assigned_role = 'premium'
-                elif normalized_email_from_google in basic_emails_lower:
-                    assigned_role = 'basic'
+                assigned_role = _determine_role(normalized_email_from_google, current_app.config)
                 current_app.logger.info(
                     f"  Ny Google-bruger {normalized_email_from_google} tildeles rollen '{assigned_role}'.")
 
@@ -347,9 +336,10 @@ def register():
 @auth_bp.route('/logout')
 @login_required
 def logout():
-    user_id_before = current_user.id if current_user.is_authenticated else 'anonymous'
-    user_role_before = current_user.role if current_user.is_authenticated else 'N/A'
+    user_id_before = current_user.id
+    user_role_before = current_user.role
     logout_user()
+    session.clear()
     current_app.logger.info(f"Bruger {user_id_before} (Rolle: {user_role_before}) logget ud.")
     flash("Du er nu logget ud.", "info")
     return redirect(url_for('main.index'))

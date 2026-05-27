@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Hygge – Godnathistorier | Read Me A Story{% endblock %}
+
+{% block content %}
+<div id="info-tooltip" class="info-tooltip-box hidden" role="tooltip" aria-live="polite">
+    <p id="info-tooltip-text" class="tooltip-text-content"></p>
+    <button type="button" id="info-tooltip-close" class="tooltip-close-button" aria-label="Luk">&times;</button>
+</div>
+
+<section id="generator" class="content-section">
+    <h2>Byg jeres historie</h2>
+    <p>(Det er ikke nødvendigt at udfylde alle felterne.)</p>
+
+    <div class="input-category">
+        <label>Hvem skal historien læses for?</label>
+        <div id="listener-container">
+            <div class="listener-group">
+                <div class="input-pair">
+                   <label for="listener-name-1" class="sr-only">Navn</label>
+                    <input type="text" name="listener_name_single" id="listener-name-1" placeholder="Barnets Navn">
+                </div>
+                <div class="input-pair">
+                   <label for="listener-age-1" class="sr-only">Alder</label>
+                    <input type="text" name="listener_age_single" id="listener-age-1" placeholder="Alder (f.eks. 5)">
+                </div>
+                 <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+            </div>
+        </div>
+        <button type="button" id="add-listener-button" class="add-button">+ Tilføj barn</button>
+    </div>
+
+    <div class="input-category">
+        <label>Hvem skal være hovedperson(er)?</label>
+        <div id="karakter-container">
+            <div class="character-group">
+                 <div class="input-pair">
+                    <label for="karakter-desc-1" class="sr-only">Beskrivelse</label>
+                    <input type="text" name="karakter_desc" id="karakter-desc-1" placeholder="Beskrivelse (f.eks. en modig bi)">
+                 </div>
+                 <div class="input-pair">
+                    <label for="karakter-navn-1" class="sr-only">Navn</label>
+                    <input type="text" name="karakter_navn" id="karakter-navn-1" placeholder="Navn (valgfrit)">
+                 </div>
+                 <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+            </div>
+        </div>
+        <button type="button" id="add-karakter-button" class="add-button">+ Tilføj karakter</button>
+    </div>
+
+    <div class="input-category">
+        <label>Hvor skal historien foregå?</label>
+        <div id="sted-container">
+             <div class="input-group">
+                <input type="text" name="sted" id="sted-input-1" placeholder="f.eks. i en kagebutik, på månen">
+                <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+             </div>
+        </div>
+        <button type="button" class="add-button" data-container="sted-container" data-placeholder="f.eks. under en stor svamp" data-name="sted">+ Tilføj sted</button>
+    </div>
+
+    <div class="input-category">
+        <label>Ting, hændelser eller morale?</label>
+        <div id="plot-container">
+            <div class="input-group">
+                <input type="text" name="plot" id="plot-input-1" placeholder="f.eks. en magisk fjer, 'at dele er godt'">
+                <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+            </div>
+        </div>
+         <button type="button" class="add-button" data-container="plot-container" data-placeholder="f.eks. en hemmelig dør, 'ærlighed varer længst'" data-name="plot">+ Tilføj ting/morale</button>
+    </div>
+
+    <div class="input-category">
+        <label for="negative-prompt-input">Ting der IKKE skal med i historien:</label>
+        <div class="input-group">
+            <textarea id="negative-prompt-input" name="negative_prompt" rows="3" placeholder="f.eks. 'ingen edderkopper', 'undgå monstre', 'ikke noget om at falde' (adskil med komma eller linjeskift)"></textarea>
+        </div>
+    </div>
+
+    <div class="input-category">
+        <label for="laengde-select">Vælg historie længde:</label>
+        <select name="laengde" id="laengde-select">
+            <option value="kort" selected>Kort</option>
+            <option value="mellem">Mellem</option>
+            <option value="lang">Lang</option>
+        </select>
+    </div>
+
+    <div class="input-category">
+        <label for="mood-select">Vælg stemning:</label>
+        <select name="mood" id="mood-select">
+            <option value="neutral" selected>Neutral / Blandet</option>
+            <option value="sød">Sød</option>
+            <option value="sjov">Sjov / Humoristisk</option>
+            <option value="eventyr">Eventyrlig</option>
+            <option value="spændende">Spændende</option>
+            <option value="rolig">Rolig / Afslappende</option>
+            <option value="mystisk">Mystisk</option>
+            <option value="hverdagsdrama">Hverdagsdrama (små konflikter)</option>
+            <option value="uhyggelig">Uhyggelig</option>
+        </select>
+    </div>
+
+    <div class="input-category" style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; margin-bottom: 0;">
+        <div class="switch-option-group" style="flex: 1; min-width: 220px;">
+            <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 6px;">
+                <label for="ai-model-switch" style="font-weight: bold;">Pro AI-Model:</label>
+                <span class="info-icon" data-tooltip-id="pro-model-info" title="Klik for mere info">ⓘ</span>
+            </div>
+            <div class="ai-model-selector-wrapper">
+                <span class="ai-model-choice-label">Standard</span>
+                <div class="switch-container">
+                    <input type="checkbox" id="ai-model-switch" name="ai_model_switch"
+                           {% if not current_user.is_authenticated or current_user.role == 'free' %}
+                           disabled title="Kun for Basic/Premium brugere."
+                           {% endif %}>
+                    <label for="ai-model-switch" class="slider-label"></label>
+                </div>
+                <span class="ai-model-choice-label">Pro</span>
+            </div>
+        </div>
+
+        <div class="switch-option-group" style="flex: 1; min-width: 220px;">
+            <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 6px;">
+                <label for="interactive-story-switch" style="font-weight: bold;">Interaktiv Historie:</label>
+                <span class="info-icon" data-tooltip-id="interactive-info" title="Klik for mere info">ⓘ</span>
+            </div>
+            <div class="ai-model-selector-wrapper">
+                <span class="ai-model-choice-label">Fra</span>
+                <div class="switch-container">
+                    <input type="checkbox" id="interactive-story-switch" name="interactive_story_switch" disabled title="Vælg 'Pro' under 'Pro AI-Model' for at aktivere.">
+                    <label for="interactive-story-switch" class="slider-label"></label>
+                </div>
+                <span class="ai-model-choice-label">Til</span>
+            </div>
+        </div>
+
+        <div class="switch-option-group" style="flex: 1; min-width: 220px;">
+            <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 6px;">
+                <label for="bedtime-story-switch" style="font-weight: bold;">Godnatlæsning:</label>
+                <span class="info-icon" data-tooltip-id="bedtime-info" title="Klik for mere info">ⓘ</span>
+            </div>
+            <div class="ai-model-selector-wrapper">
+                <span class="ai-model-choice-label">Fra</span>
+                <div class="switch-container">
+                    <input type="checkbox" id="bedtime-story-switch" name="bedtime_story_switch">
+                    <label for="bedtime-story-switch" class="slider-label"></label>
+                </div>
+                <span class="ai-model-choice-label">Til</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="input-category" style="padding-top: 5px; margin-top: -15px; text-align: left;">
+        <small class="form-text text-muted" style="display: block; font-size: 0.85em;">
+            (Ønskes adgang til Premium funktioner så opret en gratis bruger. - og den ER helt og aldeles gratis)
+        </small>
+    </div>
+
+    <div class="input-category" id="tts-voice-selection">
+        <label for="tts-voice-select">Vælg Stemme til Oplæsning:</label>
+        <select name="tts_voice" id="tts-voice-select">
+            <option value="Zephyr" selected>Zephyr (Kvinde)</option>
+            <option value="Dansk Kvinde 1 (Standard)">Dansk Kvinde 1 (Standard)</option>
+            <option value="Dansk Mand 1 (Standard)">Dansk Mand 1 (Standard)</option>
+            <option value="Dansk Mand 2 (Standard)">Dansk Mand 2 (Standard)</option>
+            <option value="Dansk Kvinde 2 (Standard)">Dansk Kvinde 2 (Standard)</option>
+        </select>
+        <small class="form-text text-muted" style="display: block; margin-top: 5px;">
+            Denne stemme er trænet på engelsk, hvorfor den kan opføre sig underligt på dansk.
+        </small>
+    </div>
+
+    <div class="generator-actions">
+         <button type="button" id="autofill-button" class="utility-button">Autoudfyld</button>
+        <button type="button"
+                id="read-aloud-button"
+                class="utility-button tts-button {% if not current_user.is_authenticated or (current_user.role not in ['basic', 'premium', 'teacher']) %}disabled-button{% endif %}"
+                {% if not current_user.is_authenticated or (current_user.role not in ['basic', 'premium', 'teacher']) %}disabled title="Login med Basic eller Premium for at aktivere funktionen"{% endif %}
+                data-default-voice="Zephyr"> Læs Historien Højt
+        </button>
+        <button type="button"
+                class="utility-button image-button js-generate-image"
+                {% if not current_user.is_authenticated %}
+                    disabled title="Login for at generere et billede"
+                {% else %}
+                    disabled
+                {% endif %}
+                > Generer Billede
+        </button>
+        <div class="font-size-controls">
+            <button type="button" id="decrease-font-button" class="utility-button font-button" title="Gør teksten mindre">A-</button>
+            <button type="button" id="increase-font-button" class="utility-button font-button" title="Gør teksten større">A+</button>
+            <button type="button" id="reset-font-button" class="utility-button font-button" title="Nulstil tekststørrelse">Nulstil</button>
+        </div>
+    </div>
+    <button id="generate-button">Skab Historie</button>
+</section>
+
+<section id="historie-output">
+    <div class="historie-header-controls">
+        <h2 id="story-section-heading">Jeres historie</h2>
+        <div class="audio-controls-container">
+            <div id="audio-loading" class="hidden">Genererer lyd, vent venligst... <span class="spinner"></span></div>
+            <div id="audio-error" class="feedback-status error"></div>
+            <div class="login-prompt hidden" id="login-prompt-audio">
+                <em>Du skal være <a href="{{ url_for('auth.auth_login') }}">logget ind</a> for at få læst historien højt.</em>
+            </div>
+            <audio id="audio-player" controls class="audio-player-style hidden">
+                Din browser understøtter ikke lyd-elementet.
+            </audio>
+        </div>
+    </div>
+
+    <div id="story-display">
+        <div id="story-loading-indicator" class="hidden">
+            <p>Historien genereres... Vent venligst.</p>
+            <span class="spinner"></span>
+        </div>
+        <div id="story-text-content"></div>
+    </div>
+
+    <div id="story-share-buttons" class="hidden">
+        <button type="button" id="save-to-logbook-button" class="utility-button"
+                {% if not current_user.is_authenticated %}disabled title="Login for at gemme i logbog"{% endif %}>
+                Gem i Logbog
+        </button>
+        <button type="button" id="generate-image-from-output-button" class="utility-button js-generate-image">Generer Billede</button>
+        <button type="button" id="share-story-facebook-button" class="utility-button">Del på Facebook</button>
+        <button type="button" id="copy-story-button" class="utility-button">Kopier Historie</button>
+        <button id="reset-button" class="utility-button" style="display: none;">Prøv igen</button>
+    </div>
+
+    <div class="info-dropdown-container" style="margin-top: 20px; text-align: left; max-width: 100%;">
+        <button type="button" class="dropdown-toggle" id="failure-info-dropdown-toggle">
+            Vejledning: Hvorfor fejler min historie/billede nogle gange? <span class="dropdown-arrow">◀</span>
+        </button>
+        <div id="failure-info-dropdown-content" class="dropdown-content hidden" style="padding: 12px 15px; border-top: 1px solid var(--border-color); background-color: #fcfcfc;">
+            <p><strong>Mulige årsager til at AI-generering kan fejle:</strong></p>
+            <ul style="margin-top: 8px; padding-left: 20px;">
+                <li style="margin-bottom: 8px;"><strong>For billeder:</strong> AI-modellerne har stramme restriktioner, bl.a. mod billeder med genkendelige børn.</li>
+                <li style="margin-bottom: 8px;"><strong>For historier:</strong> Sikkerhedsfiltre kan blokere indhold – prøv at omformulere dine input.</li>
+                <li style="margin-bottom: 8px;"><strong>Generelt:</strong> Midlertidige tekniske problemer eller høj belastning på AI-tjenesterne.</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section id="quiz-sektion" class="hidden">
+    <h2>Læse-Quiz!</h2>
+    <p>Svar rigtigt på alle spørgsmål for at låse op for billed-generatoren.</p>
+    <div id="quiz-container"></div>
+    <div id="quiz-feedback" class="flash-message hidden" style="margin-top: 20px;"></div>
+</section>
+
+<section id="billede-til-historien-sektion" class="hidden">
+    <div id="story-image-container" class="image-result-container hidden">
+        <h2>Billede til Historien</h2>
+        <div class="image-display-wrapper">
+            <div id="story-image-loader" class="image-loader hidden">
+                <p>Visualiserer historien...</p><span class="spinner"></span>
+            </div>
+            <img id="story-image-display" class="hidden" src="#" alt="Genereret billede">
+        </div>
+        <div id="story-image-error" class="flash-message flash-error hidden"></div>
+    </div>
+</section>
+
+<section id="feedback-section">
+    <button type="button" id="toggle-feedback-button" class="utility-button">Giv Feedback / Skjul Feedback</button>
+    <div id="feedback-embed-container" class="hidden">
+        <iframe src="https://docs.google.com/forms/d/e/1FAIpQLScNfIyz-0hNlgfKAkJo-ioT99LYqjBRo8tO5HvzoXfjaY0HvA/viewform?embedded=true"
+            width="100%" height="500" frameborder="0" marginheight="0" marginwidth="0">Indlæser…</iframe>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='hygge.js') }}"></script>
+{% endblock %}

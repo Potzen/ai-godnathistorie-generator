@@ -1,11 +1,8 @@
-# Fil: models.py
+import secrets
 from extensions import db
 from flask_login import UserMixin
 from datetime import datetime
-
-
-# Importer til kodeordshåndtering - flyttes ind i metoderne for at undgå cirkulær import ved opstart
-# from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(UserMixin, db.Model):
     __tablename__ = 'user'
@@ -25,11 +22,9 @@ class User(UserMixin, db.Model):
     stories = db.relationship('Story', backref='author', lazy='dynamic')
 
     def set_password(self, password):
-        from werkzeug.security import generate_password_hash  # Import her for at undgå potentielle opstartsproblemer
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
-        from werkzeug.security import check_password_hash  # Import her
         if self.password_hash is None:
             return False
         return check_password_hash(self.password_hash, password)
@@ -90,6 +85,7 @@ class Story(db.Model):
     user_notes = db.Column(db.Text, nullable=True)  # Forælderens/barnets egne, løbende refleksioner.
     progress_before = db.Column(db.Integer, nullable=True)  # Vurdering af problemets styrke (1-10) før historien.
     progress_after = db.Column(db.Integer, nullable=True)  # Vurdering efter. Giver målbar data.
+    lix_score_stored = db.Column(db.Integer, nullable=True)  # LIX-score gemt ved generering i Læsehesten.
 
     def __repr__(self):
         return f'<Story id={self.id} title="{self.title}" user_id={self.user_id} is_log_entry={self.is_log_entry}>'
@@ -102,7 +98,6 @@ class ChildProfile(db.Model):
     age = db.Column(db.String(20), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # potzen/ai-godnathistorie-generator/ai-godnathistorie-generator-5ffa7696e20a294c8648c9db4a2cb60980e2a54e/models.py
     # One-to-Many relationer til profilens attributter
     # Den første relation etablerer et backref, som de andre skal overlappe.
     strengths = db.relationship('ProfileAttribute', lazy='dynamic', cascade="all, delete-orphan",
@@ -147,3 +142,53 @@ class ProfileRelation(db.Model):
 
     def __repr__(self):
         return f'<ProfileRelation id={self.id} name="{self.name}" type="{self.relation_type}">'
+
+
+class Classroom(db.Model):
+    __tablename__ = 'classroom'
+    id = db.Column(db.Integer, primary_key=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name = db.Column(db.String(120), nullable=False)
+    invite_code = db.Column(db.String(8), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    teacher = db.relationship('User', backref='classrooms')
+    members = db.relationship('ClassroomStudent', backref='classroom', lazy='dynamic', cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<Classroom id={self.id} name="{self.name}" teacher_id={self.teacher_id}>'
+
+    @staticmethod
+    def generate_invite_code():
+        while True:
+            code = secrets.token_urlsafe(6)[:8].upper()
+            if not Classroom.query.filter_by(invite_code=code).first():
+                return code
+
+
+class ClassroomStudent(db.Model):
+    __tablename__ = 'classroom_student'
+    id = db.Column(db.Integer, primary_key=True)
+    classroom_id = db.Column(db.Integer, db.ForeignKey('classroom.id'), nullable=False)
+    student_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    student = db.relationship('User', backref='classroom_memberships')
+    __table_args__ = (db.UniqueConstraint('classroom_id', 'student_user_id'),)
+
+    def __repr__(self):
+        return f'<ClassroomStudent classroom_id={self.classroom_id} student_id={self.student_user_id}>'
+
+
+class QuizResult(db.Model):
+    __tablename__ = 'quiz_result'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    story_id = db.Column(db.Integer, db.ForeignKey('story.id'), nullable=True)
+    score = db.Column(db.Integer, nullable=False)
+    total_questions = db.Column(db.Integer, nullable=False, default=4)
+    answers_json = db.Column(db.Text, nullable=True)
+    completed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user = db.relationship('User', backref='quiz_results')
+    story = db.relationship('Story', backref='quiz_results')
+
+    def __repr__(self):
+        return f'<QuizResult id={self.id} user_id={self.user_id} score={self.score}/{self.total_questions}>'

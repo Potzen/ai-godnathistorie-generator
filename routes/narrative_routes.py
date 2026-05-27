@@ -1,10 +1,9 @@
-# Fil: routes/narrative_routes.py
-
 from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required, current_user
 from models import Story, ChildProfile, ProfileAttribute, ProfileRelation
 from extensions import db
 from sqlalchemy import or_
+from collections import defaultdict
 from services.ai_service import (
     get_ai_suggested_character_traits,
     generate_narrative_brief,
@@ -24,9 +23,6 @@ narrative_bp = Blueprint('narrative', __name__, url_prefix='/narrative')
 @narrative_bp.route('/generate_narrative_story', methods=['POST'])
 @login_required
 def generate_narrative_story():
-#    if current_user.role != 'premium':
-#        return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403
-
     original_user_inputs = request.get_json()
     if not original_user_inputs:
         return jsonify({"error": "Ingen JSON data modtaget"}), 400
@@ -37,30 +33,24 @@ def generate_narrative_story():
     parent_story_id = original_user_inputs.get('parent_story_id')
     continuation_strategy = original_user_inputs.get('continuation_strategy')
     continuation_context = None
-
-    # --- START PÅ RETTELSE ---
     root_story_title = None
-    parent_story = None  # Initialiserer parent_story
-    # --- SLUT PÅ RETTELSE ---
+    parent_story = None
 
     if parent_story_id and continuation_strategy:
         current_app.logger.info(
             f"Dette er en fortsættelse af historie ID {parent_story_id} med strategi '{continuation_strategy}'.")
-        parent_story = Story.query.get(parent_story_id)
+        parent_story = db.session.get(Story, parent_story_id)
         if parent_story and parent_story.user_id == current_user.id:
             continuation_context = {
                 'strategy': continuation_strategy,
                 'problem_name': parent_story.problem_name,
                 'discovered_method_name': parent_story.discovered_method_name
             }
-            # --- START PÅ RETTELSE: Find den oprindelige histories titel ---
-            # Vi traverserer op gennem forældre-kæden for at finde den allerførste historie
             root_story = parent_story
             while root_story.parent_story:
                 root_story = root_story.parent_story
             root_story_title = root_story.title
             current_app.logger.info(f"Oprindelig historie fundet: '{root_story_title}' (ID: {root_story.id})")
-            # --- SLUT PÅ RETTELSE ---
         else:
             current_app.logger.warning(
                 f"Bruger {user_id_for_log} forsøgte at fortsætte en ugyldig eller uautoriseret historie (ID: {parent_story_id}).")
@@ -91,7 +81,6 @@ def generate_narrative_story():
 
         if parent_story_id and parent_story:
             new_story.parent_story_id = parent_story_id
-            # Sæt series_part til forælderens + 1. Hvis forælder ikke har series_part, start fra 2.
             new_story.series_part = (parent_story.series_part or 1) + 1
 
         db.session.add(new_story)
@@ -99,7 +88,6 @@ def generate_narrative_story():
         current_app.logger.info(
             f"Bruger {user_id_for_log}: Ny historie (ID: {new_story.id}) gemt. Parent ID: {new_story.parent_story_id}.")
 
-        # --- START PÅ RETTELSE: Opdater JSON-svar ---
         response_data = {
             "status": "Historie genereret og gemt succesfuldt.",
             "story_id": new_story.id,
@@ -107,12 +95,10 @@ def generate_narrative_story():
             "story": new_story.content,
             "narrative_brief_for_reference": narrative_brief
         }
-        # Tilføj kun root_story_title hvis den blev fundet
         if root_story_title:
             response_data["root_story_title"] = root_story_title
 
         return jsonify(response_data), 200
-        # --- SLUT PÅ RETTELSE ---
 
     except Exception as e:
         db.session.rollback()
@@ -121,17 +107,9 @@ def generate_narrative_story():
         return jsonify({"error": "En uventet serverfejl opstod."}), 500
 
 @narrative_bp.route('/suggest_character_traits', methods=['POST'])
-@login_required  # Tilføjet/aktiveret
+@login_required
 def suggest_character_traits():
-    # Tjek om brugeren har 'premium' rolle
-    #if current_user.role != 'premium':
-   #     current_app.logger.warning(
-   #         f"Uautoriseret forsøg på adgang til '/suggest_character_traits' af bruger: "
-   #         f"{current_user.email} (Rolle: {current_user.role})"
-   #     )
-   #    return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403  # Forbidden
-
-    user_id_for_log = current_user.id # <--- DENNE LINJE ER TILFØJET/FLYTET KORREKT
+    user_id_for_log = current_user.id
 
     current_app.logger.info(
         f"Narrative route /suggest_character_traits kaldt af bruger: {current_user.email} (ID: {user_id_for_log})") # Nu kan user_id_for_log bruges her
@@ -179,8 +157,6 @@ def analyze_for_logbook():
     API-endepunkt der modtager en historie og returnerer en AI-genereret
     analyse med henblik på at oprette en logbogs-indtastning.
     """
-    #if current_user.role != 'premium':
-    #    return jsonify({"error": "Adgang nægtet. Denne funktion kræver et premium abonnement."}), 403
 
     if not request.is_json:
         return jsonify({"error": "Anmodning skal være JSON."}), 415
@@ -211,10 +187,7 @@ def save_log_entry(story_id):
     API-endepunkt der modtager de udfyldte data fra dokumentations-formularen
     og gemmer dem på den specifikke historie i databasen.
     """
-    #if current_user.role != 'premium':
-    #    return jsonify({"error": "Adgang nægtet."}), 403
-
-    story = Story.query.get_or_404(story_id)
+    story = db.get_or_404(Story, story_id)
 
     if story.user_id != current_user.id:
         current_app.logger.warning(
@@ -238,12 +211,10 @@ def save_log_entry(story_id):
         story.support_system = data.get('support_system')
         story.user_notes = data.get('user_notes')
 
-        # START PÅ RETTELSE: Sørg for at gemme ALLE relevante felter
         story.problem_category = data.get('problem_category')
         story.strength_type = data.get('strength_type')
         if 'strategy_used' in data:
             story.strategy_used = data.get('strategy_used')
-        # SLUT PÅ RETTELSE
 
         progress_before = data.get('progress_before')
         story.progress_before = int(progress_before) if progress_before and progress_before.isdigit() else None
@@ -253,14 +224,13 @@ def save_log_entry(story_id):
 
         story.is_log_entry = True
 
-        # Sæt root_story_id korrekt (fra forrige løsning, stadig vigtig)
         if story.parent_story_id and story.parent_story:
             story.root_story_id = story.parent_story.root_story_id or story.parent_story.id
         elif not story.parent_story_id:
             story.root_story_id = story.id
 
         db.session.commit()
-        print(f"DEBUG SAVE: Historie {story.id} er nu gemt med is_log_entry = {story.is_log_entry}")
+        current_app.logger.debug(f"Historie {story.id} er nu gemt med is_log_entry = {story.is_log_entry}")
         current_app.logger.info(
             f"Historie {story_id} er succesfuldt opdateret og markeret som logbogs-indtastning. Root ID: {story.root_story_id}")
 
@@ -315,7 +285,7 @@ def filter_logbook():
         query = query.order_by(Story.created_at.desc())
 
     results = query.all()
-    print(f"DEBUG FILTER: Forespørgslen fandt {len(results)} historier med is_log_entry=True for denne bruger.")
+    current_app.logger.debug(f"filter_logbook: fandt {len(results)} historier for bruger {current_user.id}.")
 
     stories_list = []
     for story, root_title in results:
@@ -348,7 +318,7 @@ def update_note(story_id):
     API-endepunkt til specifikt at opdatere user_notes for en given historie.
     Dette er en letvægts-operation designet til hurtige 'auto-save' eller 'gem'-kald.
     """
-    story = Story.query.get_or_404(story_id)
+    story = db.get_or_404(Story, story_id)
 
     # Sikkerhedstjek: Sørg for at brugeren ejer historien
     if story.user_id != current_user.id:
@@ -376,8 +346,6 @@ def list_stories_for_continuation():
     API-endepunkt der returnerer en simpel liste af brugerens gemte
     "Narrativ Støtte"-historier, som kan bruges som forældre-historier.
     """
-    #if current_user.role != 'premium':
-    #    return jsonify({"error": "Adgang nægtet."}), 403
 
     try:
         # Find alle historier fra den loggede bruger, som er gemt i logbogen
@@ -400,8 +368,6 @@ def list_stories_for_continuation():
 @narrative_bp.route('/generate_problem_image', methods=['POST'])
 @login_required
 def generate_problem_image_route():
-    #if current_user.role != 'premium':
-    #    return jsonify({"error": "Adgang nægtet."}), 403
 
     narrative_data = request.get_json()
     if not narrative_data:
@@ -422,7 +388,7 @@ def delete_story(story_id):
     """
     API-endepunkt til at slette en specifik historie.
     """
-    story_to_delete = Story.query.get_or_404(story_id)
+    story_to_delete = db.get_or_404(Story, story_id)
 
     if story_to_delete.user_id != current_user.id:
         current_app.logger.warning(
@@ -431,10 +397,9 @@ def delete_story(story_id):
         return jsonify({"error": "Du har ikke tilladelse til at slette denne historie."}), 403
 
     try:
-        children = Story.query.filter_by(parent_story_id=story_id).all()
-        for child in children:
-            child.parent_story_id = None
-
+        Story.query.filter_by(parent_story_id=story_id).update(
+            {'parent_story_id': None}, synchronize_session='fetch'
+        )
         db.session.delete(story_to_delete)
         db.session.commit()
 
@@ -446,28 +411,22 @@ def delete_story(story_id):
         current_app.logger.error(f"Fejl under sletning af historie {story_id}: {e}")
         return jsonify({"error": "En intern fejl opstod under sletning."}), 500
 
-    # potzen/ai-godnathistorie-generator/ai-godnathistorie-generator-5ffa7696e20a294c8648c9db4a2cb60980e2a54e/routes/narrative_routes.py
 
-
-# potzen/ai-godnathistorie-generator/ai-godnathistorie-generator-5ffa7696e20a294c8648c9db4a2cb60980e2a54e/routes/narrative_routes.py
 @narrative_bp.route('/api/profile/save', methods=['POST'])
 @login_required
 def save_child_profile():
     """
     API-endepunkt til at oprette eller opdatere en barneprofil.
     """
-    #if current_user.role != 'premium':
-    #    return jsonify({"error": "Adgang nægtet."}), 403
-
     data = request.get_json()
     if not data or not data.get('name'):
         return jsonify({"error": "Profilnavn er påkrævet."}), 400
 
-    profile_id = data.get('id') if data.get('id') else None
+    profile_id = data.get('id')
 
     try:
         if profile_id:
-            profile = ChildProfile.query.get_or_404(profile_id)
+            profile = db.get_or_404(ChildProfile, profile_id)
             if profile.user_id != current_user.id:
                 return jsonify({"error": "Uautoriseret adgang."}), 403
 
@@ -520,26 +479,42 @@ def list_child_profiles():
     """
     API-endepunkt til at hente alle barneprofiler for den indloggede bruger.
     """
-    #if current_user.role != 'premium':
-    #    return jsonify({"error": "Adgang nægtet."}), 403
-
     try:
         profiles = ChildProfile.query.filter_by(user_id=current_user.id).order_by(
             ChildProfile.created_at.desc()).all()
 
+        if not profiles:
+            return jsonify([]), 200
+
+        profile_ids = [p.id for p in profiles]
+
+        all_attrs = ProfileAttribute.query.filter(
+            ProfileAttribute.profile_id.in_(profile_ids)
+        ).all()
+        attrs_by_profile = defaultdict(lambda: defaultdict(list))
+        for attr in all_attrs:
+            attrs_by_profile[attr.profile_id][attr.type].append(attr.content)
+
+        all_rels = ProfileRelation.query.filter(
+            ProfileRelation.profile_id.in_(profile_ids)
+        ).all()
+        rels_by_profile = defaultdict(list)
+        for rel in all_rels:
+            rels_by_profile[rel.profile_id].append({"name": rel.name, "type": rel.relation_type})
+
         profiles_data = []
         for profile in profiles:
-            profile_dict = {
+            a = attrs_by_profile[profile.id]
+            profiles_data.append({
                 "id": profile.id,
                 "name": profile.name,
                 "age": profile.age,
-                "strengths": [attr.content for attr in profile.strengths],
-                "values": [attr.content for attr in profile.values],
-                "motivations": [attr.content for attr in profile.motivations],
-                "reactions": [attr.content for attr in profile.reactions],
-                "relations": [{"name": rel.name, "type": rel.relation_type} for rel in profile.relations]
-            }
-            profiles_data.append(profile_dict)
+                "strengths": a.get('strength', []),
+                "values": a.get('value', []),
+                "motivations": a.get('motivation', []),
+                "reactions": a.get('reaction', []),
+                "relations": rels_by_profile[profile.id]
+            })
 
         return jsonify(profiles_data), 200
 
@@ -552,7 +527,7 @@ def list_child_profiles():
 @login_required
 def delete_child_profile(profile_id):
     """ API-endepunkt til at slette en barneprofil. """
-    profile = ChildProfile.query.get_or_404(profile_id)
+    profile = db.get_or_404(ChildProfile, profile_id)
     if profile.user_id != current_user.id:
         return jsonify({"error": "Uautoriseret."}), 403
 
@@ -566,13 +541,9 @@ def delete_child_profile(profile_id):
         current_app.logger.error(f"Fejl ved sletning af profil {profile_id}: {e}")
         return jsonify({"error": "Intern fejl ved sletning."}), 500
 
-# TILFØJ DENNE NYE ROUTE I bunden af routes/narrative_routes.py
-
 @narrative_bp.route('/generate_story_image', methods=['POST'])
 @login_required
 def generate_narrative_story_image():
-    #if current_user.role != 'premium':
-    #    return jsonify({"error": "Adgang nægtet."}), 403
 
     narrative_data = request.get_json()
     if not narrative_data:
