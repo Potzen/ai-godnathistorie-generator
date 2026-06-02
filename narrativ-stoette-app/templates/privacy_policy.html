@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Privatlivspolitik – Narrativ Støtte{% endblock %}
+
+{% block content %}
+<div class="content-section" style="max-width: 800px; margin: 0 auto;">
+    <h1>Privatlivspolitik</h1>
+    <p><strong>Sidst opdateret:</strong> 2025</p>
+
+    <h2>Hvad vi indsamler</h2>
+    <p>Vi indsamler kun den information, der er nødvendig for at levere tjenesten:</p>
+    <ul>
+        <li>Din e-mailadresse og navn (via Google login eller manuel registrering)</li>
+        <li>De historier og barneprofiler du opretter i applikationen</li>
+    </ul>
+
+    <h2>Hvordan vi bruger data</h2>
+    <p>Dine data bruges udelukkende til at levere funktionaliteten i Narrativ Støtte. Vi deler ikke dine data med tredjeparter.</p>
+
+    <h2>Sletning af data</h2>
+    <p>Kontakt os for at få dine data slettet.</p>
+
+    <h2>AI-indhold</h2>
+    <p>De historier der genereres, sendes til Google Gemini API'en for behandling. Gem ikke personfølsomme data i fritekstfelterne.</p>
+
+    <p><a href="{{ url_for('main.index') }}">&larr; Tilbage til forsiden</a></p>
+</div>
+{% endblock %}

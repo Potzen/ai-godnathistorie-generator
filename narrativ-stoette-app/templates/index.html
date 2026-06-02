@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+{% block title %}Narrativ Støtte – Historier der hjælper{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+
+<div id="info-tooltip" class="info-tooltip-box hidden" role="tooltip" aria-live="polite">
+    <p id="info-tooltip-text" class="tooltip-text-content"></p>
+    <button type="button" id="info-tooltip-close" class="tooltip-close-button" aria-label="Luk">&times;</button>
+</div>
+
+<section id="narrative-support-module" class="content-section">
+    <h1>Narrativ Støtte</h1>
+    <p class="intro-text">Skab terapeutisk inspirerede historier, der hjælper børn med at bearbejde udfordringer og finde deres egne styrker.</p>
+
+    <!-- Fortsæt en historie -->
+    <div class="continuation-flow-section">
+        <div class="switch-option-group">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label for="continue-story-switch" style="font-weight: bold; margin-bottom: 0;">Fortsæt en Historie fra logbogen:</label>
+                <div class="switch-container">
+                    <input type="checkbox" id="continue-story-switch" name="continue_story_switch">
+                    <label for="continue-story-switch" class="slider-label"></label>
+                </div>
+            </div>
+        </div>
+        <div id="continuation-options" class="hidden" style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+            <div class="form-group-logbook" style="margin-bottom: 20px;">
+                <label for="parent-story-select">Vælg historie at bygge videre på:</label>
+                <select id="parent-story-select" name="parent_story_id">
+                    <option value="">-- Henter Historier... --</option>
+                </select>
+            </div>
+            <div id="continuation-strategy-selection" class="hidden" style="text-align: center;">
+                <p style="font-weight: bold;">Vælg jeres næste skridt:</p>
+                <div style="display: flex; gap: 15px; justify-content: center;">
+                    <button type="button" class="utility-button" name="continuation_strategy" value="deepen" style="background-color: var(--color-secondary);">Dyk Dybere</button>
+                    <button type="button" class="utility-button" name="continuation_strategy" value="generalize" style="background-color: var(--color-secondary);">Flyv Højere</button>
+                </div>
+                <div id="continuation-context-box" style="margin-top:15px; text-align:left; font-size: 0.9em;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vejledning -->
+    <div class="narrative-info-dropdown info-dropdown">
+        <button type="button" class="dropdown-toggle">Vejledning: Hvad er Narrativ Terapi? <span class="dropdown-arrow">&#9664;</span></button>
+        <div class="dropdown-content hidden">
+            <h4>Hvad er narrativ støtte?</h4>
+            <p>Dette modul er inspireret af narrativ terapi. Grundtanken er, at vi forstår vores liv gennem historier – og ved at ændre historien kan vi ændre oplevelsen.</p>
+            <h4>Centrale idéer</h4>
+            <p><strong>Eksternalisering:</strong> Problemet gives en ydre form (f.eks. "Vrede-vulkanen"), så barnet kan tale om det uden skam.</p>
+            <p><strong>Ressourcer og styrker:</strong> Barnets egne "superkræfter" fremhæves i historien.</p>
+            <p><strong>Unikke udfald:</strong> Øjeblikke, hvor problemet ikke havde magten, fremhæves.</p>
+            <p><strong>Vigtigt: Dette er et inspirationsværktøj og ikke en erstatning for professionel terapi.</strong></p>
+        </div>
+    </div>
+
+    <!-- Fokus og mål -->
+    <div class="input-category">
+        <label for="narrative-focus-input">Begivenhed, Udfordring eller Fokus for Historien (Obligatorisk): <span class="info-icon" data-tooltip-id="tooltip-narrative-focus">ⓘ</span></label>
+        <textarea id="narrative-focus-input" name="narrative_focus" rows="3" placeholder="Eks: Min datter er mørkerad, Skal starte i skole, Har følelsen af at være genert og alene..."></textarea>
+    </div>
+    <div class="input-category">
+        <label for="narrative-goal-input">Ønsket Mål for Historien (Anbefalet): <span class="info-icon" data-tooltip-id="tooltip-narrative-goal">ⓘ</span></label>
+        <textarea id="narrative-goal-input" name="narrative_goal" rows="2" placeholder="Eks: At barnet føler sig accepteret, At barnet kan sove ude..."></textarea>
+    </div>
+
+    <!-- Beskriv barnet -->
+    <div class="narrative-info-dropdown">
+        <button type="button" class="dropdown-toggle">Beskriv Barnet <span class="dropdown-arrow">◀</span></button>
+        <div class="dropdown-content hidden" style="background-color: #fdfdff; padding-top: 20px; border-top: 1px solid var(--border-color);">
+            <div id="narrative-profile-selector-container" class="input-category" style="display: none; background-color: #eef7ff; padding: 15px; border-radius: var(--border-radius); margin-bottom: 20px;">
+                <label for="narrative-profile-select" style="font-weight: bold;">Vælg en gemt barneprofil (vil overskrive felterne nedenfor)</label>
+                <select id="narrative-profile-select" name="narrative_profile_select">
+                    <option value="">-- Henter profiler... --</option>
+                </select>
+            </div>
+            <div class="input-category">
+                <label>Information om Barnet (Hovedperson):</label>
+                <div id="narrative-child-info-container">
+                    <div class="listener-group">
+                        <div class="input-pair">
+                            <label for="narrative-child-name-1" class="sr-only">Barnets Navn</label>
+                            <input type="text" name="narrative_child_name" id="narrative-child-name-1" placeholder="Barnets Navn">
+                        </div>
+                        <div class="input-pair">
+                            <label for="narrative-child-age-1" class="sr-only">Barnets Alder</label>
+                            <input type="text" name="narrative_child_age" id="narrative-child-age-1" placeholder="Alder (f.eks. 6)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="input-category">
+                <label for="narrative-child-strengths-select">Barnets Karakteristika/Styrker: <span class="info-icon" data-tooltip-id="tooltip-child-strengths">ⓘ</span></label>
+                <select name="narrative_child_strengths_select" id="narrative-child-strengths-select" class="dynamic-select" data-other-input-id="narrative-child-strengths-other">
+                    <option value="">-- Vælg en styrke --</option>
+                    <option value="Modig">Modig</option><option value="Klog">Klog</option>
+                    <option value="Venlig">Venlig</option><option value="Kreativ">Kreativ</option>
+                    <option value="Tålmodig">Tålmodig</option><option value="Nysgerrig">Nysgerrig</option>
+                    <option value="Omsorgsfuld">Omsorgsfuld</option><option value="Sjov">Sjov</option>
+                    <option value="Stærk">Stærk</option><option value="Fantasifuld">Fantasifuld</option>
+                    <option value="Hjælpsom">Hjælpsom</option><option value="Vedholdende">Vedholdende</option>
+                    <option value="other">Andet...</option>
+                </select>
+                <input type="text" name="narrative_child_strengths_other" id="narrative-child-strengths-other" class="hidden other-input" placeholder="Beskriv anden styrke/karakteristik">
+            </div>
+            <div class="input-category">
+                <label for="narrative-child-motivation">Barnets Motivation/Ønske (valgfri):</label>
+                <input type="text" id="narrative-child-motivation" name="narrative_child_motivation" placeholder="Eks: Ønsker at finde en ven, Vil gerne lære at flyve...">
+            </div>
+            <div class="input-category">
+                <label for="narrative-child-reaction">Barnets Typiske Adfærd/Reaktion (valgfri):</label>
+                <textarea id="narrative-child-reaction" name="narrative_child_reaction" rows="2" placeholder="Eks: Trækker sig typisk tilbage, Er udadreagerende..."></textarea>
+            </div>
+            <div class="input-category">
+                <label>Vigtige Relationer (valgfri):</label>
+                <div id="narrative-relations-container">
+                    <div class="relation-group">
+                        <div class="input-pair">
+                            <input type="text" name="narrative_relation_name" id="narrative-relation-name-1" placeholder="Navn (f.eks. Bedstemor Anna)">
+                        </div>
+                        <div class="input-pair">
+                            <input type="text" name="narrative_relation_type" id="narrative-relation-type-1" placeholder="Relation (f.eks. Bedste ven, Kæledyr)">
+                        </div>
+                        <button type="button" class="remove-button initial-remove-button" aria-hidden="true">-</button>
+                    </div>
+                </div>
+                <button type="button" id="narrative-add-relation-button" class="add-button">+ Tilføj relation</button>
+            </div>
+
+            <!-- Gem profil -->
+            <div style="margin-top: 20px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+                <button type="button" id="narrative-save-profile-button" class="utility-button">Gem/Opdater Barneprofil</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Problem-karakter -->
+    <div class="narrative-info-dropdown input-category">
+        <button type="button" class="dropdown-toggle">Beskriv Problem-Karakteren (Eksternalisering) <span class="dropdown-arrow">◀</span></button>
+        <div class="dropdown-content hidden">
+            <div class="input-category" style="margin-bottom:15px;">
+                <label for="narrative-problem-identity-name">Problemets Navn/Identitet:</label>
+                <input type="text" id="narrative-problem-identity-name" name="narrative_problem_identity_name" placeholder="F.eks. Kede-Klodsen, Drille-Spøgelset">
+            </div>
+            <div class="input-category" style="margin-bottom:15px;">
+                <label for="narrative-problem-role-function">Problemets Rolle/Funktion:</label>
+                <input type="text" id="narrative-problem-role-function" name="narrative_problem_role_function" placeholder="F.eks. dukker op når ting er svære">
+            </div>
+            <div class="input-category" style="margin-bottom:15px;">
+                <label for="narrative-problem-influence">Problemets Indflydelse på Hovedpersonen:</label>
+                <input type="text" id="narrative-problem-influence" name="narrative_problem_influence" placeholder="F.eks. gør hovedpersonen ked af det">
+            </div>
+            <div style="margin-top: 15px; text-align: left;">
+                <button type="button" id="narrative-suggest-traits-button" class="utility-button">Foreslå Karaktertræk (AI)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Længde -->
+    <div class="input-category">
+        <label for="narrative-length-select">Vælg historielængde:</label>
+        <select name="narrative_length" id="narrative-length-select">
+            <option value="kort">Kort</option>
+            <option value="mellem" selected>Mellem</option>
+            <option value="lang">Lang</option>
+        </select>
+    </div>
+    <hr style="margin: 30px 0;">
+
+    <!-- Handlingsknapper -->
+    <div class="narrative-actions">
+        <button type="button" id="narrative-generate-story-button" class="primary-action-button">Generer Narrativ Historie</button>
+        <button type="button" id="narrative-generate-images-button" class="utility-button" disabled title="Generer en historie først">Skab Billeder til Fortællingen</button>
+        <div class="font-size-controls" id="narrative-font-size-controls">
+            <button type="button" id="narrative-decrease-font-button" class="utility-button font-button" title="Gør teksten mindre">A-</button>
+            <button type="button" id="narrative-increase-font-button" class="utility-button font-button" title="Gør teksten større">A+</button>
+            <button type="button" id="narrative-reset-font-button" class="utility-button font-button" title="Nulstil tekststørrelse">Nulstil</button>
+        </div>
+    </div>
+    <hr style="margin: 30px 0;">
+
+    <div id="narrative-loading-indicator" class="narrative-loading-spinner hidden">
+        Genererer narrativ historie, vent venligst... <span class="spinner"></span>
+    </div>
+    <div id="narrative-error-display" class="flash-message flash-error hidden"></div>
+
+    <!-- Genereret historie -->
+    <section id="narrative-generated-story-section" class="narrative-output-section hidden">
+        <h2>Historien</h2>
+        <div id="narrative-generated-title" class="narrative-story-title"></div>
+        <div class="narrative-content-box">
+            <div id="narrative-generated-story" class="narrative-story-content-inner">
+                Tryk "Generer Narrativ Historie" for at starte...
+            </div>
+        </div>
+    </section>
+
+    <!-- Logbog dokumentation -->
+    <section id="logbook-documentation-section" class="narrative-info-dropdown hidden">
+        <button type="button" class="dropdown-toggle">Dokumentation og Logbog <span class="dropdown-arrow">◀</span></button>
+        <div class="dropdown-content hidden">
+            <div id="logbook-analysis-loader" class="narrative-loading-spinner hidden" style="padding: 20px 0;">
+                Analyserer historiens guldkorn... <span class="spinner"></span>
+            </div>
+            <div id="logbook-analysis-error" class="flash-message flash-error hidden"></div>
+            <form id="logbook-entry-form" class="hidden" style="margin-top: 0; padding-top: 10px; border: none; background: none;">
+                <input type="hidden" id="logbook-story-id" name="story_id">
+                <div class="logbook-form-grid">
+                    <div class="form-group-logbook full-width">
+                        <label for="logbook-ai-summary">Pædagogisk Analyse</label>
+                        <textarea id="logbook-ai-summary" name="ai_summary" rows="5" readonly
+                                  style="background-color:#e9ecef; color:#495057; border:1px solid #ced4da;"
+                                  placeholder="AI-analyse vises her..."></textarea>
+                    </div>
+                    <div class="form-group-logbook">
+                        <label for="logbook-problem-name">Problemets Navn</label>
+                        <input type="text" id="logbook-problem-name" name="problem_name" placeholder="AI-forslag vises her...">
+                    </div>
+                    <div class="form-group-logbook">
+                        <label for="logbook-problem-category">Problemets Kategori</label>
+                        <input type="text" id="logbook-problem-category" name="problem_category" placeholder="AI-forslag vises her...">
+                    </div>
+                    <div class="form-group-logbook full-width">
+                        <label for="logbook-unique-outcome">Helten i Aktion ("Glimtet")</label>
+                        <textarea id="logbook-unique-outcome" name="unique_outcome" rows="4" placeholder="AI-forslag vises her..."></textarea>
+                    </div>
+                    <div class="form-group-logbook full-width">
+                        <label for="logbook-user-notes">Mine Noter</label>
+                        <textarea id="logbook-user-notes" name="user_notes" rows="4" placeholder="Tilføj private noter om situationen, barnets reaktion osv."></textarea>
+                    </div>
+                    <div class="form-group-logbook progress-slider">
+                        <label for="logbook-progress-before">Problemets styrke FØR (1-10)</label>
+                        <input type="range" id="logbook-progress-before" name="progress_before" min="1" max="10" value="5">
+                        <span class="range-value">5</span>
+                    </div>
+                    <div class="form-group-logbook progress-slider">
+                        <label for="logbook-progress-after">Problemets styrke EFTER (1-10)</label>
+                        <input type="range" id="logbook-progress-after" name="progress_after" min="1" max="10" value="5">
+                        <span class="range-value">5</span>
+                    </div>
+                </div>
+                <button type="submit" id="save-logbook-entry-button" class="primary-action-button" style="margin-top: 20px; width: 100%;">Gem Historien i Logbog</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Refleksionsspørgsmål -->
+    <section id="narrative-reflection-section" class="narrative-output-section hidden">
+        <h2>Refleksionsspørgsmål til Oplæseren</h2>
+        <div class="narrative-content-box">
+            <ul id="narrative-reflection-questions-list">
+                <li>Spørgsmål vises her efter generering.</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Billeder -->
+    <section id="billede-til-historien-sektion" class="hidden">
+        <div id="story-image-container" class="image-result-container hidden">
+            <h2>Billede til Historien</h2>
+            <div class="image-display-wrapper">
+                <div id="story-image-loader" class="image-loader hidden">
+                    <p>Visualiserer historien...</p><span class="spinner"></span>
+                </div>
+                <img id="story-image-display" class="hidden" src="#" alt="Genereret billede">
+            </div>
+            <div id="story-image-error" class="flash-message flash-error hidden"></div>
+        </div>
+        <div id="problem-image-container" class="image-result-container hidden">
+            <h2>Billede af Problemet</h2>
+            <div class="image-display-wrapper">
+                <div id="problem-image-loader" class="image-loader hidden">
+                    <p>Visualiserer problemet...</p><span class="spinner"></span>
+                </div>
+                <img id="problem-image-display" class="hidden" src="#" alt="Genereret billede der symboliserer problem-karakteren">
+            </div>
+            <div id="problem-image-error" class="flash-message flash-error hidden"></div>
+        </div>
+    </section>
+
+    <!-- Logbog -->
+    <section id="logbook-module" style="margin-top: 40px; border-top: 2px solid var(--border-color); padding-top: 30px;">
+        <div class="logbook-container" style="padding: 0; background: none; box-shadow: none;">
+            <h1 style="text-align: center;">Min Narrativ Logbog</h1>
+            <div class="logbook-toolbar">
+                <div class="filter-group">
+                    <label for="sort-by">Sortér efter</label>
+                    <select name="sortBy" id="sort-by">
+                        <option value="newest">Dato (nyeste)</option>
+                        <option value="oldest">Dato (ældste)</option>
+                        <option value="title_asc">Titel (A-Å)</option>
+                        <option value="title_desc">Titel (Å-A)</option>
+                    </select>
+                </div>
+                <div class="filter-group filter-group-search">
+                    <label for="search-term">Søg</label>
+                    <input type="search" id="search-term" name="searchTerm" placeholder="Søg her...">
+                </div>
+            </div>
+            <div id="logbook-list-container">
+                {% if stories %}
+                    <p>Henter historier...</p>
+                {% else %}
+                    <p style="text-align: center; color: var(--color-text-light);">Du har endnu ikke gemt nogen historier i logbogen.</p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+</section>
+
+{% else %}
+
+<!-- Ikke logget ind -->
+<section class="landing-section">
+    <div class="landing-hero">
+        <h1>Narrativ Støtte</h1>
+        <p class="landing-tagline">Skab historier, der hjælper børn med at bearbejde udfordringer og finde deres egne styrker – inspireret af narrativ terapi.</p>
+        <div class="landing-cta">
+            <a href="{{ url_for('auth.login_page') }}" class="primary-action-button">Kom i gang →</a>
+        </div>
+    </div>
+
+    <div class="landing-features">
+        <div class="feature-card">
+            <div class="feature-icon">🔮</div>
+            <h3>Eksternalisering</h3>
+            <p>Giv problemet en karakter og et navn, så barnet kan tale om det uden skam.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">⭐</div>
+            <h3>Styrker i fokus</h3>
+            <p>Barnets egne superkræfter væves aktivt ind som løsningsstrategier i historien.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📖</div>
+            <h3>Logbog</h3>
+            <p>Dokumentér forløb, gem noter og byg videre på tidligere historier.</p>
+        </div>
+    </div>
+</section>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if current_user.is_authenticated %}
+<script type="module" src="{{ url_for('static', filename='stoette.js') }}"></script>
+{% endif %}
+{% endblock %}

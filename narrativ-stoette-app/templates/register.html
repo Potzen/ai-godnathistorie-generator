@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Opret bruger – Narrativ Støtte{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <h1>Opret bruger</h1>
+
+    <a href="{{ url_for('auth.google_login') }}" class="google-login-button">
+        <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" class="google-icon">
+        Tilmeld med Google
+    </a>
+
+    <div class="auth-divider"><span>eller med e-mail</span></div>
+
+    <form method="POST" action="{{ url_for('auth.register') }}" class="auth-form">
+        <div class="form-group">
+            <label for="name">Navn (valgfrit)</label>
+            <input type="text" id="name" name="name" value="{{ name or '' }}"
+                   placeholder="Dit navn" autocomplete="name">
+        </div>
+        <div class="form-group">
+            <label for="email">E-mail</label>
+            <input type="email" id="email" name="email" required value="{{ email or '' }}"
+                   placeholder="din@email.dk" autocomplete="email">
+        </div>
+        <div class="form-group">
+            <label for="password">Kodeord</label>
+            <input type="password" id="password" name="password" required
+                   placeholder="Mindst 6 tegn" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+            <label for="confirm_password">Bekræft kodeord</label>
+            <input type="password" id="confirm_password" name="confirm_password" required
+                   placeholder="Gentag kodeord" autocomplete="new-password">
+        </div>
+        <button type="submit" class="primary-action-button" style="width:100%;">Opret bruger</button>
+    </form>
+
+    <p style="text-align:center; margin-top:20px;">
+        Har du allerede en konto? <a href="{{ url_for('auth.login_page') }}">Log ind</a>
+    </p>
+</div>
+{% endblock %}

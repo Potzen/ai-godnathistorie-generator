@@ -1,0 +1,2294 @@
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,400;0,6..12,700;1,6..12,400&family=Poppins:wght@500;700&display=swap');
+
+/* Grundlæggende styling og farvevariabler */
+:root {
+    --font-body: 'Nunito Sans', sans-serif;
+    --font-heading: 'Poppins', sans-serif;
+    --color-text: #444;
+    --color-bg: #eef7ff; /* Fallback baggrundsfarve */
+    --color-box-bg: rgba(255, 255, 255, 0.95); /* Let gennemsigtig hvid */
+    --color-primary: #4DB6AC; /* Teal */
+    --color-primary-hover: #26A69A;
+    --color-secondary: #A9CCE3; /* Dæmpet blå */
+    --color-secondary-hover: #85B4D8;
+    --color-danger: #dc3545;
+    --color-danger-hover: #c82333;
+    --color-success-text: #155724; /* Mørkegrøn tekst */
+    --color-success-bg: #d4edda;   /* Lys grøn baggrund */
+    --color-success-border: #c3e6cb; /* Lidt mørkere grøn kant */
+    --color-info-text: #0c5460;    /* Mørk blå/turkis tekst */
+    --color-info-bg: #d1ecf1;     /* Lys blå/turkis baggrund */
+    --color-info-border: #bee5eb;   /* Lidt mørkere blå/turkis kant */
+    --color-error-text: #721c24;   /* Mørkerød tekst */
+    --color-error-bg: #f8d7da;    /* Lys rød baggrund */
+    --color-error-border: #f5c6cb;  /* Lidt mørkere rød kant */
+    --border-color: #d1d5db;
+    --border-radius: 6px;
+    --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --footer-text-color: #f0f0f0; /* NYT: Farve for footer tekst */
+    --footer-link-border-color: #aaa; /* NYT: Farve for social link border */
+}
+
+/* Global box-sizing for mere forudsigeligt layout */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-body);
+    line-height: 1.7;
+    max-width: 800px;
+    margin: 30px auto;
+    padding: 0 15px;
+    color: var(--color-text);
+    background-image: url('/static/images/dreampicture.avif'); /* Dit baggrundsbillede */
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-color: var(--color-bg);
+    padding-bottom: 150px; /* Plads til cookie banner / footer */
+}
+
+/* Header Styling */
+header {
+    margin-bottom: 20px;
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.site-nav {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.nav-link {
+    padding: 6px 16px;
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    color: var(--color-text);
+    font-weight: 600;
+    font-size: 0.95em;
+    transition: background-color 0.15s, color 0.15s;
+    border: 2px solid transparent;
+}
+
+.nav-link:hover {
+    background-color: var(--color-secondary);
+    text-decoration: none;
+    color: var(--color-text);
+}
+
+.nav-link.active {
+    background-color: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+}
+
+.nav-link.active:hover {
+    background-color: var(--color-primary-hover);
+    color: white;
+}
+
+.header-inner { /* Container for at matche sidens indholdsbredde */
+    max-width: 800px; /* Samme som body max-width */
+    margin: 0 auto;   /* Centrerer .header-inner */
+    padding: 0 15px;  /* Samme side-padding som body */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo-container {
+    /* Ingen specifik styling nødvendig her, hvis #app-logo klarer det */
+}
+
+#app-logo {
+    max-width: 250px;  /* Din valgte størrelse */
+    height: auto;
+    display: block;    /* Fjerner evt. ekstra plads under billedet */
+    border-radius: var(--border-radius); /* Runde hjørner */
+    /* box-shadow: 0 10px 20px rgba(0,0,0,0.1), 0 6px 6px rgba(0,0,0,0.15); */
+}
+
+/* Login/Logout Status i Header */
+.user-status {
+    font-size: 0.85em;
+    display: block; /* Eller flex, afhængig af ønsket layout */
+    text-align: right; /* For at justere den til højre, hvis det er ønsket */
+    margin-bottom: 10px; /* Lidt afstand, hvis den skal være over H1 */
+}
+
+.user-status span {
+    color: #555;
+}
+
+a.button-login,
+a.button-logout {
+    padding: 4px 8px;
+    font-size: 0.8em;
+    font-weight: normal;
+    border-radius: var(--border-radius);
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+    display: inline-block;
+    text-decoration: none;
+    vertical-align: middle;
+    text-align: center;
+    cursor: pointer;
+    margin-left: 5px;
+    border: none;
+}
+a.button-login { background-color: var(--color-primary); color: white !important; }
+a.button-login:hover { background-color: var(--color-primary-hover); transform: translateY(-1px); }
+a.button-logout { background-color: var(--color-secondary); color: #333 !important; }
+a.button-logout:hover { background-color: var(--color-secondary-hover); transform: translateY(-1px); }
+
+
+/* Flash Beskeder */
+.flash-messages-container {
+    padding: 0;
+    margin-bottom: 25px;
+    list-style: none;
+}
+.flash-message {
+    padding: 12px 18px;
+    margin-bottom: 15px;
+    border-radius: var(--border-radius);
+    border: 1px solid transparent;
+    font-weight: 500;
+    opacity: 0.98;
+    text-align: center;
+    box-shadow: var(--box-shadow);
+    color: var(--color-text);
+    background-color: #eee;
+    border-color: #ddd;
+}
+.flash-success {
+    color: var(--color-success-text) !important;
+    background-color: var(--color-success-bg) !important;
+    border-color: var(--color-success-border) !important;
+}
+.flash-error {
+    color: var(--color-error-text) !important;
+    background-color: var(--color-error-bg) !important;
+    border-color: var(--color-error-border) !important;
+}
+.flash-info {
+    color: var(--color-info-text) !important;
+    background-color: var(--color-info-bg) !important;
+    border-color: var(--color-info-border) !important;
+}
+.flash-disclaimer {
+    margin-top: 8px;
+    margin-bottom: 0;
+    font-size: 0.85em;
+    font-weight: normal;
+    opacity: 0.8;
+}
+
+/* Hovedindhold og Sektioner */
+main > section {
+    background-color: var(--color-box-bg);
+    padding: 25px 30px;
+    margin-bottom: 30px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+/* Generel H2 styling */
+h2 {
+    font-family: var(--font-heading);
+    color: var(--color-primary);
+    margin-top: 0;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+/* Input Kategorier */
+.input-category {
+    margin-bottom: 25px;
+}
+.input-category label:not(.sr-only) {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 700;
+    color: #555;
+    font-size: 0.95em;
+}
+
+/* Styling for input grupper */
+.input-group, .character-group, .listener-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 10px;
+}
+
+/* Input felter, Textarea, Select */
+input[type="text"],
+textarea,
+select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-family: var(--font-body);
+    font-size: 1em;
+    color: var(--color-text);
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+input[type="text"]:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(77, 182, 172, 0.3);
+}
+
+/* Styling for AI-foreslåede inputfelter */
+.ai-suggested-input {
+    background-color: #e6fffa; /* En meget lys teal/mint farve */
+    /* border-left: 3px solid var(--color-primary); */ /* Alternativ markering */
+    /* box-shadow: inset 0 0 5px rgba(77, 182, 172, 0.1); */ /* Subtil indre skygge */
+    transition: background-color 0.5s ease; /* Lille overgang når klassen fjernes */
+}
+
+/* Sikrer at relation-group opfører sig som de andre flex-containere */
+.relation-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 10px;
+}
+
+/* Gælder for input-par i character, listener OG relation groups */
+.character-group .input-pair,
+.listener-group .input-pair,
+.relation-group .input-pair {
+     flex: 1; /* Hvert input-par tager lige meget plads */
+     min-width: 0; /* Vigtigt for at flex-shrink kan virke korrekt med inputfelter */
+}
+
+.input-pair input[type="text"] {
+    width: 100%; /* Får inputfeltet til at fylde hele .input-pair containeren */
+}
+.character-group .input-pair input[type="text"],
+.listener-group .input-pair input[type="text"] {
+    margin-bottom: 0;
+}
+.input-group textarea {
+    flex-grow: 1;
+    margin-bottom: 0;
+    resize: vertical;
+}
+
+
+/* Knapper Generelt */
+button, a.utility-button, a.button-login, a.button-logout {
+    font-family: var(--font-body);
+    padding: 10px 18px;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease, opacity 0.2s ease-in-out;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-block;
+    vertical-align: middle;
+    text-align: center;
+}
+button:hover:not(:disabled), a.utility-button:hover, a.button-login:hover, a.button-logout:hover {
+    transform: translateY(-1px);
+}
+button:disabled, .disabled-button {
+    background-color: #ccc !important;
+    color: #888 !important;
+    cursor: not-allowed;
+    transform: none !important;
+    opacity: 0.7 !important;
+}
+
+/* Primær Knap (Skab Historie) */
+#generate-button {
+    display: block;
+    width: 100%;
+    background-color: var(--color-primary);
+    color: white;
+    margin-top: 25px;
+    font-size: 1.1em;
+}
+#generate-button:hover {
+    background-color: var(--color-primary-hover);
+}
+
+/* Sekundære Knapper (Tilføj, Autoudfyld, Læs Højt etc.) */
+.add-button,
+.utility-button,
+#read-aloud-button {
+    background-color: var(--color-secondary);
+    color: #333;
+    font-size: 0.9em;
+    padding: 8px 12px;
+}
+.add-button:hover,
+.utility-button:hover,
+#read-aloud-button:hover:not(:disabled) {
+    background-color: var(--color-secondary-hover);
+}
+
+/* Justering for remove-button hvis den ikke allerede er sat til ikke at gro */
+.remove-button {
+   background-color: var(--color-danger);
+   color: white;
+   padding: 6px 0; /* Sørg for padding er ensartet, du kan justere højden med line-height eller fast højde */
+   font-size: 0.9em;
+   line-height: 1.4; /* Juster for at matche inputfelternes højde bedre */
+   margin-left: 0; /* Bør allerede være 0 pga. gap i parent */
+   flex-shrink: 0; /* Forhindrer knappen i at blive mindre */
+   border-radius: var(--border-radius);
+   width: 35px; /* Fast bredde */
+   min-width: 35px; /* Fast minimumsbredde */
+   text-align: center;
+   height: 38px; /* Prøv at matche inputfelternes højde - juster efter behov */
+   box-sizing: border-box; /* Sørg for at padding og border er inkluderet i width/height */
+}
+.remove-button:hover:not(:disabled) {
+   background-color: var(--color-danger-hover);
+}
+.initial-remove-button {
+    visibility: hidden;
+    pointer-events: none;
+    cursor: default;
+}
+
+/* Checkbox Gruppe */
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    gap: 8px;
+}
+.checkbox-group input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--color-primary);
+    position: relative;
+    top: -1px;
+    margin-right: 0;
+    flex-shrink: 0;
+}
+.checkbox-group label {
+    margin-bottom: 0;
+    font-weight: normal;
+    cursor: pointer;
+    font-size: 1em;
+    color: var(--color-text);
+    line-height: 1;
+}
+
+/* Knap Container nederst i generator */
+.generator-actions {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 15px;
+    margin-top: 25px;
+    flex-wrap: wrap;
+}
+
+/* Historie Output Sektion */
+#historie-output {}
+
+.historie-header-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.historie-header-controls h2 {
+    margin-top: 0;
+    margin-bottom: 0;
+    text-align: left;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.audio-controls-container {
+    display: block;
+    flex-shrink: 0;
+    width: 80%;
+    max-width: 300px;
+    position: relative;
+    min-height: 40px;
+    text-align: center;
+}
+.audio-controls-container #audio-loading { margin: 5px 0; }
+.audio-controls-container #audio-error { margin: 5px 0; width: 100%; }
+.audio-controls-container .login-prompt { margin: 5px 0; }
+.audio-controls-container .audio-player-style { display: block; width: 100%; margin: 0; }
+
+#story-display {
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    min-height: 100px;
+    white-space: pre-wrap;
+    margin-bottom: 15px;
+}
+
+/* Container for historie-dele knapper OG Prøv Igen knap */
+#story-share-buttons {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+#story-share-buttons .utility-button {
+    margin: 0;
+}
+
+@media (min-width: 700px) {
+    #story-share-buttons {
+        flex-direction: row;
+        justify-content: center;
+        align-items: baseline;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+}
+
+/* Globale Audio/Status Styles */
+#audio-loading {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-style: italic;
+    color: #555;
+}
+#audio-error {
+    text-align: center;
+    color: var(--color-error-text);
+}
+.audio-player-style { display: block; }
+
+
+/* Generel Loading Spinner (kan genbruges) */
+.loading-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    text-align: center;
+}
+
+.loading-indicator.hidden {
+    display: none;
+}
+
+.spinner {
+  display: inline-block;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border-left-color: var(--color-primary);
+  animation: spin 1s ease infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Feedback Sektion */
+#feedback-section {
+    margin-top: 30px;
+    padding: 20px 30px;
+    background-color: rgba(230, 230, 230, 0.9);
+    border-radius: var(--border-radius);
+    text-align: center;
+    box-shadow: var(--box-shadow);
+}
+#toggle-feedback-button {
+    background-color: #6c757d;
+    color: white;
+    margin-bottom: 0;
+}
+#toggle-feedback-button:hover { background-color: #5a6268; }
+
+#feedback-embed-container {
+    margin-top: 20px;
+    border: 1px solid #ccc;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    background-color: #fff;
+}
+#feedback-embed-container iframe { display: block; width: 100%; border: none; min-height: 400px; }
+
+
+/* Footer */
+footer {
+    margin-top: 40px;
+    text-align: center;
+    font-size: 0.85em;
+    color: var(--footer-text-color); /* OPDATERET: Bruger ny variabel */
+    padding-top: 20px;
+    border-top: 1px solid #555; /* Lidt mørkere border for kontrast mod lys tekst */
+    /* Overvej en let gennemsigtig mørk baggrund for footeren for at sikre læsbarhed */
+    /* background-color: rgba(0, 0, 0, 0.3); */
+    /* padding-bottom: 10px; /* Hvis baggrund tilføjes */
+}
+footer p {
+    margin-bottom: 8px;
+    /* Farve arves fra footer-elementet */
+}
+
+footer .footer-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+footer .footer-info,
+footer .footer-social {
+    text-align: center;
+}
+
+footer .footer-social p {
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: var(--footer-text-color); /* OPDATERET */
+}
+
+footer .social-link {
+    display: inline-block;
+    margin: 0 8px 5px 8px;
+    padding: 5px 10px;
+    border: 1px solid var(--footer-link-border-color); /* OPDATERET: Bruger ny variabel */
+    border-radius: var(--border-radius);
+    color: var(--footer-text-color); /* OPDATERET */
+    text-decoration: none;
+    font-size: 0.85em;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+footer .social-link:hover {
+    background-color: rgba(255, 255, 255, 0.15); /* Lysere hover-effekt */
+    color: white; /* Sikrer hvid tekst ved hover */
+    border-color: #ccc; /* Lidt lysere kant ved hover */
+}
+
+@media (min-width: 768px) {
+    footer .footer-content {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+    footer .footer-info { text-align: left; flex-basis: 60%; }
+    footer .footer-social { text-align: right; flex-basis: 35%; }
+}
+
+footer .footer-link { /* Link til privatlivspolitik */
+    color: var(--color-primary); /* Beholder primærfarven for dette vigtige link, hvis det er tydeligt nok */
+    /* Alternativt, for hvid: color: var(--footer-text-color); */
+    text-decoration: underline;
+    font-size: 0.9em;
+}
+footer .footer-link:hover {
+    color: var(--color-primary-hover); /* Eller en lysere version af primærfarven */
+    /* Alternativt, for hvid hover: color: white; */
+    text-decoration: none;
+}
+
+
+/* Utility Classes */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+.hidden {
+    display: none !important;
+}
+
+/* Cookie Consent Banner Styling */
+#cookie-consent-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: rgba(50, 50, 50, 0.95);
+    color: #f1f1f1;
+    padding: 20px;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 15px;
+}
+#cookie-consent-banner p { margin: 0; font-size: 0.9em; line-height: 1.5; max-width: 90%; }
+#cookie-consent-banner a { color: var(--color-primary); text-decoration: underline; }
+#cookie-consent-banner a:hover { color: var(--color-primary-hover); }
+
+#accept-cookies-button {
+    padding: 8px 20px;
+    font-size: 0.9em;
+    background-color: var(--color-primary);
+    color: white;
+    min-width: 120px;
+    flex-shrink: 0;
+}
+#accept-cookies-button:hover { background-color: var(--color-primary-hover); }
+
+@media (min-width: 600px) {
+    #cookie-consent-banner {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        text-align: left;
+        padding: 15px 35px 15px 25px;
+    }
+    #cookie-consent-banner p { max-width: none; flex-grow: 1; margin-right: 20px; }
+}
+
+/* =========== Fane Navigation Styling =========== */
+.tab-navigation {
+    display: flex;
+    margin-bottom: 20px;
+    background-color: var(--color-box-bg);
+    /* Juster padding: mindre i top/bund af selve containeren, mere på siderne */
+    padding: 5px 15px 0px 15px; /* Reduceret top padding, mere side padding */
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.tab-button {
+    /* Juster padding: primært top og sider, mindre i bund for at trække stregen op */
+    padding: 12px 15px 8px 15px; /* Øget top/bund lidt for balance, men mindre bund end før */
+    cursor: pointer;
+    border: none;
+    background-color: transparent;
+    font-size: 1.1em;
+    font-weight: 500;
+    color: var(--color-text-secondary, #555);
+    border-bottom: 3px solid transparent;
+    /* Fjern margin-bottom: -2px; da vi ikke længere har en separat border på .tab-navigation at overlappe */
+    transition: color 0.3s ease, border-bottom-color 0.3s ease;
+    line-height: 1.2; /* Kan hjælpe med at centrere teksten bedre ift. padding */
+}
+
+.tab-button:hover {
+    color: var(--color-primary);
+}
+
+.tab-button.active {
+    color: var(--color-primary);
+    font-weight: 700;
+    border-bottom-color: var(--color-primary);
+    /* Vi behøver ikke nødvendigvis at ændre padding her, hvis justeringen på .tab-button er nok */
+}
+
+/* Skjul sektioner der ikke er aktive (JavaScript vil fjerne denne klasse) */
+.content-section.hidden {
+    display: none;
+}
+
+
+/* =========== Narrativ Info Dropdown Styling =========== */
+.narrative-info-dropdown {
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: #f9f9f9; /* Lidt anderledes baggrund for at adskille dem */
+}
+
+.dropdown-toggle {
+    width: 100%;
+    padding: 10px 15px; /* Lidt mindre padding kan også hjælpe med det visuelle */
+    background-color: transparent;
+    border: none;
+    text-align: left;
+    /* Juster font-size her. 0.9em eller 0.95em kan være et godt udgangspunkt.
+       Eller en fast værdi som 14px eller 15px, hvis det passer bedre med din label-tekst.
+       Vi prøver med 0.9em først. */
+    font-size: 0.9em;
+    font-weight: bold; /* Behold fed skrift for at indikere det er en klikbar overskrift */
+    color: var(--color-primary);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: var(--border-radius);
+}
+
+.dropdown-toggle:hover {
+    /* Overvej en let baggrundsfarve-ændring ved hover, hvis ønsket */
+    /* background-color: #efefef; */
+}
+
+.dropdown-arrow {
+    font-size: 0.9em;
+    line-height: 1;
+    transition: transform 0.3s ease;
+    transform: rotate(0deg); /* Med HTML-pil ◀ peger den nu mod venstre */
+    padding-right: 10px;
+}
+
+.dropdown-toggle.open .dropdown-arrow {
+    transform: rotate(-90deg); /* Med HTML-pil ◀, roterer 90 grader for at pege ned ▼ */
+}
+
+.dropdown-content {
+    padding: 0px 15px 15px 15px; /* Padding kun i bunden og siderne når den er åben */
+    border-top: 1px solid var(--border-color); /* En linje mellem knap og indhold */
+    background-color: var(--color-box-bg); /* Hvid baggrund for indholdet */
+    border-radius: 0 0 var(--border-radius) var(--border-radius); /* Runde hjørner i bunden */
+}
+
+/* Sørg for at .hidden klassen virker globalt (den er allerede i din style.css, men for en sikkerheds skyld) */
+.hidden {
+    display: none !important;
+}
+
+/* Styling for "Andet..." inputfelter der vises dynamisk */
+.other-input {
+    margin-top: 8px; /* Lidt plads over fritekstfeltet når det vises */
+    width: 100%; /* Fyld bredden ligesom select-boksen */
+}
+
+.narrative-output-section {
+    background-color: var(--color-box-bg);
+    padding: 20px 25px;
+    margin-top: 0;
+    margin-bottom: 25px; /* VIGTIGT for luft mellem sektionsbokse */
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    border: 1px solid var(--border-color);
+}
+
+/* For H2 i sektioner, der IKKE er dropdowns (som "Historien" og "Refleksionsspørgsmål") */
+.narrative-output-section > h2 {
+    font-family: var(--font-heading);
+    color: var(--color-primary);
+    margin-top: 0;
+    margin-bottom: 18px;
+    font-size: 1.4em;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 12px;
+}
+
+/* Styling for alle dropdown-knapper */
+.narrative-info-dropdown > .dropdown-toggle {
+    width: 100%;
+    padding: 10px 0px 10px 15px; /* Top, Højre, Bund, Venstre. 15px tilføjet til venstre */
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+    font-family: var(--font-heading);
+    font-size: 0.9em; /* Matcher H2 */
+    font-weight: 500; /* Matcher H2 */
+    color: var(--color-primary); /* Matcher H2 */
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0; /* Indholdet i .dropdown-content skal have top-margin/padding */
+}
+/* Sørg for at den lukkede tilstand for den specifikke pil også er defineret korrekt */
+.narrative-info-dropdown > .dropdown-toggle .dropdown-arrow {
+    font-size: 0.7em; /* Eller 0.9em hvis du foretrækker den størrelse */
+    line-height: 1; /* Kan hjælpe med centrering */
+    padding-right: 10px; /* Bevar luft til højre */
+    transition: transform 0.3s ease;
+    transform: rotate(0deg); /* SIKRER AT ◀ peger mod venstre i lukket tilstand */
+}
+
+/* KORREKTION for åben tilstand for den specifikke pil */
+.narrative-info-dropdown > .dropdown-toggle.open .dropdown-arrow {
+    transform: rotate(-90deg); /* Får ◀ til at pege nedad ▼ */
+}
+
+.narrative-info-dropdown > .dropdown-content {
+    padding-top: 15px; /* Luft mellem toggle-knap og første item i dropdown */
+}
+
+/* Generel styling for de indre indholdsbokse */
+.narrative-content-box {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: var(--border-radius);
+    border: 1px solid #dee2e6;
+    min-height: 35px;
+    margin-top: 8px; /* Afstand fra H3 i debug-items, eller fra H2 hvis det er det første element */
+}
+
+/* Specifikt for historiens titel og indhold */
+.narrative-story-title {
+    font-family: var(--font-heading);
+    font-size: 1.3em;
+    color: var(--color-text);
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+/* Selve historieteksten (nu ID'et på den indre div) */
+/* Hvis du vil style den indre div #narrative-generated-story specifikt */
+#narrative-generated-story.narrative-story-content-inner {
+    white-space: pre-wrap;
+    font-size: 1em;
+    line-height: 1.75;
+    color: var(--color-text);
+    padding: 0; /* Padding styres af .narrative-content-box udenom */
+    background-color: transparent; /* Baggrund styres af .narrative-content-box udenom */
+    border: none; /* Kant styres af .narrative-content-box udenom */
+}
+
+
+/* For refleksionsspørgsmålslisten inden i sin .narrative-content-box */
+#narrative-reflection-section .narrative-content-box ul {
+    padding-left: 20px;
+    margin: 0;
+    list-style-position: outside;
+}
+#narrative-reflection-section .narrative-content-box ul li {
+    margin-bottom: 12px;
+    line-height: 1.6;
+    color: var(--color-text);
+    font-size: 0.95em;
+}
+#narrative-reflection-section .narrative-content-box ul li:last-child {
+    margin-bottom: 0;
+}
+
+
+/* For debug-sektionens underpunkter */
+#narrative-debug-section .debug-info-item { /* Denne div er inden i .dropdown-content */
+    margin-bottom: 18px;
+}
+#narrative-debug-section .debug-info-item:last-child {
+    margin-bottom: 5px;
+}
+#narrative-debug-section .debug-info-item h3 {
+    font-family: var(--font-body);
+    color: #333;
+    margin-top: 0;
+    margin-bottom: 6px;
+    font-size: 1em;
+    font-weight: 700;
+}
+#narrative-debug-section .narrative-content-box pre {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    min-height: auto;
+    white-space: pre-wrap;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85em;
+    line-height: 1.5;
+    color: #212529;
+    max-height: 180px; /* Justeret */
+    overflow-y: auto;
+    word-wrap: break-word;
+}
+
+/* static/style.css */
+
+/* Wrapper for AI Model Vælger */
+.ai-model-selector-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.ai-model-choice-label {
+    font-size: 0.9em;
+    color: var(--color-text);
+    cursor: default;
+}
+
+.ai-model-selector-wrapper input[type="checkbox"]:not(:checked) ~ #ai-model-label-off,
+.ai-model-selector-wrapper input[type="checkbox"]:checked ~ #ai-model-label-on {
+    font-weight: bold;
+}
+
+/* Switch-containeren (holder på selve switchen) */
+.switch-container {
+    position: relative;
+    display: inline-block;
+    width: 44px;  /* Bredden af slider-sporet */
+    height: 24px; /* Højden af slider-sporet */
+    vertical-align: middle;
+}
+
+/* Skjuler den faktiske checkbox */
+.switch-container input[type="checkbox"] {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* Selve slider-sporet (baggrunden) */
+.slider-label {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc; /* Farve for "Off"-tilstand */
+    transition: background-color 0.4s ease;
+    border-radius: 24px; /* Gør sporet afrundet */
+}
+
+/* Slider-bolden (den runde del, der bevæger sig) */
+.slider-label:before {
+    position: absolute;
+    content: "";
+    height: 20px; /* Højden på bolden */
+    width: 20px;  /* Bredden på bolden */
+    left: 2px;    /* Startposition fra venstre (lille margin) */
+    top: 50%;     /* Vertikal centrering del 1 */
+    transform: translateY(-50%); /* Vertikal centrering del 2 */
+    background-color: white;
+    transition: transform 0.4s ease, background-color 0.4s ease; /* Animerer flytning og farve */
+    border-radius: 50%; /* Gør den rund */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2); /* Subtil skygge for dybde */
+}
+
+/* Når checkboxen er :checked (switch er "On") */
+input:checked + .slider-label {
+    background-color: var(--color-primary); /* Sporets farve ændres til primærfarven */
+}
+
+input:checked + .slider-label:before {
+    /* Flyt bolden til højre OG bevar vertikal centrering */
+    transform: translateX(20px) translateY(-50%); /* 44px (track) - 20px (bold) - 2px (venstre margin) - 2px (højre margin) = 20px flytning */
+    /* Her kan du ændre boldens farve, hvis du ønsker det, når den er "On" */
+    /* background-color: var(--color-primary-hover); */ /* Eksempel: Mørkere end sporet */
+}
+
+/* Fokus-styling (valgfrit, men god UX) */
+input:focus + .slider-label {
+    box-shadow: 0 0 0 2px rgba(77, 182, 172, 0.4); /* Tilpasset din primærfarve */
+}
+
+/* Styling for disabled state */
+input:disabled + .slider-label {
+    background-color: #e0e0e0 !important;
+    cursor: not-allowed;
+}
+
+input:disabled + .slider-label:before {
+    background-color: #bdbdbd !important;
+    box-shadow: none;
+}
+
+.ai-model-selector-wrapper input[type="checkbox"]:disabled ~ .ai-model-choice-label {
+    color: #aaa;
+    cursor: not-allowed;
+}
+
+/* Sørg for at input-kategorien har plads, hvis den ikke allerede har det */
+.input-category {
+    margin-bottom: 20px; /* Eller hvad der passer */
+}
+
+/* Styling for hængelås-ikon på faneknap */
+.tab-button .icon-lock {
+    font-size: 0.8em; /* Juster efter behov */
+    margin-left: 5px;
+    color: #777; /* Diskret farve */
+    /* Du kan evt. tilføje 'cursor: help;' hvis title-attributten er det primære formål */
+}
+
+/* Styling for notitsboksen (hvis ikke allerede tilfredsstillende) */
+.premium-feature-notice {
+    background-color: var(--color-box-bg, #f9f9f9); /* Bruger din variabel eller en fallback */
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: var(--border-radius, 8px);
+    margin-top: 20px;
+    margin-bottom: 20px;
+    padding: 25px; /* Lidt mere padding for en pæn boks */
+    text-align: center;
+}
+
+.premium-feature-notice h2 {
+    color: var(--color-primary, #007bff); /* Bruger din variabel eller en fallback */
+    margin-bottom: 15px;
+    font-size: 1.5em; /* Lidt større overskrift */
+}
+.premium-feature-notice h2 .icon-lock { /* Hvis du gentager ikonet i overskriften */
+    color: var(--color-primary, #007bff);
+    font-size: 0.9em; /* Relativt til h2 */
+}
+
+.premium-feature-notice p {
+    margin-bottom: 12px;
+    line-height: 1.6;
+    font-size: 1em;
+    color: var(--color-text, #333);
+}
+
+.premium-feature-notice a.utility-button,
+.premium-feature-notice a.button-login {
+    margin-top: 10px;
+    padding: 10px 18px;
+    text-decoration: none;
+    display: inline-block;
+    /* Standard udseende for knapperne i notitsen */
+    background-color: var(--color-primary); /* Blågrøn som standard for 'Login med Google' */
+    color: white;
+    border-radius: var(--border-radius);
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+}
+
+/* Specifik farve for 'Log ind med E-mail' hvis den skal være anderledes */
+.premium-feature-notice a.button-login[href*="email_password_login"] {
+    background-color: var(--color-secondary); /* Eksempel: En anden farve, f.eks. den dæmpede blå */
+    color: #333; /* Mørk tekst for lysere knap */
+}
+
+/* HOVER EFFEKTER - DETTE ER DEN VIGTIGE DEL AT RETTE/TILFØJE */
+.premium-feature-notice a.utility-button:hover,
+.premium-feature-notice a.button-login:hover {
+    background-color: var(--color-primary-hover); /* Mørkere blågrøn for 'Login med Google' hover */
+    color: white; /* Sikrer hvid tekst */
+    transform: translateY(-1px); /* Bevarer den lille bevægelse */
+}
+
+.premium-feature-notice a.button-login[href*="email_password_login"]:hover {
+    background-color: var(--color-secondary-hover); /* Mørkere version af den dæmpede blå */
+    color: #333; /* Bevarer mørk tekst */
+}
+
+/* =========== Styling for Skriftstørrelsesknapper =========== */
+.font-size-controls {
+    display: flex; /* Arrangerer knapperne på en række */
+    align-items: center; /* Justerer knapperne vertikalt i midten */
+    gap: 5px; /* Lidt afstand mellem knapperne i gruppen */
+    /* Da .generator-actions og .narrative-actions allerede bruger flex og gap,
+       behøver .font-size-controls ikke yderligere margin for at passe ind,
+       medmindre du specifikt ønsker mere luft omkring selve gruppen. */
+}
+
+.font-button {
+    padding: 6px 10px; /* Lidt mindre padding end standard utility-button for et mere kompakt look */
+    font-size: 0.85em; /* Lidt mindre skriftstørrelse på selve knappen */
+    min-width: auto; /* Tillad knapperne at være smallere baseret på deres indhold */
+    /* Genbruger farver og grundlæggende udseende fra .utility-button,
+       men du kan overskrive dem her, hvis du vil have et andet look.
+       F.eks.:
+       background-color: #e9ecef;
+       color: #495057;
+    */
+}
+
+/* Specifik styling hvis du vil have A- og A+ til at se lidt anderledes ud, f.eks. mere ikon-agtige */
+#decrease-font-button,
+#increase-font-button,
+#narrative-decrease-font-button,
+#narrative-increase-font-button {
+    font-weight: bold; /* Gør A- og A+ lidt tydeligere */
+}
+
+#reset-font-button,
+#narrative-reset-font-button {
+    /* Eventuel specifik styling for nulstil-knappen */
+}
+
+/* =========== Styling for Info Tooltip Boks (Opdateret V3 - Mere luft) =========== */
+.info-tooltip-box {
+    display: none;
+    position: absolute;
+    background-color: #e9ecef; /* Den aftalte mørkere grå */
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    padding: 18px; /* Mere ensartet padding. Kan justeres yderligere (f.eks. til 20px eller 22px). */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); /* Lidt blødere skygge */
+    max-width: 300px; /* Lidt smallere igen for et mere kompakt look, kan øges hvis teksten er lang */
+    z-index: 1050;
+    font-size: 0.9em;   /* Lidt mindre tekst kan nogle gange føles mindre klemt hvis pladsen er trang */
+    line-height: 1.6;   /* God standard linjehøjde for læsbarhed */
+    color: #212529;     /* Mørk tekst for kontrast */
+}
+
+.info-tooltip-box.visible {
+    display: block;
+}
+
+.info-tooltip-box .tooltip-text-content { /* <p> tagget med selve hjælpeteksten */
+    margin: 0; /* Nulstil browser default margin for <p> */
+    padding-right: 25px; /* VIGTIGT: Giver plads til højre for teksten, så den ikke løber ind under X-knappen */
+}
+
+.info-tooltip-box .tooltip-close-button {
+    background: transparent;
+    border: none;
+    font-family: Arial, sans-serif;
+    font-size: 24px;      /* Større X for nemmere at se og ramme */
+    font-weight: normal;  /* Et lidt lettere X end 'bold' */
+    color: #6c757d;
+    position: absolute;
+    top: 8px;            /* Justeret for god afstand fra toppen af boksen */
+    right: 8px;           /* Justeret for god afstand fra højre kant af boksen */
+    cursor: pointer;
+    padding: 5px;         /* Gør selve klikområdet lidt større omkring X'et */
+    line-height: 1;       /* For at X'et opfører sig pænt ift. padding */
+    width: 30px;          /* Defineret bredde for knappen */
+    height: 30px;         /* Defineret højde for knappen */
+    display: flex;        /* Bruges til at centrere X'et i knap-området */
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+}
+
+.info-tooltip-box .tooltip-close-button:hover {
+    color: #343a40;
+}
+
+/* Styling for selve informationsikonet (Nyeste justering for centrering - nudge ned) */
+.info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 5px;
+    color: var(--color-primary);
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;   /* Beholder denne størrelse for symbolet */
+    border: 1px solid var(--color-primary);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    user-select: none;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    box-sizing: border-box;
+    vertical-align: middle;
+    padding-top: 1px; /* NYT: Tilføjet for at skubbe 'i'-symbolet en smule ned. Juster evt. til 2px. */
+}
+/* Forbedret centrering af selve ⓘ-symbolet inde i ikonet */
+
+}
+.info-icon:hover {
+    background-color: var(--color-primary);
+    color: white;
+}
+
+/* Ny regel for at centrere label og info-ikon */
+.switch-option-group > div:first-child {
+    display: flex;
+    align-items: center; /* Vigtigste linje: Justerer label og ikon vertikalt */
+    gap: 5px;
+    margin-bottom: 6px;
+}
+
+.switch-option-group > div:first-child > label {
+    margin-bottom: 0; /* Fjerner evt. bundmargin på selve labelen for bedre justering */
+}
+
+/* Styling for historie-boksen, når den er i loading-tilstand */
+#story-display.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 150px; /* Giver boksen en pæn højde, mens den loader */
+}
+
+/* Styling for loading-indikatoren i historie-output.
+   Anvender padding i stedet for margin for at undgå layout-problemer. */
+#story-loading-indicator {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 30px 0; /* Denne padding skaber afstanden, men forsvinder når elementet skjules */
+    font-style: italic;
+    color: #555;
+    gap: 10px;
+}
+
+/* Fjerner default margin på <p> tagget for at sikre ensartet afstand */
+#story-loading-indicator p {
+    margin: 0;
+}
+
+/* =================================================================== */
+/* START PÅ STYLING FOR LÆSEHESTEN MODUL                               */
+/* =================================================================== */
+
+/* --- LIX Slider Styling --- */
+.lix-label {
+    font-weight: 700;
+    color: #555;
+    font-size: 1.1em; /* Lidt større for at fremhæve */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.lix-value {
+    display: inline-block;
+    padding: 3px 10px;
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: 14px; /* Mere afrundet */
+    font-weight: bold;
+    font-size: 0.9em;
+    min-width: 30px; /* Sikrer at den ikke hopper i størrelse */
+    text-align: center;
+}
+
+.lix-slider-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.lix-slider-style {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    background: #ddd;
+    outline: none;
+    opacity: 0.9;
+    transition: opacity .2s;
+    border-radius: 5px;
+}
+
+.lix-slider-style:hover {
+    opacity: 1;
+}
+
+.lix-slider-style::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    background: var(--color-primary);
+    cursor: pointer;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: var(--box-shadow);
+}
+
+.lix-slider-style::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    background: var(--color-primary);
+    cursor: pointer;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: var(--box-shadow);
+}
+
+
+.lix-range-label {
+    font-size: 0.9em;
+    color: #777;
+    font-weight: bold;
+}
+
+.lix-description-text {
+    font-size: 0.9em;
+    color: #666;
+    font-style: italic;
+    text-align: center;
+    margin-top: 10px;
+    min-height: 1.2em; /* Sikrer at layout ikke hopper ved tekstskift */
+}
+
+
+/* --- Sorteringsbar Styling --- */
+.sort-bar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.sort-button {
+    font-size: 0.85em;
+    font-weight: normal;
+    background-color: #f0f0f0;
+    color: #555;
+    border: 1px solid var(--border-color);
+}
+
+.sort-button.active {
+    background-color: var(--color-secondary);
+    color: #333;
+    font-weight: 700;
+    border-color: var(--color-secondary-hover);
+}
+
+
+/* --- Harmonika/Dropdown for Kategorier --- */
+#laesehesten-accordion-container {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.accordion-item {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden; /* Vigtigt for border-radius på indhold */
+}
+
+.accordion-header {
+    width: 100%;
+    background-color: #f8f9fa;
+    padding: 12px 15px;
+    border: none;
+    text-align: left;
+    font-family: var(--font-heading);
+    font-size: 1.1em;
+    font-weight: 500;
+    color: var(--color-text);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+.accordion-header:hover {
+    background-color: #e9ecef;
+}
+
+.accordion-arrow {
+    font-size: 0.8em;
+    transition: transform 0.3s ease;
+    transform: rotate(0deg);
+}
+
+.accordion-header.open .accordion-arrow {
+    transform: rotate(-90deg);
+}
+
+.accordion-content {
+    padding: 15px;
+    background-color: white;
+    border-top: 1px solid var(--border-color);
+}
+
+
+/* --- Element Checklist Styling --- */
+.element-checklist-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 15px;
+}
+
+.element-item {
+    position: relative;
+}
+
+.element-item input[type="checkbox"] {
+    display: none; /* Skjul den faktiske checkbox */
+}
+
+.element-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 15px 10px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    text-align: center;
+    height: 100%;
+    user-select: none; /* Forhindrer tekst-markering ved klik */
+}
+
+.element-label:hover {
+    border-color: var(--color-secondary-hover);
+    background-color: #f8f9fa;
+    transform: translateY(-2px);
+}
+
+.element-item input:checked + .element-label {
+    border-color: var(--color-primary);
+    background-color: #e6fffa;
+    box-shadow: 0 0 8px rgba(77, 182, 172, 0.4);
+    transform: translateY(-2px);
+}
+
+.element-emoji {
+    font-size: 2.5em;
+    margin-bottom: 5px;
+    line-height: 1;
+}
+
+.element-name {
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.element-complexity {
+    font-size: 1.2em;
+    letter-spacing: 2px;
+    margin-top: 8px;
+    line-height: 1;
+}
+
+.element-complexity[data-complexity="1"] { color: #28a745; } /* Grøn */
+.element-complexity[data-complexity="2"] { color: #ffc107; } /* Gul */
+.element-complexity[data-complexity="3"] { color: #dc3545; } /* Rød */
+
+
+/* --- Knapper i Læsehesten --- */
+#laesehest-add-word-button {
+    margin-top: 5px;
+}
+
+#generate-laesehest-button {
+    background-color: var(--color-primary);
+    color: white;
+    font-size: 1.1em;
+    padding: 12px 20px;
+}
+
+#generate-laesehest-button-disabled {
+    background-color: #ccc;
+    color: #888;
+    cursor: not-allowed;
+    font-size: 1.1em;
+    padding: 12px 20px;
+}
+
+
+/* --- Output Styling --- */
+.final-lix-tag {
+    display: inline-block;
+    font-size: 0.7em;
+    font-weight: bold;
+    color: white;
+    background-color: var(--color-primary-hover);
+    padding: 3px 10px;
+    border-radius: 15px;
+    vertical-align: middle;
+    margin-left: 10px;
+    cursor: help; /* Giver en lille hjælp-cursor ved hover */
+}
+
+/* =================================================================== */
+/* SLUT PÅ STYLING FOR LÆSEHESTEN MODUL                                */
+/* =================================================================== */
+
+/* ... eksisterende CSS ... */
+/* =================================================================== */
+/* SLUT PÅ STYLING FOR LÆSEHESTEN MODUL                                */
+/* =================================================================== */
+
+/* ----- KODE, DER SKAL TILFØJES, STARTER HER ----- */
+
+/* Styling for Logbogs-dokumentationssektion */
+#logbook-entry-form {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+}
+
+.logbook-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-group-logbook {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group-logbook.full-width {
+    grid-column: 1 / -1; /* Spænd over begge kolonner */
+}
+
+.form-group-logbook label {
+    margin-bottom: 8px;
+    font-weight: bold;
+    font-size: 0.9em;
+    color: #333;
+}
+
+.form-group-logbook input[type="text"],
+.form-group-logbook textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-family: var(--font-body);
+    font-size: 1em;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group-logbook input[type="text"]:focus,
+.form-group-logbook textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(77, 182, 172, 0.3);
+}
+
+.form-group-logbook textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Styling for inputfelter, der er forudfyldt af AI */
+.ai-suggested-input {
+    background-color: #e6fffa; /* En meget lys teal/mint farve */
+    border-left: 3px solid var(--color-primary);
+    transition: background-color 0.5s ease-in-out;
+}
+
+/* Styling for progress sliders */
+.form-group-logbook.progress-slider {
+    align-items: center;
+}
+.form-group-logbook.progress-slider input[type="range"] {
+    width: 100%;
+    margin-top: 5px;
+}
+.form-group-logbook.progress-slider .range-value {
+    font-weight: bold;
+    color: var(--color-primary);
+    margin-left: 10px;
+}
+.primary-action-button {
+    display: block;
+    width: 100%;
+    background-color: var(--color-primary);
+    color: white;
+    font-size: 1.1em;
+    font-weight: 700;
+    padding: 12px 20px;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.primary-action-button:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+    transform: translateY(-1px);
+}
+
+.primary-action-button:disabled {
+    background-color: #ccc !important;
+    color: #888 !important;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.tab-navigation .tab-button {
+    text-decoration: none; /* Fjerner understregning hvis det er et <a> tag */
+    -webkit-appearance: none; /* Fjerner default styling på iOS */
+    appearance: none;
+}
+
+/* =================================================================== */
+/* START PÅ STYLING FOR LOGBOG (Heltens Logbog v2.0 - Style Rettet)   */
+/* =================================================================== */
+
+/* Styling for logbog toolbar */
+.logbook-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 25px;
+    align-items: flex-end;
+    justify-content: space-between;
+}
+.logbook-toolbar .filter-group {
+    flex: 1;
+    min-width: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+.logbook-toolbar .filter-group-search {
+    flex: 2;
+    min-width: 200px;
+}
+.logbook-toolbar label {
+    margin-bottom: 5px;
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #555;
+}
+.logbook-toolbar select,
+.logbook-toolbar input[type="search"] {
+    width: 100%;
+    padding: 8px 10px;
+    height: 38px;
+    box-sizing: border-box;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    font-family: var(--font-body);
+    font-size: 1em;
+    color: var(--color-text);
+    background-color: white;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+.logbook-toolbar select:focus,
+.logbook-toolbar input[type="search"]:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(77, 182, 172, 0.3);
+}
+@media (max-width: 600px) {
+    .logbook-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .logbook-toolbar .filter-group,
+    .logbook-toolbar .filter-group-search {
+        min-width: unset;
+    }
+}
+
+/* --- Styling for selve logbogs-indtastningerne (Opdateret for "Spinkelt & Simpelt" look) --- */
+
+.logbook-entry {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    margin-bottom: 15px;
+    background-color: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    overflow: hidden;
+}
+
+/* Den primære knap for hver historie */
+.logbook-entry > .logbook-accordion-toggle {
+    width: 100%;
+    padding: 12px 15px;
+    background-color: var(--color-box-bg, #f8f9fa);
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+.logbook-entry > .logbook-accordion-toggle:hover {
+    background-color: #eef7ff;
+}
+.logbook-entry > .logbook-accordion-toggle.open {
+    border-bottom: none;
+}
+
+/* Styling for titel-teksten i knappen */
+.logbook-title {
+    display: block;
+    font-family: var(--font-body); /* Rettet: Bruger den "spinkle" brødtekst-font */
+    font-size: 1em; /* Rettet: Normal størrelse */
+    font-weight: 600; /* Lettere end fed, men stadig markeret */
+    color: var(--color-text);
+    margin-bottom: 2px;
+    text-align: left;
+}
+
+/* Styling for undertitel (Kilde, Dato) */
+.logbook-subtitle {
+    display: block;
+    font-size: 0.8em;
+    font-weight: normal;
+    color: #6c757d; /* En afdæmpet grå farve */
+    text-align: left;
+}
+
+/* Generel regel for ALLE pile i både hoved- og underharmonikaer */
+.logbook-accordion-toggle .arrow,
+.nested-accordion-toggle .arrow {
+    font-size: 0.8em;
+    line-height: 1;
+    transition: transform 0.3s ease;
+    transform: rotate(0deg); /* Peger mod venstre (◀) når lukket */
+    color: var(--color-primary);
+    padding-left: 10px;
+}
+
+/* Specifik farve for KUN hovedharmonikaens pil */
+.logbook-entry > .logbook-accordion-toggle .arrow {
+    color: #555;
+}
+
+/* Regel for rotation, når ENHVER harmonika er åben */
+.logbook-accordion-toggle.open .arrow,
+.nested-accordion-toggle.open .arrow {
+    transform: rotate(-90deg); /* Peger nedad (▼) når åben */
+}
+
+
+/* Container for indholdet ("Læs Historien", "Se Doku", etc.) */
+.logbook-accordion-content {
+    padding: 10px 15px 15px 15px;
+    background-color: #ffffff;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Wrapper for hver indre sektion */
+.logbook-inner-entry {
+    margin-top: 8px;
+}
+.logbook-inner-entry:first-child {
+    margin-top: 0;
+}
+
+/* Styling for de indre knapper (Læs, Doku, Noter) for at matche style guide */
+.nested-accordion-toggle {
+    width: 100%;
+    padding: 10px 15px;
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    text-align: left;
+    font-size: 0.9em;
+    font-weight: bold;
+    color: var(--color-primary);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.nested-accordion-toggle:hover {
+    background-color: #f7f9fa;
+}
+
+/* Indholdet af de indre harmonikaer */
+.nested-accordion-content {
+    padding: 15px;
+    margin-top: -1px;
+    background-color: var(--color-box-bg);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+}
+.nested-accordion-content h4 {
+    margin-top: 0;
+    color: var(--color-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+    margin-bottom: 15px;
+}
+
+/* Styling af dokumentationslinjer */
+.logbook-doc-item {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+}
+.logbook-doc-item strong {
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 4px;
+    font-size: 0.9em;
+}
+.logbook-doc-item span, .logbook-doc-item p {
+    margin-left: 0;
+    line-height: 1.6;
+}
+
+/* Styling for note-sektionen */
+.user-notes-textarea {
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    font-family: var(--font-body);
+    font-size: 1em;
+    width: 100%;
+    box-sizing: border-box;
+}
+.note-save-feedback {
+    margin-left: 10px;
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+/* Ny klasse for at få en textarea til at ligne et input-felt på én linje */
+.single-line-textarea {
+    height: 38px; /* Samme højde som .logbook-toolbar input */
+    line-height: 1.5; /* Justerer tekstens vertikale placering */
+    padding-top: 6px;
+    padding-bottom: 6px;
+    resize: vertical; /* Tillad lodret udvidelse, men start småt */
+}
+
+/* Styling for ny billedsektion */
+#billede-til-historien-sektion {
+    display: flex;
+    gap: 25px;
+    flex-wrap: wrap;
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    margin-top: 25px;
+}
+
+.image-result-container {
+    flex: 1;
+    min-width: 320px;
+    background-color: var(--color-box-bg);
+    padding: 20px 25px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+}
+
+.image-result-container h2 {
+    margin-bottom: 20px;
+    font-size: 1.3em;
+}
+
+.image-loader {
+    padding: 40px 20px;
+    font-style: italic;
+    color: #555;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.image-display-wrapper {
+    min-height: 256px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+    background-color: #f8f9fa;
+    border-radius: var(--border-radius);
+    padding: 10px;
+    border: 1px solid var(--border-color);
+}
+
+#story-image-display,
+#problem-image-display {
+    max-width: 100%;
+    max-height: 512px;
+    height: auto;
+    border-radius: var(--border-radius);
+}
+
+#narrative-generate-images-button:disabled {
+    background-color: #d8d8d8 !important;
+    cursor: not-allowed;
+}
+
+/* Styling for Logbog Handlinger (Slet-knap) */
+.logbook-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    padding-left: 15px;
+}
+
+.delete-story-button {
+    background: transparent;
+    border: none;
+    padding: 5px;
+    cursor: pointer;
+    font-size: 1.2em;
+    line-height: 1;
+    opacity: 0.6;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.delete-story-button:hover {
+    opacity: 1;
+    transform: scale(1.1);
+    background-color: transparent;
+}
+
+.logbook-accordion-toggle .arrow {
+    padding-left: 0;
+}
+
+/* --- Endelig, korrekt styling for Logbog Header --- */
+.logbook-entry-header {
+    display: flex;
+    align-items: stretch; /* Får knapperne til at have samme højde */
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--color-box-bg, #f8f9fa);
+    transition: background-color 0.2s;
+}
+
+.logbook-entry-header:hover {
+    background-color: #eef7ff;
+}
+
+.logbook-entry-header .logbook-accordion-toggle {
+    flex-grow: 1; /* Gør at titel-knappen fylder alt ledigt plads */
+    border-bottom: none;
+    background-color: transparent;
+    padding: 12px 15px;
+    display: flex; /* Sørger for at pilen er centreret korrekt */
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logbook-entry-header .delete-story-button {
+    background: transparent;
+    border: none;
+    border-left: 1px solid var(--border-color); /* Tilføjer en fin skillelinje */
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 1.2em;
+    line-height: 1;
+    opacity: 0.5;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.logbook-entry-header .delete-story-button:hover {
+    opacity: 1;
+    background-color: #f8d7da; /* Giver en rødlig hover-effekt */
+    color: #721c24;
+}
+
+/* Styling for Læsehesten historie-varianter */
+.story-variant {
+    margin-bottom: 10px;
+}
+
+/* TILFØJ DENNE KODE I BUNDEN AF static/style.css */
+
+.quiz-success-button {
+    background-color: #28a745 !important; /* En flot grøn farve */
+    color: white !important;
+    border-color: #218838 !important;
+}
+
+.quiz-success-button:hover {
+    background-color: #218838 !important; /* Lidt mørkere grøn ved hover */
+    transform: translateY(-1px);
+}
+
+/* TILFØJ DENNE KODE I BUNDEN AF static/style.css */
+
+/* Styling for selve quiz-containeren */
+#quiz-container {
+    display: grid;
+    /* Opret to kolonner med lige stor bredde */
+    grid-template-columns: 1fr 1fr;
+    /* Tilføj lidt luft mellem kolonnerne og rækkerne */
+    gap: 20px 30px; /* 20px mellem rækker, 30px mellem kolonner */
+}
+
+/* Styling for hvert enkelt spørgsmåls-blok */
+.quiz-question-block {
+    /* Sikrer at indholdet fylder pænt ud */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Media Query for mindre skærme (f.eks. mobiler) */
+@media (max-width: 700px) {
+    #quiz-container {
+        /* Skift tilbage til én kolonne */
+        grid-template-columns: 1fr;
+    }
+}
+
+#quiz-sektion {
+    text-align: left;
+}
+
+#quiz-container .quiz-question-block p {
+    /* Sætter en minimumshøjde, der ca. svarer til to linjers tekst */
+    min-height: 3em;
+}
+
+/* Giver selve spørgsmåls-blokken en flex-struktur */
+.quiz-question-block {
+    display: flex;
+    flex-direction: column; /* Arrangerer spørgsmål over svar */
+}
+
+/* Fortæller svar-knappernes container, at den skal vokse */
+.quiz-question-block .quiz-options {
+    flex-grow: 1; /* VIGTIGT: Denne linje får containeren til at strække sig */
+
+    /* Justerer knapperne, så de starter nedefra. Det ser pænest ud. */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+/* =========== Narrativ Støtte – App-specifikke styles =========== */
+
+body {
+    background-image: none;
+    background-color: #eef7ff;
+}
+
+.site-header {
+    background-color: rgba(255,255,255,0.97);
+    border-bottom: 2px solid var(--border-color);
+    padding: 0;
+    margin: 0 0 30px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+.header-inner {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.site-logo { text-decoration: none; }
+.logo-text {
+    font-family: var(--font-heading);
+    font-size: 1.3em;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.site-footer {
+    text-align: center;
+    font-size: 0.85em;
+    color: #777;
+    padding: 20px 0 40px;
+    border-top: 1px solid var(--border-color);
+    margin-top: 40px;
+}
+.site-footer a { color: var(--color-primary); }
+
+/* Fortsæt-sektion */
+.continuation-flow-section {
+    background-color: #f0f8ff;
+    border: 1px solid var(--color-secondary);
+    border-radius: var(--border-radius);
+    padding: 15px;
+    margin-bottom: 25px;
+}
+
+/* Narrative actions-bar */
+.narrative-actions {
+    margin-top: 25px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+}
+
+/* Loading spinner */
+.narrative-loading-spinner {
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-style: italic;
+    color: #555;
+    padding: 10px 0;
+}
+
+/* Auth sider */
+.auth-container {
+    max-width: 420px;
+    margin: 40px auto;
+    background: var(--color-box-bg);
+    padding: 35px 30px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+.auth-container h1 {
+    text-align: center;
+    margin-bottom: 25px;
+    font-family: var(--font-heading);
+    color: var(--color-primary);
+}
+.auth-form .form-group {
+    margin-bottom: 18px;
+}
+.auth-form .form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 700;
+    font-size: 0.9em;
+    color: #555;
+}
+.auth-form input[type="email"],
+.auth-form input[type="password"],
+.auth-form input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+}
+.auth-divider {
+    text-align: center;
+    margin: 20px 0;
+    position: relative;
+}
+.auth-divider::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--border-color);
+}
+.auth-divider span {
+    background: var(--color-box-bg);
+    padding: 0 12px;
+    position: relative;
+    color: #888;
+    font-size: 0.9em;
+}
+
+.google-login-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 18px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 1em;
+    font-weight: 700;
+    color: #444;
+    text-decoration: none;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.google-login-button:hover {
+    background: #f8f8f8;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+.google-icon {
+    width: 20px;
+    height: 20px;
+}
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: normal;
+    cursor: pointer;
+}
+.checkbox-group input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+}
+
+/* Landing side */
+.landing-section {
+    background: var(--color-box-bg);
+    padding: 40px 30px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+.landing-hero {
+    text-align: center;
+    margin-bottom: 50px;
+}
+.landing-hero h1 {
+    font-family: var(--font-heading);
+    font-size: 2.5em;
+    color: var(--color-primary);
+    margin-bottom: 15px;
+}
+.landing-tagline {
+    font-size: 1.15em;
+    color: #555;
+    max-width: 500px;
+    margin: 0 auto 30px;
+    line-height: 1.7;
+}
+.landing-cta .primary-action-button {
+    display: inline-block;
+    width: auto;
+    font-size: 1.1em;
+    padding: 14px 30px;
+}
+.landing-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+.feature-card {
+    background: #f7fbff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 25px 20px;
+    text-align: center;
+}
+.feature-icon {
+    font-size: 2.5em;
+    margin-bottom: 12px;
+}
+.feature-card h3 {
+    font-family: var(--font-heading);
+    color: var(--color-primary);
+    margin-bottom: 8px;
+}
+.feature-card p {
+    color: #666;
+    font-size: 0.95em;
+    line-height: 1.6;
+}
+
+.intro-text {
+    color: #666;
+    margin-bottom: 25px;
+    font-size: 1em;
+}

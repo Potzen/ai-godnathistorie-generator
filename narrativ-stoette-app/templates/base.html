@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Narrativ Støtte{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-inner">
+            <a href="{{ url_for('main.index') }}" class="site-logo">
+                <span class="logo-text">Narrativ Støtte</span>
+            </a>
+            <div class="user-status">
+                {% if current_user.is_authenticated %}
+                    <span class="user-name-display">{{ current_user.name or current_user.email }}</span>
+                    <a href="{{ url_for('auth.logout') }}" class="button-logout utility-button">Log ud</a>
+                {% else %}
+                    <a href="{{ url_for('auth.login_page') }}" class="button-login utility-button">Log ind</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages-container">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2025 Narrativ Støtte &mdash; <a href="{{ url_for('main.privacy_policy') }}">Privatlivspolitik</a></p>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
