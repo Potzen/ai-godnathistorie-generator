@@ -27,10 +27,22 @@
     --color-secondary: #A9CCE3;     /* Moerk tekst: 7,5:1 */
     --color-secondary-hover: #85B4D8;
 
-    --color-text: #3B4149;          /* Broedtekst: 10,4:1 paa hvid */
-    --color-text-muted: #5B6472;    /* Hjaelpetekst: 6,3:1 paa hvid */
+    --color-text: #2F353D;          /* Broedtekst: 12,4:1 paa papir */
+    --color-text-muted: #5B6472;    /* Hjaelpetekst: 6,3:1 paa papir */
     --color-bg: #eef7ff;
-    --color-box-bg: rgba(255, 255, 255, 0.97);
+
+    /* --- Papir ---
+       Appen handler om laesning, saa fladerne er tonet som papir frem for
+       rent hvidt. Det blaender mindre under lange tekster og giver appen
+       en varme, der passer til maalgruppen. */
+    --paper: #FFFCF7;               /* Kort og paneler */
+    --paper-raised: #FFFFFF;        /* Felter der ligger oven paa papiret */
+    --paper-sunken: #F6F1E8;        /* Fordybninger: vaelgere, vaerktoejslinjer */
+    --color-box-bg: rgba(255, 252, 247, 0.97);
+
+    /* Varm accent til fremhaevninger og "det er lykkedes"-signaler. */
+    --color-accent: #B45309;        /* 5,0:1 paa papir */
+    --color-accent-tint: #FDF3E3;
 
     --color-danger: #C62828;
     --color-danger-hover: #A31F1F;
@@ -2474,29 +2486,34 @@ hr {
 /* ---------------------------------------------------------------------
    7. ELEMENTVAELGEREN (accordion med figurer, steder osv.)
    --------------------------------------------------------------------- */
+/* Brikkerne er lodrette kort med et stort billede oeverst: et barn der
+   endnu ikke laeser sikkert, finder "kat" hurtigere paa katten end paa ordet. */
 .element-label {
-    min-height: var(--tap-target);
+    min-height: 96px;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
+    justify-content: center;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-2);
     border-radius: var(--radius-sm);
     cursor: pointer;
-}
-.element-item input:checked + .element-label {
-    background-color: var(--color-brand-tint);
-    box-shadow: inset 0 0 0 2px var(--color-primary);
-    font-weight: 700;
+    text-align: center;
 }
 .element-emoji {
-    font-size: 1.35rem;
-    line-height: 1;
+    font-size: 2rem;
+    line-height: 1.1;
+}
+.element-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.2;
 }
 .element-complexity {
-    margin-left: auto;
     color: var(--color-text-muted);
     letter-spacing: 2px;
-    font-size: 0.85rem;
+    font-size: 0.7rem;
+    line-height: 1;
 }
 
 .accordion-header {
@@ -2686,4 +2703,399 @@ footer hr {
     flex: 1;
     padding: var(--space-2) 0;
     cursor: pointer;
+}
+
+/* =====================================================================
+   DESIGNLOEFT
+   Retningen er "papir og blaek oven paa et eventyr": baggrundsillustrationen
+   er stemning, mens selve appen er varmt papir. Appen handler om laesning,
+   saa fladerne laaner fra bogen frem for fra dashboardet.
+   ===================================================================== */
+
+/* ---------------------------------------------------------------------
+   A. PAPIRFLADER OG DYBDE
+   Alt laa foer som ens hvide kasser. Nu er der forskel paa vaerktoejet
+   (hvor man bygger historien) og resultatet (hvor man laeser den).
+   --------------------------------------------------------------------- */
+main > section,
+.content-section,
+header {
+    background-color: var(--paper);
+    border: 1px solid rgba(120, 100, 70, 0.10);
+}
+
+/* Overskriften faar en fin streg under sig i stedet for bare at svaeve. */
+.content-section > h2:first-child,
+main > section > h2:first-child {
+    padding-bottom: var(--space-3);
+    border-bottom: 2px solid var(--color-brand-tint);
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+}
+
+/* ---------------------------------------------------------------------
+   B. HISTORIEN SOM BOGSIDE
+   Resultatet skal foles som noget andet end formularen ovenfor.
+   --------------------------------------------------------------------- */
+#historie-output {
+    background: linear-gradient(180deg, var(--color-brand-tint) 0%, var(--paper) 140px);
+}
+
+#story-display {
+    background-color: #FFFDF6;
+    border: 1px solid rgba(120, 100, 70, 0.16);
+    border-radius: var(--border-radius);
+    padding: var(--space-6) var(--space-5);
+    box-shadow:
+        inset 0 1px 2px rgba(120, 100, 70, 0.06),
+        0 1px 0 rgba(255, 255, 255, 0.9);
+    position: relative;
+}
+
+/* En diskret margen-streg, som i en skrivebog. Kun paa brede skaerme,
+   hvor der er plads til den. */
+@media (min-width: 900px) {
+    #story-display::before {
+        content: "";
+        position: absolute;
+        top: var(--space-4);
+        bottom: var(--space-4);
+        left: var(--space-5);
+        width: 2px;
+        background: rgba(180, 83, 9, 0.14);
+        border-radius: 2px;
+    }
+    #story-display {
+        padding-left: var(--space-7);
+    }
+}
+
+/* Historiens titel skal baere som en boghistorie-titel. */
+#story-section-heading,
+.historie-header-controls h2 {
+    font-size: 1.6rem;
+    letter-spacing: -0.01em;
+}
+
+/* Vaerktoejslinjen over teksten ligger som en fordybning i papiret. */
+.reading-controls {
+    background: var(--paper-sunken);
+    border: 1px solid rgba(120, 100, 70, 0.12);
+}
+
+/* ---------------------------------------------------------------------
+   C. ELEMENTVAELGEREN SOM BRIKKER
+   Det er her barnet vaelger, hvad historien skal handle om - appens
+   sjoveste oejeblik. Raekkerne var flade og grå; nu er de brikker,
+   man samler op.
+   --------------------------------------------------------------------- */
+.element-checklist-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: var(--space-2);
+    padding: var(--space-3);
+}
+
+.element-item {
+    margin: 0;
+}
+
+.element-label {
+    background: var(--paper-raised);
+    border: 2px solid rgba(120, 100, 70, 0.14);
+    border-radius: var(--border-radius);
+    transition: transform 0.12s ease, border-color 0.15s ease, background-color 0.15s ease;
+    height: 100%;
+}
+.element-label:hover {
+    border-color: var(--color-brand);
+    background: var(--color-brand-tint);
+    transform: translateY(-1px);
+}
+.element-item input:checked + .element-label {
+    background: var(--color-brand-tint);
+    border-color: var(--color-primary);
+    box-shadow: none; /* Kanten markerer nu valget */
+}
+/* Flueben i hjoernet, saa valget ogsaa kan ses uden at skelne farver. */
+.element-label {
+    position: relative;
+}
+.element-item input:checked + .element-label::after {
+    content: "✓";
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    color: var(--color-primary);
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1;
+}
+.element-item input:checked + .element-label .element-name {
+    font-weight: 700;
+    color: var(--color-brand-ink);
+}
+/* Selve afkrydsningsfeltet skjules visuelt, men bevares for skaermlaesere
+   og tastatur - hele brikken fungerer som knappen. */
+.element-item input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+}
+.element-item input[type="checkbox"]:focus-visible + .element-label {
+    box-shadow: var(--focus-ring);
+}
+
+/* ---------------------------------------------------------------------
+   D. ACCORDION-RAEKKER
+   --------------------------------------------------------------------- */
+.accordion-item {
+    border: 1px solid rgba(120, 100, 70, 0.14);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    margin-bottom: var(--space-2);
+    background: var(--paper-raised);
+}
+.accordion-header {
+    width: 100%;
+    background: var(--paper-raised);
+    color: var(--color-text);
+    border: none;
+    border-radius: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+}
+.accordion-header:hover {
+    background: var(--color-brand-tint);
+}
+.accordion-header.open {
+    background: var(--color-brand-tint);
+    border-bottom: 1px solid rgba(120, 100, 70, 0.14);
+}
+.accordion-arrow {
+    transition: transform 0.2s ease;
+    color: var(--color-primary);
+    flex-shrink: 0;
+}
+.accordion-header.open .accordion-arrow {
+    transform: rotate(-90deg);
+}
+.accordion-content {
+    background: var(--paper-sunken);
+}
+
+/* ---------------------------------------------------------------------
+   E. LIX-SLIDEREN SOM HOVEDKONTROL
+   --------------------------------------------------------------------- */
+.lix-panel {
+    background: var(--paper-sunken);
+    border: 1px solid rgba(120, 100, 70, 0.14);
+    border-radius: var(--border-radius);
+    padding: var(--space-5);
+}
+.lix-slider-container {
+    gap: var(--space-3);
+}
+.lix-slider-style {
+    height: 14px;
+    background: linear-gradient(to right, #EAF6F4 0%, var(--color-brand) 100%);
+    border: 1px solid rgba(120, 100, 70, 0.16);
+}
+.lix-slider-style::-webkit-slider-thumb {
+    transition: transform 0.12s ease;
+}
+.lix-slider-style:active::-webkit-slider-thumb {
+    transform: scale(1.12);
+}
+
+/* Skala under sporet, saa tallet kan placeres uden at gaette. */
+.lix-scale {
+    display: flex;
+    justify-content: space-between;
+    margin-top: var(--space-2);
+    padding: 0 12px;         /* Samme indryk som grebets halve bredde */
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+.lix-scale span {
+    text-align: center;
+}
+.lix-scale small {
+    display: block;
+    font-size: 0.92em;
+    opacity: 0.8;
+}
+
+.lix-description-text {
+    background: var(--color-accent-tint);
+    border-left-color: var(--color-accent);
+    color: #6B3608;              /* 7,4:1 paa den lyse accentflade */
+    font-style: normal;
+    font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------
+   F. KNAPPER MED VAEGT
+   --------------------------------------------------------------------- */
+#generate-button,
+.primary-action-button {
+    background-image: linear-gradient(180deg, #35827B 0%, var(--color-primary) 100%);
+    letter-spacing: 0.01em;
+}
+#generate-button:hover:not(:disabled),
+.primary-action-button:hover:not(:disabled) {
+    background-image: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+}
+/* Et lille tryk, saa knappen foles fysisk. */
+button:active:not(:disabled),
+a.utility-button:active {
+    transform: translateY(1px);
+}
+.primary-action-button:disabled {
+    background-image: none;
+}
+
+.add-button,
+.utility-button {
+    background-color: var(--paper-raised);
+    color: var(--color-primary);
+    border: 1.5px solid rgba(47, 116, 109, 0.35);
+}
+.add-button:hover:not(:disabled),
+.utility-button:hover:not(:disabled) {
+    background-color: var(--color-brand-tint);
+    border-color: var(--color-primary);
+    color: var(--color-primary-hover);
+}
+
+/* ---------------------------------------------------------------------
+   G. SORTERINGSKNAPPER SOM SEGMENTERET KONTROL
+   --------------------------------------------------------------------- */
+.sort-bar {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0;
+    background: var(--paper-sunken);
+    border: 1px solid rgba(120, 100, 70, 0.16);
+    border-radius: var(--border-radius);
+    padding: var(--space-1);
+}
+.sort-bar .sort-button {
+    background: transparent;
+    border: none;
+    color: var(--color-text-muted);
+    border-radius: var(--radius-sm);
+    min-height: 44px;
+    font-size: 0.92rem;
+}
+.sort-bar .sort-button:hover:not(.active) {
+    background: rgba(47, 116, 109, 0.08);
+    color: var(--color-primary);
+}
+.sort-bar .sort-button.active {
+    background: var(--paper-raised);
+    color: var(--color-primary);
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.12);
+}
+
+/* ---------------------------------------------------------------------
+   H. FORMULARFELTER PAA PAPIR
+   --------------------------------------------------------------------- */
+input[type="text"],
+input[type="search"],
+input[type="password"],
+input[type="email"],
+textarea,
+select {
+    background-color: var(--paper-raised);
+    border-color: rgba(120, 100, 70, 0.30);
+}
+input[type="text"]:hover,
+textarea:hover,
+select:hover {
+    border-color: rgba(47, 116, 109, 0.55);
+}
+
+/* ---------------------------------------------------------------------
+   I. LOGBOGEN
+   --------------------------------------------------------------------- */
+.logbook-entry {
+    background: var(--paper-raised);
+    border: 1px solid rgba(120, 100, 70, 0.14);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--space-3);
+    overflow: hidden;
+}
+.logbook-entry-header {
+    display: flex;
+    align-items: stretch;
+}
+.logbook-accordion-toggle {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+.logbook-accordion-toggle:hover {
+    background: var(--color-brand-tint);
+}
+.logbook-title {
+    font-weight: 700;
+    color: var(--color-text);
+}
+.logbook-subtitle {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+    font-weight: 400;
+}
+.delete-story-button {
+    background: transparent;
+    border: none;
+    border-left: 1px solid rgba(120, 100, 70, 0.14);
+    border-radius: 0;
+    font-size: 1.1rem;
+    width: var(--tap-target);
+    min-width: var(--tap-target);
+    padding: 0;
+}
+.delete-story-button:hover {
+    background: #FDECEC;
+}
+
+/* Tom tilstand: en venlig besked frem for en tom kasse. */
+#logbook-list-container > p:only-child {
+    background: var(--paper-sunken);
+    border: 1px dashed rgba(120, 100, 70, 0.28);
+    border-radius: var(--border-radius);
+    padding: var(--space-6) var(--space-4);
+    color: var(--color-text-muted);
+    text-align: center;
+    margin: 0;
+}
+
+/* ---------------------------------------------------------------------
+   J. BEVAEGELSE
+   Alt herunder er slaaet fra af den tidligere prefers-reduced-motion-regel.
+   --------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+    #historie-output:not(.hidden) {
+        animation: rejs-op 0.4s ease-out;
+    }
+    @keyframes rejs-op {
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 1; transform: none; }
+    }
 }

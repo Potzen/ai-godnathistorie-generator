@@ -42,14 +42,30 @@
     <h2>Byg en historie til dit læseniveau</h2>
     <p>Vælg et LIX-tal og nogle elementer fra listerne, så skaber AI'en en historie, der passer præcist til niveauet.</p>
 
-    <div class="input-category">
+    <div class="input-category lix-panel">
         <label for="lix-slider" class="lix-label">Vælg Læse Niveau (LIX): <span id="lix-value-display" class="lix-value">25</span></label>
         <div class="lix-slider-container">
             <span class="lix-range-label">Let</span>
-            <input type="range" id="lix-slider" name="lix_target" min="5" max="55" value="25" class="lix-slider-style">
+            <input type="range" id="lix-slider" name="lix_target" min="5" max="55" value="25" step="1"
+                   class="lix-slider-style" list="lix-maerker"
+                   aria-describedby="lix-description">
             <span class="lix-range-label">Svær</span>
         </div>
-        <p id="lix-description" class="lix-description-text">Passer til et barn på ca. 8-9 år, der er ved at være sikker i sin læsning.</p>
+        {# Skala under sporet, saa et LIX-tal kan placeres uden at gaette.
+           Aldersangivelserne er de samme intervaller som beskrivelsen bruger. #}
+        <datalist id="lix-maerker">
+            <option value="15"></option><option value="25"></option>
+            <option value="35"></option><option value="45"></option>
+        </datalist>
+        <div class="lix-scale" aria-hidden="true">
+            <span>5<small>de yngste</small></span>
+            <span>15<small>6-7 år</small></span>
+            <span>25<small>8-9 år</small></span>
+            <span>35<small>10-11 år</small></span>
+            <span>45<small>12+ år</small></span>
+            <span>55<small>voksen</small></span>
+        </div>
+        <p id="lix-description" class="lix-description-text" role="status">Passer til et barn på ca. 8-9 år, der er ved at være sikker i sin læsning.</p>
     </div>
     <hr>
 
