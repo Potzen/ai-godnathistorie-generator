@@ -146,7 +146,9 @@ def create_app(config_class=Config):
             try:
                 file_path = os.path.join(app.static_folder, filename)
                 version = str(int(os.stat(file_path).st_mtime))
-            except OSError:
+            except (OSError, TypeError):
+                # Filen findes ikke, eller der er ingen static-mappe. URL'en
+                # skal stadig virke - den faar bare ingen version.
                 version = ''
             if not app.debug:
                 static_version_cache[filename] = version
