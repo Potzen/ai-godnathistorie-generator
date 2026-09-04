@@ -7,15 +7,16 @@ from flask import Flask, request, jsonify, redirect, url_for
 from config import Config
 from extensions import db, login_manager, oauth, migrate
 from models import User
-from services.rag_service import initialize_knowledge_base
 
 import google.generativeai as genai
 from google.cloud import aiplatform
 import vertexai
 
 
-
-logging.basicConfig(level=logging.DEBUG)
+# Log-niveauet styres af miljoeet. DEBUG er dyrt i produktion: hver request
+# formaterer og skriver et stort antal linjer, og tredjepartsbibliotekerne
+# (google-api, urllib3) logger raa HTTP-trafik paa det niveau.
+logging.basicConfig(level=getattr(logging, os.environ.get('LOG_LEVEL', 'INFO').upper(), logging.INFO))
 
 
 def create_app(config_class=Config):
@@ -29,6 +30,12 @@ def create_app(config_class=Config):
     except ValueError as e:
         app.logger.error(f"FEJL: Manglende kritiske konfigurationsvariabler: {e}")
         # Overvej at håndtere dette, f.eks. ved at stoppe appen.
+
+    if app.config.get('SECRET_KEY_IS_EPHEMERAL'):
+        app.logger.warning(
+            "ADVARSEL: FLASK_SECRET_KEY er ikke sat. Der bruges en tilfældig nøgle, "
+            "så alle brugere logges ud ved hver genstart, og flere workers kan ikke "
+            "dele sessions. Sæt FLASK_SECRET_KEY i miljøet i produktion.")
 
     # Google Generative AI (Gemini)
     if app.config.get('GOOGLE_API_KEY'):
@@ -122,13 +129,52 @@ def create_app(config_class=Config):
             app.logger.error(f"Fejl ved indlæsning af bruger {user_id}: {e}")
             return None
 
-    with app.app_context():
-        try:
-            initialize_knowledge_base()
-            app.logger.info("RAG Videnbase initialiseret succesfuldt.")
-        except Exception as e:
-            app.logger.error(
-                f"FEJL under initialisering af RAG Videnbase: {e}\n{traceback.format_exc()}")
+    # --- Statiske filer: cache-busting + lange cache-headers ---
+    # Uden en version i URL'en tor vi ikke cache laenge, for saa ser brugerne
+    # ikke opdateringer. Vi haenger derfor filens mtime paa som ?v=... i alle
+    # url_for('static', ...)-kald. Saa kan de svar caches i et aar, mens en
+    # aendret fil automatisk faar en ny URL.
+    static_version_cache = {}
+
+    @app.url_defaults
+    def add_static_file_version(endpoint, values):
+        if endpoint != 'static' or 'filename' not in values:
+            return
+        filename = values['filename']
+        version = static_version_cache.get(filename)
+        if version is None:
+            try:
+                file_path = os.path.join(app.static_folder, filename)
+                version = str(int(os.stat(file_path).st_mtime))
+            except OSError:
+                version = ''
+            if not app.debug:
+                static_version_cache[filename] = version
+        if version:
+            values['v'] = version
+
+    @app.after_request
+    def set_response_headers(response):
+        if request.path.startswith('/static/'):
+            if request.args.get('v'):
+                # Versioneret URL: indholdet kan ikke aendre sig under denne URL.
+                response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+            else:
+                response.headers.setdefault('Cache-Control', 'public, max-age=3600')
+        else:
+            # Sider med brugerdata maa ikke ligge i delte caches.
+            response.headers.setdefault('Cache-Control', 'no-store')
+
+        # Grundlaeggende sikkerhedsheaders.
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        return response
+
+    # RAG-videnbasen bygges foerst naar den rent faktisk bruges (i Stoette-modulet).
+    # Tidligere skete det her, hvilket betoed at hver eneste app-opstart ventede paa
+    # 11 sekventielle kald til embedding-API'et - og at appen slet ikke kunne starte,
+    # hvis API'et var langsomt eller utilgaengeligt. Se services/rag_service.py.
 
     app.logger.info("Flask app oprettelse fuldført.")
     return app

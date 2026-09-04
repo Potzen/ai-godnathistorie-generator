@@ -1,5 +1,4 @@
 import json
-import secrets
 from flask import Blueprint, jsonify, request, current_app
 from flask_login import login_required, current_user
 from extensions import db
@@ -21,9 +20,18 @@ def list_classrooms():
     if err:
         return err
     classrooms = Classroom.query.filter_by(teacher_id=current_user.id).order_by(Classroom.created_at.desc()).all()
+
+    # Tael medlemmer for alle klasser i én forespoergsel i stedet for én COUNT pr. klasse.
+    counts_by_classroom = dict(
+        db.session.query(ClassroomStudent.classroom_id, db.func.count(ClassroomStudent.id))
+        .filter(ClassroomStudent.classroom_id.in_([c.id for c in classrooms] or [None]))
+        .group_by(ClassroomStudent.classroom_id)
+        .all()
+    ) if classrooms else {}
+
     result = []
     for c in classrooms:
-        member_count = c.members.count()
+        member_count = counts_by_classroom.get(c.id, 0)
         result.append({
             'id': c.id,
             'name': c.name,
@@ -65,12 +73,27 @@ def list_students(classroom_id):
     members = classroom.members.all()
     student_ids = [m.student_user_id for m in members]
 
-    all_stories = Story.query.filter(
+    if not student_ids:
+        return jsonify(classroom_id=classroom_id, classroom_name=classroom.name, students=[])
+
+    # Hent kun de kolonner vi bruger. Story.content er et stort tekstfelt, og
+    # en klasse med mange elever ville ellers traekke hele historieteksten med
+    # hjem, alene for at lave en LIX-graf.
+    all_stories = db.session.query(
+        Story.user_id, Story.created_at, Story.lix_score_stored
+    ).filter(
         Story.user_id.in_(student_ids),
         Story.lix_score_stored.isnot(None)
     ).order_by(Story.created_at).all()
 
-    all_quiz = QuizResult.query.filter(QuizResult.user_id.in_(student_ids)).all()
+    all_quiz = db.session.query(
+        QuizResult.user_id, QuizResult.score, QuizResult.total_questions
+    ).filter(QuizResult.user_id.in_(student_ids)).all()
+
+    # Slaa alle elevnavne op i én forespoergsel i stedet for én pr. elev.
+    names_by_id = dict(
+        db.session.query(User.id, User.name).filter(User.id.in_(student_ids)).all()
+    )
 
     stories_by_student = {}
     for s in all_stories:
@@ -81,12 +104,12 @@ def list_students(classroom_id):
 
     quiz_by_student = {}
     for q in all_quiz:
-        quiz_by_student.setdefault(q.user_id, []).append(q.score / q.total_questions)
+        if q.total_questions:
+            quiz_by_student.setdefault(q.user_id, []).append(q.score / q.total_questions)
 
     result = []
     for member in members:
         uid = member.student_user_id
-        user = db.session.get(User, uid)
         lix_series = stories_by_student.get(uid, [])
         quiz_scores = quiz_by_student.get(uid, [])
         avg_quiz = round(sum(quiz_scores) / len(quiz_scores) * 100) if quiz_scores else None
@@ -98,7 +121,7 @@ def list_students(classroom_id):
             trend = None
         result.append({
             'user_id': uid,
-            'name': user.name if user else 'Ukendt',
+            'name': names_by_id.get(uid) or 'Ukendt',
             'latest_lix': latest_lix,
             'lix_trend': trend,
             'lix_series': lix_series,

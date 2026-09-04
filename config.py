@@ -11,7 +11,11 @@ class Config:
     # Sikkerhedsnøgle for Flask sessions og andre sikkerhedsrelaterede funktioner
     # Det er VIGTIGT at denne holdes hemmelig i produktion.
     # Henter fra miljøvariabel FLASK_SECRET_KEY, ellers genereres en ny.
-    SECRET_KEY = os.environ.get('FLASK_SECRET_KEY', secrets.token_hex(24))
+    # Hvis FLASK_SECRET_KEY ikke er sat, genereres en ny noegle ved hver opstart.
+    # Det betyder at alle sessions bliver ugyldige ved genstart, og at flere
+    # workers ikke kan laese hinandens sessions. Saet den i miljoeet i produktion.
+    SECRET_KEY = os.environ.get('FLASK_SECRET_KEY') or secrets.token_hex(24)
+    SECRET_KEY_IS_EPHEMERAL = not os.environ.get('FLASK_SECRET_KEY')
 
     # Database konfiguration
     # Definerer stien til SQLite databasen.
@@ -22,6 +26,25 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + DB_PATH
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # Forbindelser der har ligget stille bliver lukket af serveren (typisk MySQL).
+    # pool_pre_ping tester forbindelsen foer brug, saa en doed forbindelse
+    # fornyes i stedet for at give "server has gone away" midt i et request.
+    SQLALCHEMY_ENGINE_OPTIONS = {'pool_pre_ping': True}
+    if not SQLALCHEMY_DATABASE_URI.startswith('sqlite'):
+        SQLALCHEMY_ENGINE_OPTIONS['pool_recycle'] = 280
+
+    # --- Session- og cookie-sikkerhed ---
+    # Appen bruges af skoleboern, saa session-cookien skal vaere utilgaengelig
+    # for JavaScript og ikke foelge med paa tvaers af sites.
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    # Saet SESSION_COOKIE_SECURE=1 i produktion (kraever HTTPS).
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', '').lower() in ('1', 'true', 'yes')
+
+    # Oevre graense for request-stoerrelse, saa et enkelt kald ikke kan
+    # bruge al hukommelse. Historier og noter er smaa; 2 MB er rigeligt.
+    MAX_CONTENT_LENGTH = 2 * 1024 * 1024
 
     # Google API Nøgle (til Gemini)
     # Hentes fra miljøvariabel GOOGLE_API_KEY.

@@ -5,15 +5,94 @@ Dette modul håndterer oprettelse, vedligeholdelse og søgning i en
 narrativ-terapeutisk videnbase.
 """
 
-from flask import current_app
-import google.generativeai as genai
+import hashlib
+import json
+import os
+import threading
 import traceback
+
+import google.generativeai as genai
 import numpy as np
+from flask import current_app
 
 # Global variabel til at holde vores simple in-memory videnbase.
-# Hvert element kan f.eks. være en tuple: (original_text_chunk, embedding_vector)
-# Eller en dictionary: {'text': original_text_chunk, 'embedding': embedding_vector}
+# Hvert element er en dictionary: {'id': ..., 'text': ..., 'embedding': [...]}
 knowledge_base_data = []
+
+# Videnbasen bygges "lazy": foerste gang der faktisk soeges i den, og ikke ved
+# app-opstart. Embeddings af de statiske chunks aendrer sig aldrig, saa de
+# caches paa disk og genbruges paa tvaers af genstarter og workers.
+EMBEDDING_MODEL = "models/embedding-001"
+_kb_lock = threading.Lock()
+_kb_initialized = False
+
+
+def _cache_path():
+    """Sti til embedding-cachen. Ligger i instance-mappen, som ikke versionsstyres."""
+    return os.path.join(current_app.instance_path, 'rag_embeddings_cache.json')
+
+
+def _chunks_fingerprint(chunks):
+    """Stabilt fingeraftryk af chunk-teksterne + modelnavn.
+
+    Bruges som cache-noegle, saa cachen automatisk invalideres hvis
+    teksterne eller embedding-modellen aendres.
+    """
+    hasher = hashlib.sha256()
+    hasher.update(EMBEDDING_MODEL.encode('utf-8'))
+    for chunk in chunks:
+        hasher.update((chunk.get('id') or '').encode('utf-8'))
+        hasher.update((chunk.get('text') or '').encode('utf-8'))
+    return hasher.hexdigest()
+
+
+def _load_cached_embeddings(fingerprint):
+    """Laeser embeddings fra disk-cachen, hvis de matcher fingeraftrykket."""
+    try:
+        path = _cache_path()
+        if not os.path.exists(path):
+            return None
+        with open(path, encoding='utf-8') as fh:
+            cached = json.load(fh)
+        if cached.get('fingerprint') != fingerprint:
+            current_app.logger.info("RAG Service: Cache er foraeldet (nyt fingeraftryk). Genberegner.")
+            return None
+        entries = cached.get('entries') or []
+        return entries or None
+    except Exception as e:
+        current_app.logger.warning(f"RAG Service: Kunne ikke laese embedding-cache: {e}")
+        return None
+
+
+def _store_cached_embeddings(fingerprint, entries):
+    """Skriver embeddings til disk-cachen. Fejl her maa aldrig vaelte kaldet."""
+    try:
+        os.makedirs(current_app.instance_path, exist_ok=True)
+        path = _cache_path()
+        tmp_path = f"{path}.tmp"
+        with open(tmp_path, 'w', encoding='utf-8') as fh:
+            json.dump({'fingerprint': fingerprint, 'entries': entries}, fh)
+        os.replace(tmp_path, path)
+        current_app.logger.info(f"RAG Service: Embeddings cachet paa disk ({len(entries)} chunks).")
+    except Exception as e:
+        current_app.logger.warning(f"RAG Service: Kunne ikke skrive embedding-cache: {e}")
+
+
+def ensure_knowledge_base():
+    """Sikrer at videnbasen er bygget. Kaldes foer soegning.
+
+    Er idempotent og traadsikker, saa samtidige requests ikke bygger
+    videnbasen flere gange parallelt.
+    """
+    global _kb_initialized
+    if _kb_initialized and knowledge_base_data:
+        return knowledge_base_data
+    with _kb_lock:
+        if _kb_initialized and knowledge_base_data:
+            return knowledge_base_data
+        initialize_knowledge_base()
+        _kb_initialized = True
+    return knowledge_base_data
 
 # Eksempel på tekst-chunks til videnbasen (vi udvider denne senere)
 # Kilde: Modulbeskrivelse: Narrativ Støtte 25. maj
@@ -83,8 +162,10 @@ INITIAL_KNOWLEDGE_CHUNKS = [
 def initialize_knowledge_base(chunks=None):
     """
     Initialiserer (eller genindlæser) videnbasen.
-    I denne simple version "embedder" vi tekst-chunks og gemmer dem.
-    Senere vil dette involvere opsætning af en rigtig vector database.
+
+    Embeddings hentes fra disk-cachen hvis den er gyldig; ellers beregnes de
+    via API'et og gemmes i cachen. Dermed koster en genstart af appen normalt
+    nul API-kald.
     """
     global knowledge_base_data
     knowledge_base_data = [] # Nulstil for hver initialisering
@@ -93,6 +174,14 @@ def initialize_knowledge_base(chunks=None):
         chunks_to_process = INITIAL_KNOWLEDGE_CHUNKS
     else:
         chunks_to_process = chunks
+
+    fingerprint = _chunks_fingerprint(chunks_to_process)
+    cached_entries = _load_cached_embeddings(fingerprint)
+    if cached_entries:
+        knowledge_base_data = cached_entries
+        current_app.logger.info(
+            f"RAG Service: Videnbase indlæst fra cache ({len(knowledge_base_data)} chunks, 0 API-kald).")
+        return
 
     current_app.logger.info(f"RAG Service: Initialiserer videnbase med {len(chunks_to_process)} chunks...") # Denne log-linje er fin
 
@@ -120,6 +209,9 @@ def initialize_knowledge_base(chunks=None):
             current_app.logger.error(f"RAG Service: Fejl under initialisering af chunk: {chunk_dict.get('id', 'Ukendt ID')}: {e}\n{traceback.format_exc()}")
 
     current_app.logger.info(f"RAG Service: Videnbase initialiseret. Antal elementer: {len(knowledge_base_data)}")
+    # Cache kun hvis alle chunks blev embeddet, saa en delvis fejl ikke bliver permanent.
+    if knowledge_base_data and len(knowledge_base_data) == len(chunks_to_process):
+        _store_cached_embeddings(fingerprint, knowledge_base_data)
     if not knowledge_base_data and chunks_to_process:
         current_app.logger.warning("RAG Service: Videnbasen er tom efter initialisering, selvom der var chunks at processere. Tjek embedding-logikken.")
     # DER SKAL IKKE VÆRE NOGEN REFERENCER TIL query_text ELLER find_relevant_chunks HER
@@ -161,7 +253,7 @@ def get_text_embedding(text_content: str, task_type="RETRIEVAL_DOCUMENT"):
         # eller bekræftelse af, at din API-nøgle understøtter den direkte via genai.
         # Lad os bruge en simpel model først for at sikre flowet.
         result = genai.embed_content(
-            model="models/embedding-001",  # Standard embedding model
+            model=EMBEDDING_MODEL,
             content=text_content,
             task_type=task_type
         )
@@ -223,16 +315,17 @@ def find_relevant_chunks_v2(query_text: str, top_k: int = 3):
     """
     current_app.logger.info(f"RAG Service: Finder relevante chunks for query: '{query_text[:50]}...'") # UDEN (placeholder funktion)
 
-    if not knowledge_base_data:
-        current_app.logger.warning("RAG Service: Videnbasen er tom. Kan ikke finde relevante chunks.")
-        return []
-
     if not query_text or not query_text.strip():
         current_app.logger.warning("RAG Service: find_relevant_chunks kaldt med tom query_text.")
         return []
 
+    # Byg videnbasen ved foerste brug i stedet for ved app-opstart.
+    ensure_knowledge_base()
+    if not knowledge_base_data:
+        current_app.logger.warning("RAG Service: Videnbasen er tom. Kan ikke finde relevante chunks.")
+        return []
+
     query_embedding = get_text_embedding(query_text, task_type="RETRIEVAL_QUERY")
-    current_app.logger.debug(f"RAG Service: Query embedding for '{query_text[:20]}...': {query_embedding}")
 
 
     if query_embedding is None:

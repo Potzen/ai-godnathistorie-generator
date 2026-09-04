@@ -18,12 +18,22 @@ from google.api_core.exceptions import InternalServerError
 story_bp = Blueprint('story', __name__, template_folder='../templates', static_folder='../static')
 
 
+# Modeller frontend'en må bede om. Uden denne liste kunne en vilkårlig
+# streng sendes videre til API'et - både en dyrere model end tiltænkt og
+# et modelnavn appen ikke har testet.
+ALLOWED_STORY_MODELS = {
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-pro-latest',
+    'gemini-2.5-pro-preview-06-05',
+}
+DEFAULT_STORY_MODEL = 'gemini-1.5-flash-latest'
+
+
 @story_bp.route('/generate', methods=['POST'])
 def generate_story():
-    data = request.get_json()
+    data = request.get_json(silent=True)
     if not data:
         return jsonify(title="Fejl", story="Ingen data modtaget."), 400
-    current_app.logger.info(f"Modtaget data for /generate: {data}")
 
     karakterer_data = data.get('karakterer', [])
     steder_liste = data.get('steder', [])
@@ -36,7 +46,6 @@ def generate_story():
     negative_prompt_text = data.get('negative_prompt', '').strip()
     selected_model_from_frontend = data.get('selected_model')
 
-    current_app.logger.info(f"--- generate_story route: is_interactive flag from frontend: {is_interactive} ---")
 
     karakter_descriptions_for_prompt = []
     if karakterer_data:
@@ -86,10 +95,24 @@ def generate_story():
             else:
                 ending_instruction = "VIGTIGT OM AFSLUTNINGEN: Afslut historien på en positiv, tryg og beroligende måde, der er passende for en godnathistorie. Henvend dig IKKE direkte til lytteren midt i historien."
 
-    target_model_name = 'gemini-1.5-flash-latest'
-    if selected_model_from_frontend:
-         target_model_name = selected_model_from_frontend
     pro_model_identifier = 'gemini-2.5-pro-preview-06-05'
+
+    # Modelvalget kom tidligere ubeskaaret fra frontend'en. UI'et deaktiverer
+    # Pro-modellen for gratis- og gaestebrugere, men et direkte POST kunne
+    # omgaa det og koere alt paa den dyreste model. Derfor valideres navnet
+    # mod listen, og Pro kraever den samme rolle som knappen i UI'et.
+    target_model_name = DEFAULT_STORY_MODEL
+    if selected_model_from_frontend in ALLOWED_STORY_MODELS:
+        target_model_name = selected_model_from_frontend
+    elif selected_model_from_frontend:
+        current_app.logger.warning(
+            f"Ukendt modelnavn fra frontend: {selected_model_from_frontend!r}. Bruger {DEFAULT_STORY_MODEL}.")
+
+    if target_model_name == pro_model_identifier:
+        has_pro_access = current_user.is_authenticated and current_user.role in ('basic', 'premium', 'teacher')
+        if not has_pro_access:
+            current_app.logger.info("Pro-model anmodet uden adgang. Falder tilbage til standardmodellen.")
+            target_model_name = DEFAULT_STORY_MODEL
     if target_model_name == pro_model_identifier:
         if laengde == 'kort':
             length_instruction = "Skriv historien i cirka 6-8 afsnit. Den skal være relativt kortfattet, men velformuleret."
@@ -163,7 +186,7 @@ def generate_lix_story_route():
     data = request.get_json()
     if not data:
         return jsonify(error="Ingen data modtaget."), 400
-    current_app.logger.info(f"Bruger {current_user.id}: Modtaget LIX-anmodning: {data}")
+    current_app.logger.info(f"Bruger {current_user.id}: Modtaget LIX-anmodning (mål-LIX: {data.get('target_lix')}).")
 
     target_lix = data.get('target_lix')
     story_elements = data.get('elements', [])

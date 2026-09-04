@@ -41,8 +41,8 @@ class Story(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     # --- NYE FELTER TIL LOGBOG & TERAPEUTISK SPORING ---
 
@@ -51,16 +51,16 @@ class Story(db.Model):
     source = db.Column(db.String(50),
                        nullable=True)  # F.eks. 'Narrativ Støtte', 'Højtlæsning'. Giver mulighed for filtrering.
     is_log_entry = db.Column(db.Boolean, default=False,
-                             nullable=False)  # Kritisk flag for at adskille rå historier fra dokumenterede "missioner".
+                             nullable=False, index=True)  # Kritisk flag for at adskille rå historier fra dokumenterede "missioner".
 
     # --- NYE FELTER TIL SERIE-HÅNDTERING ---
     series_part = db.Column(db.Integer, default=1)  # Sporer det globale "Del X"-nummer i en serie.
     strategy_used = db.Column(db.String(50), nullable=True)  # Gemmer f.eks. "Dyk Dybere" eller "Flyv Højere".
 
     parent_story_id = db.Column(db.Integer, db.ForeignKey('story.id'),
-                                nullable=True)  # Link til den direkte forælder-historie.
+                                nullable=True, index=True)  # Link til den direkte forælder-historie.
     root_story_id = db.Column(db.Integer, db.ForeignKey('story.id'),
-                              nullable=True)  # Link til den absolutte moderhistorie i serien.
+                              nullable=True, index=True)  # Link til den absolutte moderhistorie i serien.
     # -----------------------------------------
 
     # Relation for at finde børnehistorier nemt
@@ -93,7 +93,7 @@ class Story(db.Model):
 class ChildProfile(db.Model):
     __tablename__ = 'child_profile'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     name = db.Column(db.String(100), nullable=False)
     age = db.Column(db.String(20), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -126,7 +126,7 @@ class ChildProfile(db.Model):
 class ProfileAttribute(db.Model):
     __tablename__ = 'profile_attribute'
     id = db.Column(db.Integer, primary_key=True)
-    profile_id = db.Column(db.Integer, db.ForeignKey('child_profile.id'), nullable=False)
+    profile_id = db.Column(db.Integer, db.ForeignKey('child_profile.id'), nullable=False, index=True)
     type = db.Column(db.String(50), nullable=False)  # 'strength', 'value', 'motivation', 'reaction'
     content = db.Column(db.Text, nullable=False)
 
@@ -136,7 +136,7 @@ class ProfileAttribute(db.Model):
 class ProfileRelation(db.Model):
     __tablename__ = 'profile_relation'
     id = db.Column(db.Integer, primary_key=True)
-    profile_id = db.Column(db.Integer, db.ForeignKey('child_profile.id'), nullable=False)
+    profile_id = db.Column(db.Integer, db.ForeignKey('child_profile.id'), nullable=False, index=True)
     name = db.Column(db.String(100), nullable=True)
     relation_type = db.Column(db.String(100), nullable=True)
 
@@ -147,7 +147,7 @@ class ProfileRelation(db.Model):
 class Classroom(db.Model):
     __tablename__ = 'classroom'
     id = db.Column(db.Integer, primary_key=True)
-    teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     name = db.Column(db.String(120), nullable=False)
     invite_code = db.Column(db.String(8), unique=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -168,8 +168,8 @@ class Classroom(db.Model):
 class ClassroomStudent(db.Model):
     __tablename__ = 'classroom_student'
     id = db.Column(db.Integer, primary_key=True)
-    classroom_id = db.Column(db.Integer, db.ForeignKey('classroom.id'), nullable=False)
-    student_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    classroom_id = db.Column(db.Integer, db.ForeignKey('classroom.id'), nullable=False, index=True)
+    student_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     joined_at = db.Column(db.DateTime, default=datetime.utcnow)
     student = db.relationship('User', backref='classroom_memberships')
     __table_args__ = (db.UniqueConstraint('classroom_id', 'student_user_id'),)
@@ -181,8 +181,8 @@ class ClassroomStudent(db.Model):
 class QuizResult(db.Model):
     __tablename__ = 'quiz_result'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    story_id = db.Column(db.Integer, db.ForeignKey('story.id'), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    story_id = db.Column(db.Integer, db.ForeignKey('story.id'), nullable=True, index=True)
     score = db.Column(db.Integer, nullable=False)
     total_questions = db.Column(db.Integer, nullable=False, default=4)
     answers_json = db.Column(db.Text, nullable=True)
