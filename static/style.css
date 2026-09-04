@@ -2,33 +2,91 @@
    Et @import bliver foerst opdaget efter style.css er hentet og parset,
    saa fonten kommer et helt rundtur senere. */
 
-/* Grundlæggende styling og farvevariabler */
+/* =====================================================================
+   DESIGNSYSTEM
+   Appen bruges af boern der er ved at laere at laese, ofte paa delte
+   tablets i et klasselokale. Derfor er farverne valgt efter maalt
+   kontrast (WCAG 2.1 AA), og afstande/stoerrelser efter at kunne rammes
+   med en barnefinger.
+   ===================================================================== */
 :root {
     --font-body: 'Nunito Sans', sans-serif;
     --font-heading: 'Poppins', sans-serif;
-    --color-text: #444;
-    --color-bg: #eef7ff; /* Fallback baggrundsfarve */
-    --color-box-bg: rgba(255, 255, 255, 0.95); /* Let gennemsigtig hvid */
-    --color-primary: #4DB6AC; /* Teal */
-    --color-primary-hover: #26A69A;
-    --color-secondary: #A9CCE3; /* Dæmpet blå */
+
+    /* --- Brandfarver ---
+       Den lyse teal er appens signaturfarve, men hvid tekst paa den giver
+       kun 2,44:1 kontrast - langt under kravet paa 4,5:1. Den beholdes
+       derfor som dekorativ accent, mens en moerkere udgave af samme
+       farvetone (174 grader) baerer tekst. */
+    --color-brand: #4DB6AC;         /* Dekorativ accent - aldrig bag tekst */
+    --color-brand-tint: #E4F4F2;    /* Svag flade til fremhaevning */
+    --color-brand-ink: #1F5C56;     /* Tekst paa brand-tint: 6,8:1 */
+
+    --color-primary: #2F746D;       /* Hvid tekst: 5,5:1 */
+    --color-primary-hover: #245752; /* Hvid tekst: 8,2:1 */
+    --color-secondary: #A9CCE3;     /* Moerk tekst: 7,5:1 */
     --color-secondary-hover: #85B4D8;
-    --color-danger: #dc3545;
-    --color-danger-hover: #c82333;
-    --color-success-text: #155724; /* Mørkegrøn tekst */
-    --color-success-bg: #d4edda;   /* Lys grøn baggrund */
-    --color-success-border: #c3e6cb; /* Lidt mørkere grøn kant */
-    --color-info-text: #0c5460;    /* Mørk blå/turkis tekst */
-    --color-info-bg: #d1ecf1;     /* Lys blå/turkis baggrund */
-    --color-info-border: #bee5eb;   /* Lidt mørkere blå/turkis kant */
-    --color-error-text: #721c24;   /* Mørkerød tekst */
-    --color-error-bg: #f8d7da;    /* Lys rød baggrund */
-    --color-error-border: #f5c6cb;  /* Lidt mørkere rød kant */
-    --border-color: #d1d5db;
-    --border-radius: 6px;
-    --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    --footer-text-color: #f0f0f0; /* NYT: Farve for footer tekst */
-    --footer-link-border-color: #aaa; /* NYT: Farve for social link border */
+
+    --color-text: #3B4149;          /* Broedtekst: 10,4:1 paa hvid */
+    --color-text-muted: #5B6472;    /* Hjaelpetekst: 6,3:1 paa hvid */
+    --color-bg: #eef7ff;
+    --color-box-bg: rgba(255, 255, 255, 0.97);
+
+    --color-danger: #C62828;
+    --color-danger-hover: #A31F1F;
+    --color-success-text: #155724;
+    --color-success-bg: #d4edda;
+    --color-success-border: #c3e6cb;
+    --color-info-text: #0c5460;
+    --color-info-bg: #d1ecf1;
+    --color-info-border: #bee5eb;
+    --color-error-text: #721c24;
+    --color-error-bg: #f8d7da;
+    --color-error-border: #f5c6cb;
+
+    /* Deaktiverede knapper var #888 paa #ccc = 2,2:1 og reelt ulaeselige. */
+    --color-disabled-bg: #E9ECEF;
+    --color-disabled-text: #57606F;  /* 5,4:1 */
+
+    /* --- Kanter ---
+       Kanten om et inputfelt er en UI-komponent og skal have 3:1 mod
+       baggrunden for at kunne ses. Den gamle #d1d5db gav 1,47:1. */
+    --border-color: #C7CED8;         /* Dekorative streger og skillelinjer */
+    --border-strong: #8B93A1;        /* Kanter der afgraenser et betjeningsfelt: 3,1:1 */
+
+    /* --- Afstande ---
+       Én skala i stedet for spredte vaerdier, saa rytmen bliver ensartet. */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-7: 48px;
+
+    /* --- Form og dybde --- */
+    --border-radius: 10px;
+    --radius-sm: 6px;
+    --radius-pill: 999px;
+    --box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 12px rgba(16, 24, 40, 0.07);
+    --shadow-raised: 0 2px 4px rgba(16, 24, 40, 0.06), 0 10px 24px rgba(16, 24, 40, 0.10);
+
+    /* --- Betjening ---
+       48px er Googles anbefalede minimum for touch, og boernefingre rammer
+       mindre praecist end voksnes. */
+    --tap-target: 48px;
+    --focus-ring: 0 0 0 3px #FFFFFF, 0 0 0 6px var(--color-primary);
+
+    /* --- Laesning ---
+       Linjelaengden er den vigtigste enkeltfaktor for en begynderlaeser:
+       for lange linjer gor det svaert at finde tilbage til starten af
+       naeste linje. 55-70 tegn er det anbefalede interval. */
+    --measure-reading: 62ch;
+    --font-size-reading: 1.2rem;
+    --line-height-reading: 1.85;
+
+    --footer-text-color: #f0f0f0;
+    --footer-link-border-color: #aaa;
 }
 
 /* Global box-sizing for mere forudsigeligt layout */
@@ -335,8 +393,8 @@ button:hover:not(:disabled), a.utility-button:hover, a.button-login:hover, a.but
     transform: translateY(-1px);
 }
 button:disabled, .disabled-button {
-    background-color: #ccc !important;
-    color: #888 !important;
+    background-color: var(--color-disabled-bg) !important;
+    color: var(--color-disabled-text) !important;
     cursor: not-allowed;
     transform: none !important;
     opacity: 0.7 !important;
@@ -1228,9 +1286,6 @@ input:disabled + .slider-label:before {
     vertical-align: middle;
     padding-top: 1px; /* NYT: Tilføjet for at skubbe 'i'-symbolet en smule ned. Juster evt. til 2px. */
 }
-/* Forbedret centrering af selve ⓘ-symbolet inde i ikonet */
-
-}
 .info-icon:hover {
     background-color: var(--color-primary);
     color: white;
@@ -1517,8 +1572,8 @@ input:disabled + .slider-label:before {
 }
 
 #generate-laesehest-button-disabled {
-    background-color: #ccc;
-    color: #888;
+    background-color: var(--color-disabled-bg);
+    color: var(--color-disabled-text);
     cursor: not-allowed;
     font-size: 1.1em;
     padding: 12px 20px;
@@ -1644,8 +1699,8 @@ input:disabled + .slider-label:before {
 }
 
 .primary-action-button:disabled {
-    background-color: #ccc !important;
-    color: #888 !important;
+    background-color: var(--color-disabled-bg) !important;
+    color: var(--color-disabled-text) !important;  /* 5,4:1 - var #888 paa #ccc = 2,2:1 */
     cursor: not-allowed;
     transform: none !important;
 }
@@ -2088,4 +2143,547 @@ input:disabled + .slider-label:before {
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
+}
+/* =====================================================================
+   DESIGNOPDATERING
+   Reglerne nedenfor ligger sidst i filen, saa de vinder over de
+   tidligere definitioner uden at aendre dem.
+   ===================================================================== */
+
+/* ---------------------------------------------------------------------
+   1. TASTATURFOKUS
+   Knapper og links havde ingen fokusmarkering overhovedet. Et barn der
+   navigerer med tab-tasten - eller bruger kontakt-/hjaelpemiddelstyring -
+   kunne ikke se hvor det var. Ringen har en hvid inderkant, saa den ogsaa
+   ses paa farvede knapper.
+   --------------------------------------------------------------------- */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    border-radius: var(--radius-sm);
+    position: relative;
+    z-index: 1;
+}
+
+/* Musebrugere skal ikke se ringen ved klik, kun tastaturbrugere. */
+:where(a, button):focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* Genvej til hovedindholdet for tastatur- og skaermlaeserbrugere. */
+.skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    background: var(--color-primary);
+    color: #fff;
+    padding: var(--space-3) var(--space-4);
+    border-radius: 0 0 var(--radius-sm) 0;
+    font-weight: 700;
+    z-index: 100;
+}
+.skip-link:focus {
+    left: 0;
+}
+
+/* ---------------------------------------------------------------------
+   2. BETJENINGSFLADER
+   Knapperne var ~32px hoeje. Paa en tablet rammer en 7-aarig ikke
+   paalideligt noget under 44-48px.
+   --------------------------------------------------------------------- */
+button,
+a.utility-button,
+a.button-login,
+a.button-logout {
+    min-height: var(--tap-target);
+    padding: var(--space-3) var(--space-5);
+    border-radius: var(--border-radius);
+    line-height: 1.3;
+    /* Undgaa at en knaptekst braekker midt i et ord paa smalle skaerme. */
+    text-wrap: balance;
+}
+
+.add-button,
+.utility-button,
+#read-aloud-button {
+    background-color: var(--color-secondary);
+    color: #26323F;
+    font-size: 0.95rem;
+    padding: var(--space-2) var(--space-4);
+    min-height: var(--tap-target);
+    border: 1px solid rgba(38, 50, 63, 0.16);
+}
+
+#generate-button,
+.primary-action-button {
+    background-color: var(--color-primary);
+    color: #fff;
+    font-size: 1.05rem;
+    min-height: 56px;
+    box-shadow: var(--box-shadow);
+}
+#generate-button:hover:not(:disabled),
+.primary-action-button:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+    box-shadow: var(--shadow-raised);
+}
+
+/* Den gamle deaktiverede tilstand var graa tekst paa graa flade (2,2:1). */
+button:disabled,
+.disabled-button,
+button:disabled:hover {
+    background-color: var(--color-disabled-bg) !important;
+    color: var(--color-disabled-text) !important;
+    border-color: var(--border-color) !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+}
+
+/* Sletteknappen skal stadig kunne rammes, men ikke dominere. */
+.remove-button {
+    height: var(--tap-target);
+    width: var(--tap-target);
+    min-width: var(--tap-target);
+    padding: 0;
+    font-size: 1.2rem;
+    border-radius: var(--radius-sm);
+}
+
+/* ---------------------------------------------------------------------
+   3. FORMULARFELTER
+   --------------------------------------------------------------------- */
+input[type="text"],
+input[type="search"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+textarea,
+select {
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: var(--space-3);
+    min-height: var(--tap-target);
+    font-size: 1rem; /* Under 16px zoomer iOS automatisk ind ved fokus. */
+    background-color: #fff;
+}
+textarea {
+    min-height: calc(var(--tap-target) * 2);
+    line-height: 1.6;
+}
+input::placeholder,
+textarea::placeholder {
+    color: var(--color-text-muted);
+    opacity: 1;
+}
+
+label {
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+/* Checkbokse og radioknapper var for smaa til at ramme paa en tablet. */
+input[type="checkbox"],
+input[type="radio"] {
+    /* WCAG 2.5.8 kraever mindst 24x24 px for en betjeningsflade. */
+    width: 24px;
+    height: 24px;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------
+   4. LAESEFLADEN
+   Her laeser barnet. Linjelaengden var ~95 tegn; over ~70 begynder oejet
+   at miste linjen paa vej tilbage til venstre margen, og det rammer
+   begynderlaesere haardest.
+   --------------------------------------------------------------------- */
+#story-display,
+#narrative-generated-story,
+#story-text-content {
+    font-size: var(--font-size-reading);
+    line-height: var(--line-height-reading);
+    letter-spacing: 0.01em;
+    word-spacing: 0.05em;
+    /* Ingen orddeling: et delt ord er en ekstra forhindring for en
+       laeser der stadig lyder ordene. */
+    hyphens: none;
+    -webkit-hyphens: none;
+    text-wrap: pretty;
+}
+
+#story-display {
+    background-color: #FFFDF8; /* Svagt varm flade - mindre blaending end rent hvidt */
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: var(--space-5);
+    box-shadow: inset 0 1px 3px rgba(16, 24, 40, 0.04);
+}
+
+/* Selve tekstsoejlen begraenses, mens boksen fylder bredden ud. */
+#story-display > *,
+#story-text-content {
+    max-width: var(--measure-reading);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Historiens afsnit skal have luft imellem sig, ikke indrykning. */
+#story-display p {
+    margin: 0 0 var(--space-4);
+}
+#story-display p:last-child {
+    margin-bottom: 0;
+}
+
+/* Laesekontrollerne samles i en tydelig raekke over teksten. */
+.reading-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    margin-bottom: var(--space-3);
+    background: var(--color-brand-tint);
+    border-radius: var(--border-radius);
+}
+.reading-controls .reading-controls-label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--color-brand-ink);
+    margin-right: var(--space-1);
+}
+.font-button {
+    min-width: var(--tap-target);
+    padding: var(--space-2) var(--space-3);
+    font-size: 1rem;
+}
+
+/* ---------------------------------------------------------------------
+   5. SEKTIONER OG HIERARKI
+   --------------------------------------------------------------------- */
+main > section,
+.content-section {
+    background-color: var(--color-box-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    padding: var(--space-5);
+    margin-bottom: var(--space-5);
+}
+
+h1, h2, h3 {
+    font-family: var(--font-heading);
+    color: #2A3138;
+    text-wrap: balance;
+    line-height: 1.25;
+}
+h2 {
+    font-size: 1.5rem;
+    margin-top: 0;
+    margin-bottom: var(--space-3);
+}
+h3 {
+    font-size: 1.15rem;
+    margin-bottom: var(--space-2);
+}
+
+/* Beskrivende afsnit under en overskrift er hjaelpetekst, ikke broedtekst. */
+.content-section > h2 + p {
+    color: var(--color-text-muted);
+    margin-top: 0;
+    max-width: 62ch;
+}
+
+.input-category {
+    margin-bottom: var(--space-5);
+}
+
+hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: var(--space-5) 0;
+}
+
+/* ---------------------------------------------------------------------
+   6. LIX-SLIDEREN
+   Laesehestens signaturkontrol. Den skal kunne aflaeses paa afstand af en
+   laerer, der staar ved siden af eleven.
+   --------------------------------------------------------------------- */
+.lix-label {
+    font-size: 1.05rem;
+    color: var(--color-text);
+    margin-bottom: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.lix-value {
+    background-color: var(--color-primary);
+    color: #fff;
+    font-size: 1.15rem;
+    padding: var(--space-1) var(--space-4);
+    border-radius: var(--radius-pill);
+    min-width: 56px;
+    font-variant-numeric: tabular-nums; /* Tallet hopper ikke naar man traekker */
+}
+
+.lix-slider-style {
+    height: 12px;
+    background: linear-gradient(to right, var(--color-brand-tint), var(--color-brand));
+    border-radius: var(--radius-pill);
+    opacity: 1;
+    border: 1px solid var(--border-color);
+}
+
+/* Stoerre greb, saa det kan trykkes og traekkes med en finger. */
+.lix-slider-style::-webkit-slider-thumb {
+    width: 32px;
+    height: 32px;
+    background: var(--color-primary);
+    border: 4px solid #fff;
+    box-shadow: var(--shadow-raised);
+}
+.lix-slider-style::-moz-range-thumb {
+    width: 32px;
+    height: 32px;
+    background: var(--color-primary);
+    border: 4px solid #fff;
+    border-radius: 50%;
+    box-shadow: var(--shadow-raised);
+    cursor: pointer;
+}
+.lix-slider-style:focus-visible {
+    box-shadow: var(--focus-ring);
+}
+
+.lix-range-label {
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    font-weight: 600;
+}
+
+.lix-description-text {
+    margin-top: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-brand-tint);
+    border-left: 4px solid var(--color-brand);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--color-brand-ink);
+    font-size: 0.98rem;
+}
+
+/* ---------------------------------------------------------------------
+   7. ELEMENTVAELGEREN (accordion med figurer, steder osv.)
+   --------------------------------------------------------------------- */
+.element-label {
+    min-height: var(--tap-target);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+.element-item input:checked + .element-label {
+    background-color: var(--color-brand-tint);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+    font-weight: 700;
+}
+.element-emoji {
+    font-size: 1.35rem;
+    line-height: 1;
+}
+.element-complexity {
+    margin-left: auto;
+    color: var(--color-text-muted);
+    letter-spacing: 2px;
+    font-size: 0.85rem;
+}
+
+.accordion-header {
+    min-height: var(--tap-target);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+/* ---------------------------------------------------------------------
+   8. LIX-MAERKAT PAA FAERDIGE HISTORIER
+   --------------------------------------------------------------------- */
+.final-lix-tag {
+    display: inline-block;
+    background: var(--color-brand-tint);
+    color: var(--color-brand-ink);
+    border: 1px solid var(--color-brand);
+    border-radius: var(--radius-pill);
+    padding: 2px var(--space-3);
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------
+   9. SMAA SKAERME
+   --------------------------------------------------------------------- */
+@media (max-width: 600px) {
+    body {
+        margin: var(--space-3) auto;
+        padding: 0 var(--space-3);
+    }
+    main > section,
+    .content-section {
+        padding: var(--space-4);
+    }
+    h2 {
+        font-size: 1.3rem;
+    }
+    /* Fuldbredde-knapper er nemmere at ramme end knapper side om side. */
+    #generate-button,
+    .primary-action-button {
+        width: 100%;
+    }
+}
+
+/* ---------------------------------------------------------------------
+   10. HEADER OG FOOTER PAA BAGGRUNDSBILLEDET
+   Baggrunden er en detaljeret illustration. Header og footer laa direkte
+   oven paa den uden egen flade, saa navigationen ("Hygge", "Stoette") stod
+   som moerk tekst paa et moerkt slot, og footerens lyse tekst forsvandt i
+   de lyse partier. Begge faar nu deres egen flade at staa paa.
+   --------------------------------------------------------------------- */
+header {
+    background-color: var(--color-box-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    border-bottom: none;
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-5);
+    gap: var(--space-4);
+}
+
+/* Logoet fyldte en ottendedel af foerste skaerm paa telefon. */
+#app-logo {
+    max-width: 150px;
+}
+
+.nav-link {
+    padding: var(--space-2) var(--space-4);
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 1rem;
+    color: var(--color-primary);
+    background-color: var(--color-brand-tint);
+    border: 2px solid transparent;
+}
+.nav-link:hover {
+    background-color: var(--color-brand);
+    color: #143B37;
+}
+.nav-link.active {
+    background-color: var(--color-primary);
+    color: #fff;
+    border-color: var(--color-primary);
+}
+
+.user-name-display {
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+}
+
+footer {
+    background-color: rgba(28, 36, 43, 0.88);
+    color: #EDF1F4;              /* 12,4:1 mod fladen */
+    border-top: none;
+    border-radius: var(--border-radius);
+    padding: var(--space-5) var(--space-4);
+    margin-top: var(--space-6);
+}
+footer a,
+footer .footer-link,
+footer .social-link {
+    color: #EDF1F4;
+}
+footer .social-link {
+    border-color: rgba(237, 241, 244, 0.5);
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+}
+footer .social-link:hover {
+    background-color: rgba(237, 241, 244, 0.15);
+    color: #fff;
+}
+footer hr {
+    display: none; /* Fladen afgraenser nu i stedet for stregen. */
+}
+
+/* Cookie-banneret bruger den samme moerke flade som footeren. */
+#cookie-consent-banner {
+    background-color: rgba(28, 36, 43, 0.97);
+    color: #EDF1F4;
+}
+#cookie-consent-banner a {
+    color: #9EDDD6;             /* Lys teal: 8,3:1 mod fladen */
+}
+#cookie-consent-banner a:hover {
+    color: #C4EDE8;
+}
+
+@media (max-width: 600px) {
+    header {
+        padding: var(--space-3);
+        gap: var(--space-2);
+    }
+    #app-logo {
+        max-width: 110px;
+    }
+    .site-nav {
+        gap: var(--space-1);
+    }
+    .nav-link {
+        padding: var(--space-2) var(--space-3);
+        font-size: 0.95rem;
+    }
+}
+
+/* ---------------------------------------------------------------------
+   11. TOMME LINJER I HISTORIEBOKSEN
+   #story-display havde white-space: pre-wrap. Det faar browseren til ogsaa
+   at gengive linjeskift og indrykning fra selve HTML-kilden, saa der stod
+   et tomt felt over og under teksten. Selve historieteksten skrives altid
+   ind i #story-text-content, saa pre-wrap hoerer hjemme dér.
+   --------------------------------------------------------------------- */
+#story-display {
+    white-space: normal;
+}
+#story-text-content,
+#narrative-generated-story {
+    white-space: pre-wrap;
+}
+
+/* Boksen skal ikke reservere hoejde, foer der er en historie at vise. */
+#story-display:not(:has(#story-text-content:not(:empty))) {
+    min-height: 0;
+}
+
+/* ---------------------------------------------------------------------
+   12. AFKRYDSNINGSFELTER I RAEKKER
+   Selve feltet er 24x24 (WCAG-minimum), men hele raekken goeres klikbar,
+   saa den samlede flade bliver nem at ramme med en finger.
+   --------------------------------------------------------------------- */
+.remember-me,
+.checkbox-group label,
+.element-item {
+    min-height: var(--tap-target);
+}
+.remember-me {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+.remember-me label {
+    flex: 1;
+    padding: var(--space-2) 0;
+    cursor: pointer;
 }

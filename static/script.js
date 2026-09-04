@@ -309,10 +309,10 @@ function trackGAEvent(action, category, label, value) {
     // (Den hedder 'narrativeGeneratedStory' i din nuværende JS, svarer til #narrative-generated-story i HTML)
 
     // === Variabler for Skriftstørrelseskontrol ===
-    const DEFAULT_FONT_SIZE_PX = 16; // Standard skriftstørrelse i pixels
-    const FONT_SIZE_STEP_PX = 1;   // Hvor meget skriftstørrelsen ændres pr. klik
-    const MIN_FONT_SIZE_PX = 10;   // Minimum tilladt skriftstørrelse
-    const MAX_FONT_SIZE_PX = 30;   // Maksimum tilladt skriftstørrelse
+    const DEFAULT_FONT_SIZE_PX = 19; // Standard skriftstørrelse i pixels
+    const FONT_SIZE_STEP_PX = 2;   // Hvor meget skriftstørrelsen ændres pr. klik
+    const MIN_FONT_SIZE_PX = 14;   // Minimum tilladt skriftstørrelse
+    const MAX_FONT_SIZE_PX = 34;   // Maksimum tilladt skriftstørrelse
 
     let currentStoryDisplayFontSize = DEFAULT_FONT_SIZE_PX;
     let currentNarrativeStoryFontSize = DEFAULT_FONT_SIZE_PX;

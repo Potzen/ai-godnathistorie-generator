@@ -25,6 +25,9 @@
     {% block head %}{% endblock %}
 </head>
 <body>
+    {# Lader tastaturbrugere springe navigationen over og gaa direkte til
+       indholdet. Ses foerst naar den faar fokus. #}
+    <a href="#hovedindhold" class="skip-link">Spring til indhold</a>
     <header>
         <div class="logo-container">
             <a href="{{ url_for('main.index') }}">
@@ -34,10 +37,13 @@
                 </picture>
             </a>
         </div>
-        <nav class="site-nav">
-            <a href="{{ url_for('main.hygge') }}" class="nav-link {% if request.endpoint == 'main.hygge' %}active{% endif %}">Hygge</a>
-            <a href="{{ url_for('main.skole') }}" class="nav-link {% if request.endpoint == 'main.skole' %}active{% endif %}">Skole</a>
-            <a href="{{ url_for('main.stoette') }}" class="nav-link {% if request.endpoint == 'main.stoette' %}active{% endif %}">Støtte</a>
+        <nav class="site-nav" aria-label="Hovedmenu">
+            <a href="{{ url_for('main.hygge') }}" class="nav-link {% if request.endpoint == 'main.hygge' %}active{% endif %}"
+               {% if request.endpoint == 'main.hygge' %}aria-current="page"{% endif %}>Hygge</a>
+            <a href="{{ url_for('main.skole') }}" class="nav-link {% if request.endpoint == 'main.skole' %}active{% endif %}"
+               {% if request.endpoint == 'main.skole' %}aria-current="page"{% endif %}>Skole</a>
+            <a href="{{ url_for('main.stoette') }}" class="nav-link {% if request.endpoint == 'main.stoette' %}active{% endif %}"
+               {% if request.endpoint == 'main.stoette' %}aria-current="page"{% endif %}>Støtte</a>
         </nav>
         <div class="user-status">
             {% if current_user.is_authenticated %}
@@ -49,7 +55,7 @@
         </div>
     </header>
 
-    <main>
+    <main id="hovedindhold">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 <div class="flash-messages-container">

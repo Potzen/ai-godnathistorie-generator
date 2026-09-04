@@ -134,6 +134,18 @@
             <div id="audio-error" class="feedback-status error"></div>
         </div>
     </div>
+    {# Laesekontrollerne fandtes allerede i skole.js med lagring i
+       localStorage, men knapperne manglede i HTML - netop paa den side
+       hvor barnet oever laesning. #}
+    <div class="reading-controls" role="group" aria-label="Justér tekstens størrelse">
+        <span class="reading-controls-label" id="reading-controls-label">Tekststørrelse</span>
+        <button type="button" id="decrease-font-button" class="utility-button font-button"
+                aria-describedby="reading-controls-label" title="Gør teksten mindre">A&minus;</button>
+        <button type="button" id="increase-font-button" class="utility-button font-button"
+                aria-describedby="reading-controls-label" title="Gør teksten større">A+</button>
+        <button type="button" id="reset-font-button" class="utility-button font-button"
+                aria-describedby="reading-controls-label" title="Tilbage til normal størrelse">Nulstil</button>
+    </div>
     <div id="story-display">
         <div id="story-loading-indicator" class="hidden">
             <p>Historien genereres... Vent venligst.</p>

@@ -173,10 +173,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // === Font size constants ===
-    const DEFAULT_FONT_SIZE_PX = 16;
-    const FONT_SIZE_STEP_PX = 1;
-    const MIN_FONT_SIZE_PX = 10;
-    const MAX_FONT_SIZE_PX = 30;
+    const DEFAULT_FONT_SIZE_PX = 19;
+    const FONT_SIZE_STEP_PX = 2;
+    const MIN_FONT_SIZE_PX = 14;
+    const MAX_FONT_SIZE_PX = 34;
     const NARRATIVE_STORY_FONT_KEY = 'narrativeStoryFontSize';
 
     let currentNarrativeStoryFontSize = DEFAULT_FONT_SIZE_PX;

@@ -123,10 +123,10 @@ function trackGAEvent(action, category, label, value) {
 }
 
 // === Font Size Controls ===
-const DEFAULT_FONT_SIZE_PX = 16;
-const FONT_SIZE_STEP_PX = 1;
-const MIN_FONT_SIZE_PX = 10;
-const MAX_FONT_SIZE_PX = 30;
+const DEFAULT_FONT_SIZE_PX = 19;
+const FONT_SIZE_STEP_PX = 2;
+const MIN_FONT_SIZE_PX = 14;
+const MAX_FONT_SIZE_PX = 34;
 
 let currentStoryDisplayFontSize = DEFAULT_FONT_SIZE_PX;
 const STORY_DISPLAY_FONT_KEY = 'storyDisplayFontSize';
