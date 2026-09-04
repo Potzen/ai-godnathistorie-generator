@@ -2,6 +2,18 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
+    <!-- Uden viewport-tagget behandler mobilbrowsere siden som 980px bred og
+         zoomer ud, saa alle @media-regler i style.css aldrig traeder i kraft.
+         Appen bruges paa tablets i klasselokalet, saa det er afgoerende. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#4DB6AC">
+    <!-- Fonte hentes her i stedet for via @import i style.css. Et @import
+         kan foerst starte, naar style.css er hentet og parset, hvilket
+         forsinker foerste tekstvisning maerkbart. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,400;0,6..12,700;1,6..12,400&family=Poppins:wght@500;700&display=swap">
+    <meta name="description" content="Log ind paa Read Me A Story.">
     <title>Log ind med E-mail - Read Me A Story</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
@@ -112,7 +124,10 @@
             {# Viser ikke login/logout status her, da det er en login-side #}
         </div>
         <div class="logo-container" style="text-align: center; margin-bottom: 10px;">
-            <a href="{{ url_for('main.index') }}"><img src="{{ url_for('static', filename='images/logo.jpg') }}" alt="Read Me A Story Logo" id="app-logo" style="max-width: 200px;"></a>
+            <a href="{{ url_for('main.index') }}"><picture>
+                    <source srcset="{{ url_for('static', filename='images/logo-500.webp') }}" type="image/webp">
+                    <img src="{{ url_for('static', filename='images/logo-500.jpg') }}" alt="Read Me A Story Logo" id="app-logo" width="500" height="500" style="max-width: 200px;">
+                </picture></a>
         </div>
         {# Ingen H1 her for en mere fokuseret login-oplevelse, titlen er i <title> #}
         <nav style="text-align: center; margin-top:10px;">

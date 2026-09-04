@@ -1,510 +1,142 @@
 // Fil: static/modules/api_client.js
+//
+// Alle kald til backend'en. Tidligere gentog hver funktion den samme ~25
+// linjers fetch- og fejlhaandtering; den ligger nu ét sted i request().
 
 /**
- * Sender data til backend for at generere en historie.
- * @param {object} storyData - Objektet der indeholder alle input til historiegenerering.
- * @returns {Promise<object>} Et promise der resolver med JSON-svar fra serveren.
- * @throws {Error} Kaster en fejl hvis netværksrespons ikke er ok, eller ved andre fejl.
+ * Udfoerer et kald til backend'en og haandterer fejl ensartet.
+ *
+ * @param {string} url - Endepunktet.
+ * @param {object} [options]
+ * @param {string} [options.method='POST'] - HTTP-metode.
+ * @param {object} [options.body] - Sendes som JSON. Udelades ved GET/DELETE.
+ * @param {string} [options.label='Serverfejl'] - Tekst der indleder fejlbeskeden.
+ * @param {boolean} [options.raw=false] - Returnér hele Response i stedet for JSON
+ *                                        (bruges til lydstreaming).
+ * @returns {Promise<object|Response>}
+ * @throws {Error} Hvis serveren svarer med en fejlkode.
  */
-export async function generateStoryApi(storyData) {
-    console.log("DEBUG: api_client.js - generateStoryApi modtog storyData:", JSON.stringify(storyData, null, 2));
-    console.log("api_client.js: generateStoryApi called with:", storyData);
-    const response = await fetch('/story/generate', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(storyData)
-    });
+async function request(url, { method = 'POST', body, label = 'Serverfejl', raw = false } = {}) {
+    const init = { method };
+    if (body !== undefined) {
+        init.headers = { 'Content-Type': 'application/json' };
+        init.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(url, init);
 
     if (!response.ok) {
-        let errorMsg = `Serverfejl under historiegenerering (${response.status})`;
+        let message = `${label} (${response.status})`;
         try {
-            // Prøv at parse en JSON fejlbesked fra serveren
-            const errorData = await response.json();
-            errorMsg = errorData.error || errorData.story || `${errorMsg} ${response.statusText || ''}`;
-        } catch (e) {
-            // Hvis JSON parsing fejler, brug den rå tekstbesked
-            const textError = await response.text();
-            errorMsg += ` ${response.statusText || textError || '(ukendt serverfejl)'}`;
+            const data = await response.json();
+            // Nogle endepunkter lægger fejlteksten i 'story' i stedet for 'error'.
+            message = data.error || data.story || message;
+        } catch {
+            message = `${message} ${response.statusText || ''}`.trim();
         }
-        console.error("api_client.js: Server error in generateStoryApi:", errorMsg);
-        throw new Error(errorMsg);
+        throw new Error(message);
     }
 
-    const result = await response.json();
-    console.log("api_client.js: Story data received from server:", result);
-    return result;
+    return raw ? response : response.json();
 }
 
-/**
- * Sender historietekst til backend for at generere et billede.
- * @param {string} storyText - Den aktuelle historietekst.
- * @returns {Promise<object>} Et promise der resolver med JSON-svar fra serveren (forventer image_url eller error).
- * @throws {Error} Kaster en fejl hvis netværksrespons ikke er ok, eller ved andre fejl.
- */
-export async function generateImageApi(dataToSend) { // Modtager nu et helt objekt
-    console.log("api_client.js: generateImageApi called with data:", dataToSend);
-    const response = await fetch('/story/generate_image_from_story', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(dataToSend) // Sender hele objektet videre
+// --- Historier ---
+
+export const generateStoryApi = (storyData) =>
+    request('/story/generate', { body: storyData, label: 'Serverfejl under historiegenerering' });
+
+export const generateLixStoryApi = (lixStoryData) =>
+    request('/story/generate_lix', { body: lixStoryData, label: 'Serverfejl under Læsehest-generering' });
+
+export const saveHojtlasningStoryApi = (storyData) =>
+    request('/story/save_to_logbook', { body: storyData, label: 'Serverfejl ved gemning' });
+
+export const generateQuizApi = (story_content, lix_score) =>
+    request('/story/generate_quiz', {
+        body: { story_content, lix_score },
+        label: 'Serverfejl ved quiz-generering',
     });
 
-    if (!response.ok) {
-        let errorMsg = `Serverfejl under billedgenerering (${response.status})`;
-        try {
-            const errorData = await response.json();
-            errorMsg = errorData.error || `${errorMsg} ${response.statusText || ''}`;
-        } catch (e) {
-            const textError = await response.text();
-            errorMsg += ` ${response.statusText || textError || '(ukendt serverfejl)'}`;
-        }
-        console.error("api_client.js: Server error in generateImageApi:", errorMsg);
-        throw new Error(errorMsg);
-    }
-
-    const result = await response.json();
-    console.log("api_client.js: Image data received from server:", result);
-    return result;
-}
-
-/**
- * Sender det narrative fokus til backend for at få forslag til karaktertræk.
- * @param {string} narrativeFocus - Brugerens input for historiens centrale tema/udfordring.
- * @returns {Promise<object>} Et promise der resolver med JSON-svar fra serveren (forventer forslag eller error).
- * @throws {Error} Kaster en fejl hvis netværksrespons ikke er ok, eller ved andre fejl.
- */
-export async function suggestCharacterTraitsApi(narrativeFocus) {
-    console.log("api_client.js: suggestCharacterTraitsApi called with focus:", narrativeFocus);
-    const response = await fetch('/narrative/suggest_character_traits', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ narrative_focus: narrativeFocus })
+// Returnerer hele Response-objektet, saa lyden kan streames.
+export const generateAudioApi = (storyText, voiceName) =>
+    request('/story/generate_audio', {
+        body: { text: storyText, voice_name: voiceName },
+        label: 'Serverfejl under lydgenerering',
+        raw: true,
     });
 
-    if (!response.ok) {
-        let errorMsg = `Serverfejl under forslag til karaktertræk (${response.status})`;
-        try {
-            const errorData = await response.json();
-            errorMsg = errorData.error || `${errorMsg} ${response.statusText || ''}`;
-        } catch (e) {
-            const textError = await response.text();
-            errorMsg += ` ${response.statusText || textError || '(ukendt serverfejl)'}`;
-        }
-        console.error("api_client.js: Server error in suggestCharacterTraitsApi:", errorMsg);
-        throw new Error(errorMsg);
-    }
+// --- Billeder ---
 
-    const result = await response.json();
-    console.log("api_client.js: Character trait suggestions received from server:", result);
-    return result;
-}
+export const generateImageApi = (dataToSend) =>
+    request('/story/generate_image_from_story', { body: dataToSend, label: 'Serverfejl under billedgenerering' });
 
-/**
- * Sender alle data for en narrativ historie til backend for generering.
- * @param {object} narrativeData - Objektet der indeholder alle input til den narrative historie.
- * @returns {Promise<object>} Et promise der resolver med JSON-svar fra serveren (forventer historie, titel, spørgsmål eller error).
- * @throws {Error} Kaster en fejl hvis netværksrespons ikke er ok, eller ved andre fejl.
- */
-export async function generateNarrativeStoryApi(narrativeData) {
-    console.log("api_client.js: generateNarrativeStoryApi called with data:", narrativeData);
-    const response = await fetch('/narrative/generate_narrative_story', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(narrativeData)
+export const generateProblemImageApi = (narrativeData) =>
+    request('/narrative/generate_problem_image', { body: narrativeData, label: 'Serverfejl under billedgenerering' });
+
+export const generateNarrativeStoryImageApi = (narrativeData) =>
+    request('/narrative/generate_story_image', { body: narrativeData, label: 'Serverfejl under billedgenerering' });
+
+// --- Narrativ Stoette ---
+
+export const suggestCharacterTraitsApi = (narrativeFocus) =>
+    request('/narrative/suggest_character_traits', {
+        body: { narrative_focus: narrativeFocus },
+        label: 'Serverfejl ved forslag til karaktertræk',
     });
 
-    if (!response.ok) {
-        let errorMsg = `Serverfejl under generering af narrativ historie (${response.status})`;
-        try {
-            const errorData = await response.json();
-            errorMsg = errorData.error || errorData.story || `${errorMsg} ${response.statusText || ''}`;
-        } catch (e) {
-            const textError = await response.text();
-            errorMsg += ` ${response.statusText || textError || '(ukendt serverfejl)'}`;
-        }
-        console.error("api_client.js: Server error in generateNarrativeStoryApi:", errorMsg);
-        throw new Error(errorMsg);
-    }
+export const generateNarrativeStoryApi = (narrativeData) =>
+    request('/narrative/generate_narrative_story', { body: narrativeData, label: 'Serverfejl under historiegenerering' });
 
-    const result = await response.json();
-    console.log("api_client.js: Narrative story data received from server:", result);
-    return result;
-}
+export const getGuidingQuestionsApi = (contextData) =>
+    request('/narrative/get_guiding_questions', { body: contextData, label: 'Serverfejl ved hentning af spørgsmål' });
 
-/**
- * Henter vejledende refleksionsspørgsmål fra backend.
- * @param {object} contextData - Objekt indeholdende final_story_title, final_story_content, narrative_brief, og original_user_inputs.
- * @returns {Promise<object>} Et promise der resolver med JSON-svar fra serveren (forventer reflection_questions eller error).
- * @throws {Error} Kaster en fejl hvis netværksrespons ikke er ok, eller ved andre fejl.
- */
-export async function getGuidingQuestionsApi(contextData) {
-    console.log("api_client.js: getGuidingQuestionsApi called with context data:", contextData);
-    const response = await fetch('/narrative/get_guiding_questions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(contextData)
+export const analyzeStoryForLogbookApi = (storyContent) =>
+    request('/narrative/analyze-for-logbook', {
+        body: { story_content: storyContent },
+        label: 'Serverfejl under analyse',
     });
 
-    if (!response.ok) {
-        let errorMsg = `Serverfejl under hentning af refleksionsspørgsmål (${response.status})`;
-        try {
-            const errorData = await response.json();
-            errorMsg = errorData.error || `${errorMsg} ${response.statusText || ''}`;
-        } catch (e) {
-            const textError = await response.text();
-            errorMsg += ` ${response.statusText || textError || '(ukendt serverfejl)'}`;
-        }
-        console.error("api_client.js: Server error in getGuidingQuestionsApi:", errorMsg);
-        throw new Error(errorMsg);
-    }
+// --- Logbog ---
 
-    const result = await response.json();
-    console.log("api_client.js: Guiding questions received from server:", result);
-    return result;
-}
+export const saveLogbookEntryApi = (storyId, dataToSave) =>
+    request(`/narrative/save-log-entry/${storyId}`, { body: dataToSave, label: 'Serverfejl ved gemning af logbogsindlæg' });
 
-/**
- * Sender historietekst og stemmevalg til backend for at generere lyd.
- * @param {string} storyText - Den historie, der skal læses højt.
- * @param {string} voiceName - Navnet på den valgte stemme.
- * @returns {Promise<Response>} Et promise der resolver med den streamede lydrespons.
- * @throws {Error} Kaster en fejl hvis netværksrespons ikke er ok, eller ved andre fejl (f.eks. 403 Forbidden).
- */
-export async function generateAudioApi(storyText, voiceName) {
-    console.log(`api_client.js: generateAudioApi called for text (first 50 chars): '${storyText.substring(0, 50)}...' with voice: ${voiceName}`);
-    const response = await fetch('/story/generate_audio', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ text: storyText, voice_name: voiceName })
-    });
+export const filterLogbookApi = (filterData) =>
+    request('/narrative/api/logbook/filter', { body: filterData, label: 'Serverfejl ved filtrering' });
 
-    if (!response.ok) {
-        let errorMsg = `Serverfejl under lydgenerering (${response.status})`;
-        try {
-            const errorData = await response.json();
-            errorMsg = errorData.error || `${errorMsg} ${response.statusText || ''}`;
-        } catch (e) {
-            const textError = await response.text();
-            errorMsg += ` ${response.statusText || textError || '(ukendt serverfejl)'}`;
-        }
-        console.error("api_client.js: Server error in generateAudioApi:", errorMsg);
-        throw new Error(errorMsg);
-    }
+export const updateNoteApi = (storyId, notes) =>
+    request(`/narrative/api/notes/update/${storyId}`, { body: { notes }, label: 'Serverfejl ved gemning af note' });
 
-    console.log("api_client.js: Audio stream response received.");
-    return response; // Returnerer hele respons-objektet for streaming
-}
+export const listContinuableStoriesApi = () =>
+    request('/narrative/api/list-stories', { method: 'GET', label: 'Serverfejl ved hentning af historier' });
 
-/**
- * Sender data til backend for at generere en LIX-styret historie.
- * @param {object} lixStoryData - Objektet der indeholder alle input til Læsehesten.
- * @returns {Promise<object>} Et promise der resolver med JSON-svar fra serveren.
- * @throws {Error} Kaster en fejl hvis netværksrespons ikke er ok.
- */
-export async function generateLixStoryApi(lixStoryData) {
-    console.log("api_client.js: generateLixStoryApi called with:", lixStoryData);
-    const response = await fetch('/story/generate_lix', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(lixStoryData)
-    });
+export const deleteStoryApi = (storyId) =>
+    request(`/narrative/api/delete/${storyId}`, { method: 'DELETE', label: 'Serverfejl ved sletning' });
 
-    if (!response.ok) {
-        let errorMsg = `Serverfejl under generering af Læsehest-historie (${response.status})`;
-        try {
-            const errorData = await response.json();
-            errorMsg = errorData.error || `${errorMsg} - ${response.statusText}`;
-        } catch (e) {
-            errorMsg += ` - ${response.statusText}`;
-        }
-        console.error("api_client.js: Server error in generateLixStoryApi:", errorMsg);
-        throw new Error(errorMsg);
-    }
+// --- Barneprofiler ---
 
-    const result = await response.json();
-    console.log("api_client.js: LIX Story data received from server:", result);
-    return result;
-}
+export const saveChildProfileApi = (profileData) =>
+    request('/narrative/api/profile/save', { body: profileData, label: 'Serverfejl ved gemning af profil' });
 
-// ... eksisterende kode i api_client.js
-// Sørg for at denne funktion tilføjes til filen.
-// Den kan placeres efter den sidste eksisterende funktion.
+export const listChildProfilesApi = () =>
+    request('/narrative/api/profiles/list', { method: 'GET', label: 'Serverfejl ved hentning af profiler' });
 
-export async function analyzeStoryForLogbookApi(storyContent) {
-    console.log("api_client.js: analyzeStoryForLogbookApi called.");
-    const response = await fetch('/narrative/analyze-for-logbook', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ story_content: storyContent })
-    });
+export const deleteChildProfileApi = (profileId) =>
+    request(`/narrative/api/profile/delete/${profileId}`, { method: 'DELETE', label: 'Serverfejl ved sletning af profil' });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Serverfejl med ugyldigt svarformat." }));
-        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
-    }
+// --- Klasselokale ---
 
-    return await response.json();
-}
+export const saveQuizResultApi = (data) =>
+    request('/classroom/quiz_result', { body: data, label: 'Serverfejl ved gemning af quizresultat' });
 
-export async function saveLogbookEntryApi(storyId, dataToSave) {
-    console.log(`api_client.js: saveLogbookEntryApi called for story ID: ${storyId}`);
-    const response = await fetch(`/narrative/save-log-entry/${storyId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(dataToSave)
-    });
+export const listClassroomsApi = () =>
+    request('/classroom/', { method: 'GET', label: 'Serverfejl ved hentning af klasser' });
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved gem." }));
-        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
-    }
+export const createClassroomApi = (name) =>
+    request('/classroom/create', { body: { name }, label: 'Serverfejl ved oprettelse af klasse' });
 
-    return await response.json();
-}
+export const listClassroomStudentsApi = (classroomId) =>
+    request(`/classroom/${classroomId}/students`, { method: 'GET', label: 'Serverfejl ved hentning af elever' });
 
-export async function filterLogbookApi(filterData) {
-    console.log("api_client.js: filterLogbookApi called with:", filterData);
-    // VIGTIGT: Sørg for at URL'en matcher den route, vi har defineret i narrative_routes.py
-    const response = await fetch('/narrative/api/logbook/filter', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(filterData)
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved filtrering." }));
-        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
-    }
-
-    return await response.json();
-}
-
-export async function updateNoteApi(storyId, notes) {
-    console.log(`api_client.js: updateNoteApi called for story ID: ${storyId}`);
-    // VIGTIGT: Sørg for at URL'en matcher den route, vi har defineret i narrative_routes.py
-    const response = await fetch(`/narrative/api/notes/update/${storyId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ notes: notes })
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved opdatering af note." }));
-        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
-    }
-
-    return await response.json();
-}
-
-export async function listContinuableStoriesApi() {
-    console.log("api_client.js: listContinuableStoriesApi called.");
-    const response = await fetch('/narrative/api/list-stories', {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved hentning af historieliste." }));
-        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
-    }
-
-    return await response.json();
-}
-
-export async function generateProblemImageApi(narrativeData) {
-    console.log("api_client.js: generateProblemImageApi called.");
-    const response = await fetch('/narrative/generate_problem_image', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(narrativeData)
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved generering af problem-billede." }));
-        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
-    }
-
-    return await response.json();
-}
-
-export async function deleteStoryApi(storyId) {
-    console.log(`api_client.js: deleteStoryApi called for story ID: ${storyId}`);
-    const response = await fetch(`/narrative/api/delete/${storyId}`, {
-        method: 'DELETE',
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved sletning." }));
-        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
-    }
-
-    return await response.json();
-}
-
-// potzen/ai-godnathistorie-generator/ai-godnathistorie-generator-5ffa7696e20a294c8648c9db4a2cb60980e2a54e/static/modules/api_client.js
-export async function saveChildProfileApi(profileData) {
-    console.log("api_client.js: saveChildProfileApi called with data:", profileData);
-    const response = await fetch('/narrative/api/profile/save', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(profileData)
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved gemning af profil." }));
-        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
-    }
-
-    return await response.json();
-}
-
-export async function listChildProfilesApi() {
-    console.log("api_client.js: listChildProfilesApi called.");
-    const response = await fetch('/narrative/api/profiles/list', {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved hentning af profilliste." }));
-        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
-    }
-
-    return await response.json();
-}
-
-// potzen/ai-godnathistorie-generator/ai-godnathistorie-generator-5ffa7696e20a294c8648c9db4a2cb60980e2a54e/static/modules/api_client.js
-export async function deleteChildProfileApi(profileId) {
-    console.log(`api_client.js: deleteChildProfileApi called for profile ID: ${profileId}`);
-    const response = await fetch(`/narrative/api/profile/delete/${profileId}`, {
-        method: 'DELETE',
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved sletning af profil." }));
-        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
-    }
-
-    return await response.json();
-}
-
-export async function saveHojtlasningStoryApi(storyData) {
-    console.log("api_client.js: saveHojtlasningStoryApi called with:", storyData);
-    const response = await fetch('/story/save_to_logbook', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(storyData)
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved gem til logbog." }));
-        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
-    }
-
-    return await response.json();
-}
-
-export async function generateNarrativeStoryImageApi(narrativeData) {
-    console.log("api_client.js: generateNarrativeStoryImageApi called with data:", narrativeData);
-    const response = await fetch('/narrative/generate_story_image', { // Det nye endepunkt
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(narrativeData)
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Serverfejl ved generering af narrativt billede." }));
-        throw new Error(errorData.error || `Serverfejl: ${response.status}`);
-    }
-
-    return await response.json();
-}
-
-export async function saveQuizResultApi(data) {
-    const response = await fetch('/classroom/quiz_result', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Serverfejl.' }));
-        throw new Error(err.error || `Serverfejl: ${response.status}`);
-    }
-    return await response.json();
-}
-
-export async function listClassroomsApi() {
-    const response = await fetch('/classroom/', { headers: { 'Content-Type': 'application/json' } });
-    if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error(e.error || 'Serverfejl'); }
-    return await response.json();
-}
-
-export async function createClassroomApi(name) {
-    const response = await fetch('/classroom/create', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name })
-    });
-    if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error(e.error || 'Serverfejl'); }
-    return await response.json();
-}
-
-export async function listClassroomStudentsApi(classroomId) {
-    const response = await fetch(`/classroom/${classroomId}/students`, { headers: { 'Content-Type': 'application/json' } });
-    if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error(e.error || 'Serverfejl'); }
-    return await response.json();
-}
-
-export async function joinClassroomApi(inviteCode) {
-    const response = await fetch('/classroom/join', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ invite_code: inviteCode })
-    });
-    if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error(e.error || 'Serverfejl'); }
-    return await response.json();
-}
-
-export async function generateQuizApi(story_content, lix_score) {
-    console.log("api_client.js: Anmoder om quiz...");
-    const response = await fetch('/story/generate_quiz', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ story_content, lix_score })
-    });
-    if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Serverfejl ved quiz-generering.");
-    }
-    return await response.json();
-}
+export const joinClassroomApi = (inviteCode) =>
+    request('/classroom/join', { body: { invite_code: inviteCode }, label: 'Serverfejl ved tilmelding' });

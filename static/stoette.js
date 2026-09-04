@@ -3,6 +3,15 @@
 
 import { generateNarrativeStoryApi, suggestCharacterTraitsApi, getGuidingQuestionsApi, analyzeStoryForLogbookApi, saveLogbookEntryApi, listContinuableStoriesApi, generateNarrativeStoryImageApi, generateProblemImageApi, listChildProfilesApi, saveChildProfileApi, deleteChildProfileApi } from './modules/api_client.js';
 
+// Debug-logning er slaaet fra i produktion. Kaldene nedenfor dumpede hele
+// dataobjekter - herunder den narrative analyse af barnet - til browserens
+// konsol ved hver handling. Saet 'rmas_debug' i localStorage for at slaa dem
+// til under udvikling:  localStorage.setItem('rmas_debug', '1')
+const DEBUG = (() => {
+    try { return localStorage.getItem('rmas_debug') === '1'; } catch { return false; }
+})();
+const debugLog = (...args) => { if (DEBUG) console.log(...args); };
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // === Module-level state ===
@@ -38,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("FEJL: Tooltip HTML elementerne blev ikke fundet!");
             return;
         }
-        console.log("showTooltip FORSØGER for:", iconElement.dataset.tooltipId);
+        debugLog("showTooltip FORSØGER for:", iconElement.dataset.tooltipId);
 
         tooltipTextElement.textContent = text;
 
@@ -51,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const tooltipWidth = tooltipElement.offsetWidth;
         const tooltipHeight = tooltipElement.offsetHeight;
-        console.log("Tooltip dimensioner målt: Bredde =", tooltipWidth, "Højde =", tooltipHeight);
+        debugLog("Tooltip dimensioner målt: Bredde =", tooltipWidth, "Højde =", tooltipHeight);
 
         if (tooltipWidth === 0 && tooltipHeight === 0 && text.length > 0) {
             console.warn("ADVARSEL: Tooltip har stadig 0x0 dimensioner, selvom display='block' og visibility='hidden' blev sat. Tjek CSS for #info-tooltip for konflikter (f.eks. !important). Tekstlængde:", text.length);
@@ -71,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tooltipElement.style.visibility = 'visible';
         tooltipElement.classList.add('visible');
 
-        console.log("Tooltip SKULLE NU VÆRE SYNLIG OG POSITIONERET ved: top=", Math.round(top), "left=", Math.round(left));
+        debugLog("Tooltip SKULLE NU VÆRE SYNLIG OG POSITIONERET ved: top=", Math.round(top), "left=", Math.round(left));
         currentVisibleTooltipIcon = iconElement;
     }
 
@@ -84,13 +93,13 @@ document.addEventListener('DOMContentLoaded', () => {
             tooltipElement.style.left = '';
             tooltipElement.style.top = '';
             currentVisibleTooltipIcon = null;
-            console.log("Tooltip skjult.");
+            debugLog("Tooltip skjult.");
         }
     }
 
     function initializeInfoIcons() {
         const infoIcons = document.querySelectorAll('.info-icon');
-        console.log(`Fandt ${infoIcons.length} .info-icon elementer.`);
+        debugLog(`Fandt ${infoIcons.length} .info-icon elementer.`);
 
         if (!tooltipElement) {
             console.error("FEJL: Det primære tooltip-element (#info-tooltip) blev ikke fundet.");
@@ -103,13 +112,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const tooltipId = icon.dataset.tooltipId;
                 const textToShow = tooltipTexts[tooltipId];
-                console.log("Info-ikon klikket. ID:", tooltipId);
+                debugLog("Info-ikon klikket. ID:", tooltipId);
 
                 if (currentVisibleTooltipIcon === icon) {
-                    console.log("Samme ikon klikket, skjuler aktiv tooltip.");
+                    debugLog("Samme ikon klikket, skjuler aktiv tooltip.");
                     hideTooltip();
                 } else if (textToShow) {
-                    console.log("Viser ny tooltip for:", tooltipId);
+                    debugLog("Viser ny tooltip for:", tooltipId);
                     showTooltip(icon, textToShow);
                     clickOpensTooltip = true;
                 } else {
@@ -122,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tooltipCloseButton) {
             tooltipCloseButton.addEventListener('click', (event) => {
                 event.stopPropagation();
-                console.log("Tooltip luk-knap klikket.");
+                debugLog("Tooltip luk-knap klikket.");
                 hideTooltip();
             });
         }
@@ -135,14 +144,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (tooltipElement && tooltipElement.classList.contains('visible')) {
                 if (!tooltipElement.contains(event.target)) {
-                    console.log("Klik udenfor aktiv tooltip. Skjuler tooltip.");
+                    debugLog("Klik udenfor aktiv tooltip. Skjuler tooltip.");
                     hideTooltip();
                 }
             }
         });
 
         if (infoIcons.length > 0) {
-            console.log("Info ikon event listeners initialiseret (version 3).");
+            debugLog("Info ikon event listeners initialiseret (version 3).");
         }
     }
 
@@ -150,14 +159,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function trackGAEvent(action, category, label, value) {
         const consentStatus = localStorage.getItem('cookieConsent');
         if (consentStatus === 'accepted' && typeof gtag === 'function') {
-            console.log(`GA Event: Action='${action}', Category='${category}', Label='${label}'` + (value !== undefined ? `, Value=${value}` : ''));
+            debugLog(`GA Event: Action='${action}', Category='${category}', Label='${label}'` + (value !== undefined ? `, Value=${value}` : ''));
             gtag('event', action, {
                 'event_category': category,
                 'event_label': label,
                 'value': value
             });
         } else if (consentStatus !== 'accepted') {
-            console.log(`GA Event not sent (consent not accepted): Action='${action}', Category='${category}', Label='${label}'`);
+            debugLog(`GA Event not sent (consent not accepted): Action='${action}', Category='${category}', Label='${label}'`);
         } else if (typeof gtag !== 'function') {
             console.warn(`GA Event not sent (gtag function not found): Action='${action}', Category='${category}', Label='${label}'`);
         }
@@ -290,18 +299,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (this.value === 'other') {
                         otherInputElement.classList.remove('hidden');
                         otherInputElement.focus();
-                        console.log(`"Andet..." valgt for ${this.id}. Viser inputfelt: ${otherInputId}`);
+                        debugLog(`"Andet..." valgt for ${this.id}. Viser inputfelt: ${otherInputId}`);
                     } else {
                         otherInputElement.classList.add('hidden');
                         otherInputElement.value = '';
-                        console.log(`Anden option end "Andet..." valgt for ${this.id}. Skjuler inputfelt: ${otherInputId}`);
+                        debugLog(`Anden option end "Andet..." valgt for ${this.id}. Skjuler inputfelt: ${otherInputId}`);
                     }
                 } else {
                     console.error(`Could not find "other" input element with ID: ${otherInputId} for select: ${this.id}`);
                 }
             });
         });
-        console.log("Dynamic select 'other...' functionality initialized.");
+        debugLog("Dynamic select 'other...' functionality initialized.");
     } else {
         console.warn("No dynamic select elements found. 'Other...' functionality will not be available.");
     }
@@ -362,7 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
         narrativeAddRelationButton.addEventListener('click', () => {
             const newGroup = createNarrativeRelationGroup();
             narrativeRelationsContainer.appendChild(newGroup);
-            console.log("New narrative relation group added.");
+            debugLog("New narrative relation group added.");
         });
 
         const initialNarrativeRelationRemoveButton = narrativeRelationsContainer.querySelector('.relation-group .initial-remove-button');
@@ -371,11 +380,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const parentGroup = e.target.closest('.relation-group');
                 if (parentGroup) {
                     parentGroup.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
-                    console.log("Initial narrative relation group fields cleared.");
+                    debugLog("Initial narrative relation group fields cleared.");
                 }
             });
         }
-        console.log("Dynamic narrative relations functionality initialized.");
+        debugLog("Dynamic narrative relations functionality initialized.");
     } else {
         console.warn("Add narrative relation button or container not found. Dynamic relations will not work.");
     }
@@ -436,7 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
         narrativeAddMainCharButton.addEventListener('click', () => {
             const newGroup = createNarrativeMainCharacterGroup();
             narrativeMainCharactersContainer.appendChild(newGroup);
-            console.log("New narrative main character group added.");
+            debugLog("New narrative main character group added.");
         });
     } else {
         console.warn("Add narrative main character button or container not found.");
@@ -491,10 +500,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 inputGroup.appendChild(newInput);
                 inputGroup.appendChild(removeButton);
                 container.appendChild(inputGroup);
-                console.log(`Generic input added to ${containerId} with name ${inputName}`);
+                debugLog(`Generic input added to ${containerId} with name ${inputName}`);
             });
         });
-        console.log("Generic add button functionality initialized.");
+        debugLog("Generic add button functionality initialized.");
     } else {
         console.warn("No generic add buttons found.");
     }
@@ -597,7 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (narrativeLengthSelect) data.length = narrativeLengthSelect.value;
         if (narrativeMoodSelect) data.mood = narrativeMoodSelect.value;
 
-        console.log("Collected All Narrative Data:", data);
+        debugLog("Collected All Narrative Data:", data);
         return data;
     }
 
@@ -824,12 +833,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const formData = new FormData(logbookForm);
             const dataToSave = Object.fromEntries(formData.entries());
-            console.log(`[DEBUG] Forsøger at gemme logbog for story_id: '${storyId}'. Fuld data:`, dataToSave);
-            console.log("Logbog: Sender data til server for at gemme:", dataToSave);
+            debugLog(`[DEBUG] Forsøger at gemme logbog for story_id: '${storyId}'. Fuld data:`, dataToSave);
+            debugLog("Logbog: Sender data til server for at gemme:", dataToSave);
 
             try {
                 const result = await saveLogbookEntryApi(storyId, dataToSave);
-                console.log("Server svar efter gem:", result);
+                debugLog("Server svar efter gem:", result);
 
                 if (result.success) {
                     trackGAEvent('save_to_logbook', 'Narrativ Støtte', `Story ID: ${storyId}`, null);
@@ -850,7 +859,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function triggerLogbookAnalysis(storyId, storyContent, rootStoryTitle) {
-        console.log("Logbog: Starter analyse for story ID:", storyId);
+        debugLog("Logbog: Starter analyse for story ID:", storyId);
         resetLogbookSection();
 
         if (!logbookSection || !logbookLoader || !logbookError || !logbookForm) {
@@ -863,7 +872,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const analysisData = await analyzeStoryForLogbookApi(storyContent);
-            console.log("Logbog: Analyse modtaget fra API:", analysisData);
+            debugLog("Logbog: Analyse modtaget fra API:", analysisData);
 
             if (analysisData.error) {
                 throw new Error(analysisData.error);
@@ -922,7 +931,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // === populateCharacterTraitFields ===
     function populateCharacterTraitFields(suggestions) {
-        console.log("populateCharacterTraitFields kaldt med forslag:", suggestions);
+        debugLog("populateCharacterTraitFields kaldt med forslag:", suggestions);
         const aiSuggestionClass = 'ai-suggested-input';
         let attemptedToFillProblemCharacter = false;
 
@@ -933,14 +942,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 element.addEventListener('input', () => element.classList.remove(aiSuggestionClass), { once: true });
                 return true;
             } else if (element && value && element.value.trim() !== '') {
-                console.log(`Skipped pre-filling ${element.id || 'element'} because it already has user input: "${element.value.trim()}"`);
+                debugLog(`Skipped pre-filling ${element.id || 'element'} because it already has user input: "${element.value.trim()}"`);
             }
             return false;
         }
 
         if (suggestions && suggestions.problem_character_suggestions) {
             const ps = suggestions.problem_character_suggestions;
-            console.log("Forsøger at anvende forslag til Problem-Karakter:", ps);
+            debugLog("Forsøger at anvende forslag til Problem-Karakter:", ps);
             if (Object.keys(ps).length > 0) {
                 attemptedToFillProblemCharacter = true;
                 setSimpleInput(narrativeProblemIdentityNameInput, ps.identity_name ? ps.identity_name[0] : null);
@@ -950,21 +959,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 setSimpleInput(narrativeProblemInfluenceInput, ps.influence_on_protagonist ? ps.influence_on_protagonist[0] : null);
             }
         } else {
-            console.log("Ingen forslag til Problem-Karakter modtaget i suggestions objektet.");
+            debugLog("Ingen forslag til Problem-Karakter modtaget i suggestions objektet.");
         }
 
         if (suggestions && suggestions.protagonist_character_suggestions) {
-            console.log("Forslag til Protagonist-Karakter modtaget, men vil IKKE blive anvendt.");
+            debugLog("Forslag til Protagonist-Karakter modtaget, men vil IKKE blive anvendt.");
         }
 
-        console.log("populateCharacterTraitFields udført. Forsøgte at udfylde problem-karakter:", attemptedToFillProblemCharacter);
+        debugLog("populateCharacterTraitFields udført. Forsøgte at udfylde problem-karakter:", attemptedToFillProblemCharacter);
         return attemptedToFillProblemCharacter;
     }
 
     // === Narrative suggest traits button ===
     if (narrativeSuggestTraitsButton) {
         narrativeSuggestTraitsButton.addEventListener('click', async () => {
-            console.log("Narrative 'Suggest Traits' button clicked.");
+            debugLog("Narrative 'Suggest Traits' button clicked.");
             const focusText = narrativeFocusInput ? narrativeFocusInput.value.trim() : "";
 
             if (!focusText) {
@@ -979,7 +988,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const suggestions = await suggestCharacterTraitsApi(focusText);
-                console.log("Forslag til karaktertræk modtaget fra API:", suggestions);
+                debugLog("Forslag til karaktertræk modtaget fra API:", suggestions);
 
                 if (suggestions && !suggestions.error) {
                     const attemptedProblemFill = populateCharacterTraitFields(suggestions);
@@ -999,14 +1008,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
 
                         if (actuallyFilledSomething) {
-                            console.log("AI har foreslået karaktertræk for Problem-Karakteren, og felter er opdateret.");
+                            debugLog("AI har foreslået karaktertræk for Problem-Karakteren, og felter er opdateret.");
                         } else if (attemptedProblemFill && !actuallyFilledSomething) {
-                            console.log("AI havde forslag til Problem-Karakteren, men alle relevante felter var allerede udfyldt eller matchede forslaget.");
+                            debugLog("AI havde forslag til Problem-Karakteren, men alle relevante felter var allerede udfyldt eller matchede forslaget.");
                         } else {
-                            console.log("Ingen forslag til Problem-Karakteren blev anvendt (muligvis ingen forslag fra AI).");
+                            debugLog("Ingen forslag til Problem-Karakteren blev anvendt (muligvis ingen forslag fra AI).");
                         }
                     } else {
-                        console.log("AI returnerede ingen forslag til Problem-Karakteren (attemptedProblemFill var false).");
+                        debugLog("AI returnerede ingen forslag til Problem-Karakteren (attemptedProblemFill var false).");
                     }
 
                 } else if (suggestions && suggestions.error) {
@@ -1148,7 +1157,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        console.log(`Strategi valgt: ${strategy}, Forælder ID: ${parentStoryId}`);
+        debugLog(`Strategi valgt: ${strategy}, Forælder ID: ${parentStoryId}`);
 
         if (narrativeGenerateStoryButton) narrativeGenerateStoryButton.disabled = true;
         strategyButtons.forEach(btn => btn.disabled = true);
@@ -1167,7 +1176,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // === executeNarrativeGeneration ===
     async function executeNarrativeGeneration(dataToSend) {
-        console.log("executeNarrativeGeneration: Starter med data:", dataToSend);
+        debugLog("executeNarrativeGeneration: Starter med data:", dataToSend);
         resetLogbookSection();
 
         const originalButtonText = narrativeGenerateStoryButton.textContent;
@@ -1181,7 +1190,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const result = await generateNarrativeStoryApi(dataToSend);
-            console.log("Svar modtaget fra server:", result);
+            debugLog("Svar modtaget fra server:", result);
             if (result.error) throw new Error(result.error);
 
             const eventLabel = dataToSend.continuation_strategy ? `Continuation: ${dataToSend.continuation_strategy}` : 'New Story';
@@ -1277,5 +1286,5 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isNaN(sz)) narrativeStoryEl.style.fontSize = sz + 'px';
     }
 
-    console.log("stoette.js: DOMContentLoaded initialization complete.");
+    debugLog("stoette.js: DOMContentLoaded initialization complete.");
 });
