@@ -1,8 +1,13 @@
-// Fil: static/hygge.js
+// Fil: static/hjemmelaesning.js
 // ES6 module for the /hygge page (Godnathistorier / Højtlæsning)
 import { generateStoryApi, generateAudioApi, generateImageApi, generateQuizApi, saveHojtlasningStoryApi } from './modules/api_client.js';
+import { visUgensFokus, opsaetLaesekvittering, visLaesekvittering } from './modules/skolekobling.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Broen til skolen. Fejler stille, hvis barnet ikke er i en klasse.
+    visUgensFokus();
+    opsaetLaesekvittering();
+
 
 // === Tooltip System ===
 const tooltipElement = document.getElementById('info-tooltip');
@@ -953,10 +958,12 @@ if (saveToLogbookButton) {
         saveToLogbookButton.disabled = true;
         saveToLogbookButton.textContent = 'Gemmer...';
         try {
-            const result = await saveHojtlasningStoryApi({ title, content });
-            if (result.success) trackGAEvent('save_to_logbook', 'Højtlæsning', `Story ID: ${result.story_id}`, null);
+            const result = await saveHojtlasningStoryApi({ title, content, source: 'Hjemmelæsning' });
+            if (result.success) trackGAEvent('save_to_logbook', 'Hjemmelæsning', `Story ID: ${result.story_id}`, null);
             saveToLogbookButton.textContent = 'Gemt!';
             saveToLogbookButton.style.backgroundColor = '#28a745';
+            // Nu hvor historien er gemt, giver det mening at spørge, om der blev læst.
+            visLaesekvittering(result.story_id);
         } catch (error) {
             console.error("Fejl ved gemning til logbog:", error);
             alert(`Kunne ikke gemme historien: ${error.message}`);

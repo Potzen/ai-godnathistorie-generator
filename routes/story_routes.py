@@ -13,6 +13,11 @@ from services.ai_service import (
     generate_quiz_for_story
 )
 from services.lix_service import calculate_lix
+from services.phonics_service import maal_fokus, normaliser_fokus, POSITION_NAVNE
+from services import wordbank_service
+from services.level_service import foreslaa_niveau
+from models import ClassroomStudent, QuizResult, WeeklyFocus
+from datetime import date
 from google.api_core.exceptions import InternalServerError
 
 story_bp = Blueprint('story', __name__, template_folder='../templates', static_folder='../static')
@@ -174,6 +179,90 @@ def generate_story():
     return jsonify(title=story_title, story=actual_story_content)
 
 
+def _ugens_fokus_for(user_id):
+    """Ugens fokus fra den klasse, eleven er tilmeldt. None hvis ingen.
+
+    Det er her differentieringen sker: læreren har sat ét fokus for hele
+    klassen, og hver elev får det med i sin egen tekst - på sit eget niveau.
+    """
+    klasser = [m.classroom_id for m in
+               ClassroomStudent.query.filter_by(student_user_id=user_id).all()]
+    if not klasser:
+        return None
+    aar, uge, _ = date.today().isocalendar()
+    return (WeeklyFocus.query
+            .filter(WeeklyFocus.classroom_id.in_(klasser),
+                    WeeklyFocus.aar == aar, WeeklyFocus.uge == uge)
+            .order_by(WeeklyFocus.id.desc()).first())
+
+
+def _laesehistorik(user_id):
+    """Barnets læste historier med målt LIX og quizresultat.
+
+    Grundlaget for niveauforslaget. Historier uden LIX-score kasseres af
+    level_service, og quizzen kobles på via story_id.
+    """
+    historier = (db.session.query(Story.id, Story.created_at, Story.lix_score_stored)
+                 .filter(Story.user_id == user_id, Story.lix_score_stored.isnot(None))
+                 .order_by(Story.created_at).all())
+    if not historier:
+        return []
+
+    quiz = (db.session.query(QuizResult.story_id, QuizResult.score, QuizResult.total_questions)
+            .filter(QuizResult.user_id == user_id,
+                    QuizResult.story_id.in_([h.id for h in historier])).all())
+    pct_pr_historie = {}
+    for story_id, score, total in quiz:
+        if total:
+            # Er en historie taget om, tæller det seneste forsøg.
+            pct_pr_historie[story_id] = round(score / total * 100)
+
+    return [{'lix': h.lix_score_stored, 'quiz_pct': pct_pr_historie.get(h.id),
+             'dato': h.created_at} for h in historier]
+
+
+@story_bp.route('/niveau_forslag', methods=['GET'])
+@login_required
+def niveau_forslag():
+    """Hvilket LIX-niveau appen foreslår til næste historie, og hvorfor."""
+    forslag = foreslaa_niveau(_laesehistorik(current_user.id))
+    fokus = _ugens_fokus_for(current_user.id)
+    return jsonify(
+        forslag=forslag,
+        ugens_fokus={
+            'lyde': normaliser_fokus(fokus.lyde),
+            'position': fokus.position,
+            'position_navn': POSITION_NAVNE.get(fokus.position, ''),
+            'besked_hjem': fokus.besked_hjem or '',
+        } if fokus else None,
+    )
+
+
+def _variant(title, content, focus_letter, focus_position):
+    """En historie-kandidat med det, en lærer skal bruge for at vælge.
+
+    LIX måles allerede. Fokus måles nu på samme måde: en bestilling til
+    AI'en er ikke det samme som en leveret tekst, så vi tæller efter.
+    """
+    variant = {
+        'title': title,
+        'content': content,
+        'lix_score': calculate_lix(content),
+    }
+    if focus_letter:
+        maaling = maal_fokus(content, focus_letter, focus_position)
+        variant['fokus'] = {
+            'lyde': maaling['lyde'],
+            'position_navn': POSITION_NAVNE.get(focus_position, ''),
+            'pr_lyd': maaling['pr_lyd'],
+            'ord': maaling['ord_pr_lyd'],
+            'antal': sum(maaling['pr_lyd'].values()),
+            'andel': maaling['andel'],
+            'daekning': maaling['daekning'],
+        }
+    return variant
+
+
 @story_bp.route('/generate_lix', methods=['POST'])
 @login_required
 def generate_lix_story_route():
@@ -198,6 +287,17 @@ def generate_lix_story_route():
     mood = data.get('mood', 'neutral')
     negative_prompt_text = data.get('negative_prompt', '').strip()
     focus_letter = data.get('focus_letter', '')
+    focus_position = data.get('focus_position') or 'forlyd'
+
+    # Har læreren sat et fokus for ugen, gælder det - medmindre eleven
+    # selv har skrevet noget i feltet. Det er dét, der gør, at en lærer
+    # kan sætte ét fokus for hele klassen uden at røre hver enkelt elev.
+    ugens_fokus = None
+    if not focus_letter:
+        ugens_fokus = _ugens_fokus_for(current_user.id)
+        if ugens_fokus and ugens_fokus.lyde:
+            focus_letter = ugens_fokus.lyde
+            focus_position = ugens_fokus.position
 
     length_map = {
         'kort': ("Skriv historien i cirka 6-8 afsnit.", 3072),
@@ -217,7 +317,8 @@ def generate_lix_story_route():
         karakter_str=karakter_str, sted_str="et passende sted for historien", plot_str=plot_str,
         length_instruction=length_instruction, mood_prompt_part=f"Historien skal have en {mood} stemning.",
         listener_context_instruction="", ending_instruction="Afslut historien på en positiv og opløftende måde.",
-        negative_prompt_text=negative_prompt_text, focus_letter=focus_letter, target_lix=target_lix
+        negative_prompt_text=negative_prompt_text, focus_letter=focus_letter,
+        focus_position=focus_position, target_lix=target_lix
     )
 
     story_variants = []
@@ -234,12 +335,7 @@ def generate_lix_story_route():
 
         for title, content in results:
             if "Fejl" not in title and "blokeret" not in content.lower():
-                lix_score = calculate_lix(content)
-                story_variants.append({
-                    "title": title,
-                    "content": content,
-                    "lix_score": lix_score
-                })
+                story_variants.append(_variant(title, content, focus_letter, focus_position))
 
         if not story_variants:
             raise InternalServerError("Alle kandidater fra Pro-modellen fejlede eller blev blokeret.")
@@ -256,12 +352,7 @@ def generate_lix_story_route():
 
             if results and "Fejl" not in results[0][0]:
                 title, content = results[0]
-                lix_score = calculate_lix(content)
-                story_variants.append({
-                    "title": title,
-                    "content": content,
-                    "lix_score": lix_score
-                })
+                story_variants.append(_variant(title, content, focus_letter, focus_position))
             else:
                 raise ValueError("Fallback-modellen fejlede også.")
 
@@ -272,9 +363,19 @@ def generate_lix_story_route():
     if not story_variants:
         return jsonify({"error": "Ingen historier kunne genereres."}), 500
 
+    # Ligger fokusordene taettest paa bestillingen, er det den variant en
+    # laerer vil vaelge - saa den sorteres oeverst.
+    if focus_letter:
+        story_variants.sort(key=lambda v: v['fokus']['andel'], reverse=True)
+
     response_data = {
         "stories": story_variants,
-        "warning_message": " ".join(warning_messages) if warning_messages else None
+        "warning_message": " ".join(warning_messages) if warning_messages else None,
+        "ugens_fokus": {
+            "lyde": normaliser_fokus(ugens_fokus.lyde),
+            "position_navn": POSITION_NAVNE.get(ugens_fokus.position, ''),
+            "besked_hjem": ugens_fokus.besked_hjem or '',
+        } if ugens_fokus else None,
     }
 
     return jsonify(response_data)
@@ -364,10 +465,25 @@ def save_story_to_logbook():
         current_app.logger.info(
             f"Bruger {current_user.id} gemte '{source}'-historie '{title}' til logbogen (Ny ID: {new_story.id}).")
 
+        # Ordbanken fyldes her, fordi det er her vi ved, at barnet faktisk
+        # valgte historien - ikke bare fik den genereret. En fejl her maa
+        # ikke koste den gemte historie, saa den fanges separat.
+        ordbank = {'nye': [], 'gensete': 0, 'i_alt': 0}
+        try:
+            ordbank = wordbank_service.registrer_tekst(current_user.id, content)
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Kunne ikke opdatere ordbanken for bruger {current_user.id}: {e}")
+
         return jsonify({
             "success": True,
             "message": "Historien er gemt i din logbog!",
-            "story_id": new_story.id
+            "story_id": new_story.id,
+            "ordbank": {
+                "nye_ord": ordbank['nye'],
+                "antal_nye": len(ordbank['nye']),
+                "antal_ord": ordbank['i_alt'],
+            },
         }), 201  # 201 Created
 
     except Exception as e:

@@ -1,12 +1,23 @@
 {% extends "base.html" %}
 
-{% block title %}Hygge – Godnathistorier | Read Me A Story{% endblock %}
+{% block title %}Hjemmelæsning | Read Me A Story{% endblock %}
 
 {% block content %}
 <div id="info-tooltip" class="info-tooltip-box hidden" role="tooltip" aria-live="polite">
     <p id="info-tooltip-text" class="tooltip-text-content"></p>
     <button type="button" id="info-tooltip-close" class="tooltip-close-button" aria-label="Luk">&times;</button>
 </div>
+
+{# Broen til skolen. Fyldes af hjemmelaesning.js fra /focus/mit og bliver
+   staaende skjult, hvis barnet ikke er tilmeldt en klasse - en familie, der
+   bruger appen privat, skal ikke se en tom skole-boks. #}
+<section id="ugens-fokus-sektion" class="content-section hidden" aria-live="polite">
+    <h2>Ugens fokus fra skolen</h2>
+    <p class="lede" id="ugens-fokus-besked"></p>
+    <div id="ugens-fokus-lyde" class="fokus-lyde"></div>
+    <p class="fokus-hjaelp">Historierne herunder bruger de her lyde, så det, der øves i klassen,
+       også bliver øvet derhjemme.</p>
+</section>
 
 <section id="generator" class="content-section">
     <h2>Byg jeres historie</h2>
@@ -231,6 +242,21 @@
         <button id="reset-button" class="utility-button" style="display: none;">Prøv igen</button>
     </div>
 
+
+    {# Det 20-minutters hjemmelaesningskort er fast praksis i danske skoler,
+       og det er den ene oplysning laereren ellers ikke har. Ét tryk, ikke
+       et skema. #}
+    {% if current_user.is_authenticated %}
+    <div id="laest-i-dag" class="laesekvittering hidden">
+        <p class="laesekvittering-tekst">Har I læst sammen i dag?</p>
+        <div class="laesekvittering-valg" role="group" aria-label="Hvem læste?">
+            <button type="button" class="utility-button" data-laest-af="barn">Barnet læste selv</button>
+            <button type="button" class="utility-button" data-laest-af="sammen">Vi læste sammen</button>
+            <button type="button" class="utility-button" data-laest-af="voksen">Jeg læste højt</button>
+        </div>
+        <p id="laesekvittering-svar" class="laesekvittering-svar hidden" role="status"></p>
+    </div>
+    {% endif %}
     <div class="info-dropdown-container" style="margin-top: 20px; text-align: left; max-width: 100%;">
         <button type="button" class="dropdown-toggle" id="failure-info-dropdown-toggle">
             Vejledning: Hvorfor fejler min historie/billede nogle gange? <span class="dropdown-arrow">◀</span>
@@ -276,5 +302,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="module" src="{{ url_for('static', filename='hygge.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='hjemmelaesning.js') }}"></script>
 {% endblock %}

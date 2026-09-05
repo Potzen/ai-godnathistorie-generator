@@ -14,6 +14,7 @@ def build_story_prompt(
         is_interactive=False,
         is_bedtime_story=False,
         focus_letter=None,
+        focus_position='forlyd',
         target_lix=None
 ):
     """
@@ -34,8 +35,16 @@ def build_story_prompt(
     ]
 
     if focus_letter:
-        prompt_parts.append(
-            f"- **Fokus Bogstav/Lyd:** '{focus_letter}'. Sørg for at inkludere ord, der indeholder dette bogstav (eller disse bogstaver) hyppigt og naturligt i historien. Dette er for at øve udtalen.")
+        # Formuleringen ligger i phonics_service, fordi den skal matche det,
+        # vi bagefter maaler paa den faerdige tekst. Den gamle tekst her bad
+        # om "ord, der indeholder dette bogstav" og forklarede det med at
+        # "oeve udtalen" - men et barn, der er ved at knaekke laesekoden,
+        # oever afkodning, og det er lydens plads i ordet der afgoer, om
+        # oevelsen rammer.
+        from services.phonics_service import prompt_instruktion
+        instruktion = prompt_instruktion(focus_letter, focus_position)
+        if instruktion:
+            prompt_parts.append(instruktion)
 
     prompt_parts.append("---")
 

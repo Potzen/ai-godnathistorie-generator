@@ -31,9 +31,21 @@ def skole():
     return render_template('skole.html', stories=_has_logbook_stories())
 
 
+@main_bp.route('/hjemmelaesning')
+def hjemmelaesning():
+    """Hjemmelæsning - historier til den daglige læsning derhjemme.
+
+    Hed tidligere "Hygge". Navnet er ændret, fordi modulet ikke længere kun
+    er godnathistorier: det viser ugens fokus fra skolen, så det barnet
+    øver i klassen, er det, der øves ved sengekanten.
+    """
+    return render_template('hjemmelaesning.html')
+
+
 @main_bp.route('/hygge')
 def hygge():
-    return render_template('hygge.html')
+    """Gammelt navn. Bogmærker og delte links skal blive ved at virke."""
+    return redirect(url_for('main.hjemmelaesning'), code=301)
 
 
 @main_bp.route('/stoette')

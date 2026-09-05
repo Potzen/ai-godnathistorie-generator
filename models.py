@@ -192,3 +192,112 @@ class QuizResult(db.Model):
 
     def __repr__(self):
         return f'<QuizResult id={self.id} user_id={self.user_id} score={self.score}/{self.total_questions}>'
+
+class WeeklyFocus(db.Model):
+    """Det fokus, læreren sætter for en klasse i en given uge.
+
+    Ideen er differentiering uden merforberedelse: læreren sætter ét sæt
+    lyde eller ord, og hver elev får så tekster med netop dem - men på sit
+    eget læseniveau. Uden det her ville læreren skulle indtaste fokus for
+    hvert enkelt barn.
+
+    Fokusset følger også med hjem: Hjemmelæsning viser samme uges lyde, så
+    det, der øves i skolen, er det, der øves ved sengekanten.
+    """
+    __tablename__ = 'weekly_focus'
+
+    id = db.Column(db.Integer, primary_key=True)
+    classroom_id = db.Column(db.Integer, db.ForeignKey('classroom.id'), nullable=False, index=True)
+
+    # ISO-uge, så en lærer kan lægge næste uge ind i forvejen.
+    aar = db.Column(db.Integer, nullable=False)
+    uge = db.Column(db.Integer, nullable=False)
+
+    # Fri tekst, fordi lærere skriver forskelligt: "s", "s, m", "sk br".
+    # phonics_service.normaliser_fokus rydder op i det.
+    lyde = db.Column(db.String(120), nullable=True)
+    position = db.Column(db.String(20), nullable=False, default='forlyd')
+
+    # Ord, klassen arbejder med i øvrigt - fx fra en fælles bog.
+    fokusord = db.Column(db.Text, nullable=True)
+
+    # Én linje til forælderen. Bevidst kort: en forælder ved sengekanten
+    # læser ikke et afsnit om fonologisk opmærksomhed.
+    besked_hjem = db.Column(db.String(300), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    classroom = db.relationship('Classroom', backref=db.backref('focus_uger', lazy='dynamic',
+                                                               cascade='all, delete-orphan'))
+
+    __table_args__ = (db.UniqueConstraint('classroom_id', 'aar', 'uge', name='uq_focus_klasse_uge'),)
+
+    def __repr__(self):
+        return f'<WeeklyFocus klasse={self.classroom_id} {self.aar}-U{self.uge} lyde="{self.lyde}">'
+
+
+class WordBankEntry(db.Model):
+    """Et ord, barnet har mødt i en historie.
+
+    Nøglen er ordets stamme, ikke ordet som det stod: har barnet læst
+    "hesten", tæller det også som et møde med "heste". Se
+    services/word_service.normaliser.
+
+    Formålet er dobbelt. Læreren kan se, hvad en ny tekst introducerer af
+    nyt, og senere kan nye historier bevidst genbruge de ord, der er mødt
+    få gange - genkendelse gennem fortælling frem for gennem gloselister.
+    """
+    __tablename__ = 'word_bank_entry'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+
+    stamme = db.Column(db.String(80), nullable=False, index=True)
+    # Den form barnet faktisk så - god at vise frem, mens stammen tæller.
+    visningsform = db.Column(db.String(80), nullable=False)
+
+    # Sværhedsbånd 1-5 fra word_service, gemt så en liste kan sorteres
+    # uden at slå alle ord op igen.
+    baand = db.Column(db.Integer, nullable=True)
+
+    antal_moeder = db.Column(db.Integer, nullable=False, default=1)
+    foerst_set = db.Column(db.DateTime, default=datetime.utcnow)
+    sidst_set = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('ordbank', lazy='dynamic',
+                                                      cascade='all, delete-orphan'))
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'stamme', name='uq_ordbank_bruger_stamme'),)
+
+    def __repr__(self):
+        return f'<WordBankEntry bruger={self.user_id} "{self.stamme}" x{self.antal_moeder}>'
+
+
+class HomeReadingLog(db.Model):
+    """Kvittering for, at der er læst hjemme.
+
+    Det 20-minutters hjemmelæsningskort er fast praksis i danske skoler, og
+    det er den ene oplysning, læreren ellers ikke har. Bevidst minimal:
+    en forælder skal kunne kvittere med ét tryk, ikke udfylde et skema.
+    """
+    __tablename__ = 'home_reading_log'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    story_id = db.Column(db.Integer, db.ForeignKey('story.id'), nullable=True, index=True)
+
+    dato = db.Column(db.Date, nullable=False, index=True)
+    minutter = db.Column(db.Integer, nullable=True)
+    # Hvem læste: 'barn', 'sammen' eller 'voksen'. Et barn, der bliver læst
+    # for, øver noget andet end et barn, der læser selv - og begge tæller.
+    laest_af = db.Column(db.String(20), nullable=True)
+    kommentar = db.Column(db.String(300), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('hjemmelaesning', lazy='dynamic',
+                                                      cascade='all, delete-orphan'))
+    story = db.relationship('Story')
+
+    def __repr__(self):
+        return f'<HomeReadingLog bruger={self.user_id} {self.dato} {self.minutter} min>'

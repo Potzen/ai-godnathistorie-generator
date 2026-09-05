@@ -38,8 +38,8 @@
             </a>
         </div>
         <nav class="site-nav" aria-label="Hovedmenu">
-            <a href="{{ url_for('main.hygge') }}" class="nav-link {% if request.endpoint == 'main.hygge' %}active{% endif %}"
-               {% if request.endpoint == 'main.hygge' %}aria-current="page"{% endif %}>Hygge</a>
+            <a href="{{ url_for('main.hjemmelaesning') }}" class="nav-link {% if request.endpoint == 'main.hjemmelaesning' %}active{% endif %}"
+               {% if request.endpoint == 'main.hjemmelaesning' %}aria-current="page"{% endif %}>Hjemmelæsning</a>
             <a href="{{ url_for('main.skole') }}" class="nav-link {% if request.endpoint == 'main.skole' %}active{% endif %}"
                {% if request.endpoint == 'main.skole' %}aria-current="page"{% endif %}>Skole</a>
             <a href="{{ url_for('main.stoette') }}" class="nav-link {% if request.endpoint == 'main.stoette' %}active{% endif %}"

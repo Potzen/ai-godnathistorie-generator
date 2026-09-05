@@ -140,3 +140,28 @@ export const listClassroomStudentsApi = (classroomId) =>
 
 export const joinClassroomApi = (inviteCode) =>
     request('/classroom/join', { body: { invite_code: inviteCode }, label: 'Serverfejl ved tilmelding' });
+
+// --- Ugens fokus, ordbank og hjemmelæsning ---
+
+export const mitUgefokusApi = () =>
+    request('/focus/mit', { method: 'GET', label: 'Kunne ikke hente ugens fokus' });
+
+export const hentKlassefokusApi = (classroomId, aar, uge) => {
+    const q = (aar && uge) ? `?aar=${aar}&uge=${uge}` : '';
+    return request(`/focus/${classroomId}${q}`, { method: 'GET', label: 'Kunne ikke hente ugens fokus' });
+};
+
+export const saetKlassefokusApi = (classroomId, fokus) =>
+    request(`/focus/${classroomId}`, { body: fokus, label: 'Kunne ikke gemme ugens fokus' });
+
+export const minOrdbankApi = () =>
+    request('/ordbank/mit', { method: 'GET', label: 'Kunne ikke hente ordbanken' });
+
+export const gemHjemmelaesningApi = (data) =>
+    request('/hjemmelaesning/log', { body: data, label: 'Kunne ikke gemme læsningen' });
+
+export const hentHjemmelaesningApi = () =>
+    request('/hjemmelaesning/log', { method: 'GET', label: 'Kunne ikke hente læsningen' });
+
+export const niveauForslagApi = () =>
+    request('/story/niveau_forslag', { method: 'GET', label: 'Kunne ikke hente niveauforslag' });
