@@ -3176,3 +3176,55 @@ select:hover {
     vertical-align: middle;
     font-variant-numeric: tabular-nums;
 }
+
+/* ---------------------------------------------------------------------
+   14. FARVE PÅ BØRNENES BRIKKER
+   Da paletten blev gjort tilgængelig, blev knapperne mørkere og fladerne
+   mere dæmpede. Det var rigtigt bag tekst - men det kostede farve netop
+   dér, hvor et barn kigger: elementvælgeren.
+   Farven ligger derfor på brikkernes flade og kant, hvor den ikke bærer
+   tekst. Blækket er uændret mørkt og holder over 10:1 på alle fire toner.
+   --------------------------------------------------------------------- */
+.accordion-item[data-category-id="dyr"]      { --kat: #B45309; --kat-flade: #FFF1DC; }
+.accordion-item[data-category-id="natur"]    { --kat: #2E7D32; --kat-flade: #E6F4E4; }
+.accordion-item[data-category-id="personer"] { --kat: #6B3FA0; --kat-flade: #F0E9F7; }
+.accordion-item[data-category-id="ting"]     { --kat: #1B5E8C; --kat-flade: #E4EEF8; }
+
+/* Kategorien får sin egen farve i hovedet, så listerne kan kendes fra
+   hinanden på afstand - også af et barn, der endnu ikke læser overskriften. */
+.accordion-item[data-category-id] .accordion-header {
+    border-left: 6px solid var(--kat, var(--color-primary));
+}
+.accordion-item[data-category-id] .accordion-header:hover,
+.accordion-item[data-category-id] .accordion-header.open {
+    background: var(--kat-flade, var(--color-brand-tint));
+}
+.accordion-item[data-category-id] .accordion-arrow {
+    color: var(--kat, var(--color-primary));
+}
+
+.accordion-item[data-category-id] .element-label:hover {
+    background: var(--kat-flade, var(--color-brand-tint));
+    border-color: var(--kat, var(--color-brand));
+}
+.accordion-item[data-category-id] .element-item input:checked + .element-label {
+    background: var(--kat-flade, var(--color-brand-tint));
+    border-color: var(--kat, var(--color-primary));
+}
+.accordion-item[data-category-id] .element-item input:checked + .element-label::after {
+    color: var(--kat, var(--color-primary));
+}
+.accordion-item[data-category-id] .element-item input:checked + .element-label .element-name {
+    color: var(--kat, var(--color-brand-ink));
+}
+
+/* Emojien er barnets vigtigste holdepunkt. Den må gerne fylde. */
+.element-emoji {
+    font-size: 2.2rem;
+}
+.element-item input:checked + .element-label .element-emoji {
+    transform: scale(1.08);
+}
+@media (prefers-reduced-motion: no-preference) {
+    .element-emoji { transition: transform .15s ease; }
+}
