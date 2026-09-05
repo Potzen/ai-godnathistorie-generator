@@ -18,9 +18,13 @@ __pycache__/
 *.log
 
 # Downloadede nøgler (Service Account Keys etc.)
-# Ignorerer alle .json filer for en sikkerheds skyld
+# Ignorerer alle .json filer for en sikkerheds skyld.
+# Bemærk: reglen rammer også legitime datafiler, som derfor skal føjes til
+# undtagelserne nedenfor - ellers forsvinder de lydløst fra repoet.
 *.json
 !static/laesehest_data.json
+!static/songs.json
+!services/data/da_ordfrekvens.json
 
 # macOS specific
 .DS_Store
